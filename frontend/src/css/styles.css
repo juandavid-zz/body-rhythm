@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0d0f1a;
+  min-height: 100vh;
+}
+
+/* ── AUTH WRAPPER ── */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(88, 28, 135, 0.15) 0%, transparent 70%);
+}
+
+.container {
+  background: #13151f;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 440px;
+}
+
+.container h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.8rem;
+  text-align: center;
+}
+
+/* ── FORM ── */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 0.4rem;
+}
+
+input {
+  background: #1e2130;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+input::placeholder {
+  color: #475569;
+}
+
+input:focus {
+  border-color: #a855f7;
+}
+
+.error {
+  font-size: 0.75rem;
+  color: #f87171;
+  margin-top: 0.3rem;
+}
+
+/* ── BUTTONS ── */
+button[type="submit"] {
+  margin-top: 1.2rem;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.15s;
+}
+
+button[type="submit"]:hover {
+  opacity: 0.85;
+}
+
+.btn-switch {
+  margin-top: 0.8rem;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-switch:hover {
+  color: #fff;
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .container {
+    padding: 2rem 1.2rem;
+  }
+}
