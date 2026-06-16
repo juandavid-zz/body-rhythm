@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/api'
+import Toast from './Toast'
 
 export default function Login({ onSwitch }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -22,8 +24,25 @@ export default function Login({ onSwitch }) {
         email: form.email,
         password: form.password
       })
-      localStorage.setItem('token', res.data.token)
-      navigate('/dashboard')
+
+localStorage.setItem('token', res.data.token)
+
+// Limpiamos el nombre anterior para que no quede el de otra cuenta
+localStorage.removeItem('nombre')
+
+// Si tu API devuelve el nombre, lo guardamos
+if (res.data.nombre) {
+  localStorage.setItem('nombre', res.data.nombre)
+}
+
+const nombre = res.data.nombre
+const saludo = nombre
+  ? `¡Bienvenido de vuelta, ${nombre.split(' ')[0]}! 👋`
+  : '¡Inicio de sesión exitoso! 👋'
+
+setToast(saludo)
+setTimeout(() => navigate('/'), 2000)
+
     } catch (err) {
       setError('Credenciales incorrectas')
     } finally {
@@ -32,21 +51,25 @@ export default function Login({ onSwitch }) {
   }
 
   return (
-    <form onSubmit={handleLogin}>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <>
+      {toast && <Toast mensaje={toast} tipo="exito" duracion={2000} />}
 
-      <label>Correo electrónico:</label>
-      <input type="email" name="email" placeholder="usuario@correo.com"
-        value={form.email} onChange={handleChange} required />
+      <form onSubmit={handleLogin}>
+        {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <label>Contraseña:</label>
-      <input type="password" name="password" placeholder="Tu contraseña"
-        value={form.password} onChange={handleChange} required />
+        <label>Correo electrónico:</label>
+        <input type="email" name="email" placeholder="usuario@correo.com"
+          value={form.email} onChange={handleChange} required />
 
-      <button type="submit" disabled={cargando}>
-        {cargando ? 'Iniciando...' : 'Iniciar Sesión'}
-      </button>
-      <button type="button" onClick={onSwitch}>Crear cuenta nueva</button>
-    </form>
+        <label>Contraseña:</label>
+        <input type="password" name="password" placeholder="Tu contraseña"
+          value={form.password} onChange={handleChange} required />
+
+        <button type="submit" disabled={cargando}>
+          {cargando ? 'Iniciando...' : 'Iniciar Sesión'}
+        </button>
+        <button type="button" onClick={onSwitch}>Crear cuenta nueva</button>
+      </form>
+    </>
   )
 }
