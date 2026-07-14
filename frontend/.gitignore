@@ -1,5 +1,6 @@
 # Django
 backend/venv/
+backend/env/
 backend/__pycache__/
 backend/*.pyc
 backend/.env
@@ -7,6 +8,7 @@ backend/.env
 # React
 frontend/node_modules/
 frontend/dist/
+frontend/.env
 
 # Sistema
 .DS_Store
