@@ -1,0 +1,47 @@
+:root {
+    --primary: #7b2d8b;
+    --secondary: #5a1f6b;
+}
+
+#header {
+    background: linear-gradient(135deg, #1a1a2e, #7b2d8b);
+    color: #ffffff;
+}
+
+#header a:link, #header a:visited {
+    color: #f0c040;
+}
+
+#branding h1 {
+    color: #f0c040;
+    font-weight: bold;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background: #7b2d8b;
+    color: #ffffff;
+}
+
+div.breadcrumbs {
+    background: #5a1f6b;
+    color: #f0c040;
+}
+
+div.breadcrumbs a {
+    color: #f0c040;
+}
+
+a:link, a:visited {
+    color: #7b2d8b;
+}
+
+.button, input[type=submit], input[type=button], .submit-row input {
+    background: #7b2d8b;
+    border-color: #5a1f6b;
+    color: #ffffff;
+}
+
+.button:hover, input[type=submit]:hover {
+    background: #f0c040;
+    color: #1a1a2e;
+}
