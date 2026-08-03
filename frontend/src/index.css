@@ -52,6 +52,8 @@
 
 body {
   margin: 0;
+  background: #0d0f1a;
+
 }
 
 #root {
@@ -108,4 +110,13 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+#root:has(.page-admin),
+#root:has(.page-rutinas) {
+  width: 100%;
+  max-width: 100%;
+  text-align: left;
+  border: none;
+  margin: 0;
 }
