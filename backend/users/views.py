@@ -36,7 +36,8 @@ class RegistroView(APIView):
             return Response({
                 'token': str(refresh.access_token),
                 'refresh': str(refresh),
-                'mensaje': 'Usuario registrado correctamente'
+                'mensaje': 'Usuario registrado correctamente',
+                'nombre': data['nombre']
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -62,10 +63,12 @@ class LoginView(APIView):
             auth.ultimo_login = timezone.now()
             auth.save()
             refresh = RefreshToken.for_user(auth)
+            usuario = Usuario.objects.get(auth=auth)
             return Response({
                 'token': str(refresh.access_token),
                 'refresh': str(refresh),
-                'mensaje': 'Login exitoso'
+                'mensaje': 'Login exitoso',
+                'nombre': usuario.nombre
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

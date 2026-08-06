@@ -1,54 +1,106 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 export default function Navbar() {
-  const navigate = useNavigate()
-  const logueado = !!localStorage.getItem('token')
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+  const logueado = !!token;
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh')
-    navigate('/')
-    window.location.reload()
-  }
+  const cerrarSesion = async () => {
+    const resultado = await Swal.fire({
+      title: "Cerrar sesión",
+      text: "¿Estás seguro de que deseas cerrar sesión?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#50118c",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sí, cerrar sesión",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (resultado.isConfirmed) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh");
+
+      await Swal.fire({
+        title: "Sesión cerrada",
+        text: "Has cerrado sesión correctamente.",
+        icon: "success",
+        confirmButtonColor: "#50118c",
+      });
+
+      navigate("/");
+      window.location.reload();
+    }
+  };
 
   const irAEntrenamientos = () => {
     if (logueado) {
-      navigate('/dashboard')
+      navigate("/dashboard");
     } else {
-      navigate('/auth?modo=login')
+      navigate("/auth?modo=login");
     }
-  }
+  };
 
   return (
     <nav>
       <a href="/" className="logo">
         Body <span>Rhythm</span>
       </a>
+
       <ul className="nav-links">
-        <li><a href="/">Inicio</a></li>
         <li>
-          <a href="#" onClick={(e) => { e.preventDefault(); irAEntrenamientos() }}>
+          <a href="/">Inicio</a>
+        </li>
+
+        {token && (
+          <li>
+            <a href="/ejercicios">Ejercicios</a>
+          </li>
+        )}
+
+        <li>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              irAEntrenamientos();
+            }}
+          >
             Entrenamientos
           </a>
         </li>
-        <li><a href="#">Nutrición</a></li>
-        <li><a href="#">Planes</a></li>
+
+        <li>
+          <a href="#">Nutrición</a>
+        </li>
+
+        <li>
+          <a href="#">Planes</a>
+        </li>
       </ul>
 
-      {logueado ? (
-        <button className="btn-iniciar" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
-      ) : (
+      {!token ? (
         <>
-          <button className="btn-iniciar" onClick={() => navigate('/auth?modo=login')}>
+          <button
+            className="btn-iniciar"
+            onClick={() => navigate("/auth?modo=login")}
+          >
             Iniciar Sesión
           </button>
-          <button className="btn-registro" onClick={() => navigate('/auth?modo=registro')}>
+
+          <button
+            className="btn-registro"
+            onClick={() => navigate("/auth?modo=registro")}
+          >
             Regístrate
           </button>
         </>
+      ) : (
+        <button className="btn-iniciar" onClick={cerrarSesion}>
+          Cerrar Sesión
+        </button>
       )}
     </nav>
-  )
+  );
 }

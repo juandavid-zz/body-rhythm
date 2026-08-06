@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/api'
+import Toast from './Toast'
 
 export default function Registro({ onSwitch }) {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function Registro({ onSwitch }) {
   })
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -37,9 +39,18 @@ export default function Registro({ onSwitch }) {
         genero: form.genero,
         meta: form.meta
       })
+
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('refresh', res.data.refresh)
-      navigate('/')
+
+      // Guardamos el nombre para usarlo en futuros logins
+      const primerNombre = form.nombre.trim().split(' ')[0]
+      localStorage.setItem('nombre', form.nombre.trim())
+
+      setToast(`¡Registro exitoso! Bienvenido, ${primerNombre} 🎉`)
+
+      // Navegamos después de que el usuario vea el mensaje
+      setTimeout(() => navigate('/'), 2200)
     } catch (err) {
       setError(err.response?.data?.email?.[0] || 'Error al registrarse')
     } finally {
@@ -48,58 +59,62 @@ export default function Registro({ onSwitch }) {
   }
 
   return (
-    <form onSubmit={handleRegistro}>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <>
+      {toast && <Toast mensaje={toast} tipo="exito" duracion={2200} />}
 
-      <label>Nombre completo:</label>
-      <input type="text" name="nombre" placeholder="Juan Pérez"
-        value={form.nombre} onChange={handleChange} required />
+      <form onSubmit={handleRegistro}>
+        {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <label>Correo electrónico:</label>
-      <input type="email" name="email" placeholder="usuario@correo.com"
-        value={form.email} onChange={handleChange} required />
+        <label>Nombre completo:</label>
+        <input type="text" name="nombre" placeholder="Juan Pérez"
+          value={form.nombre} onChange={handleChange} required />
 
-      <label>Peso (kg):</label>
-      <input type="number" name="peso" step="0.1" placeholder="70"
-        value={form.peso} onChange={handleChange} />
+        <label>Correo electrónico:</label>
+        <input type="email" name="email" placeholder="usuario@correo.com"
+          value={form.email} onChange={handleChange} required />
 
-      <label>Altura (m):</label>
-      <input type="number" name="altura" step="0.01" placeholder="1.75"
-        value={form.altura} onChange={handleChange} />
+        <label>Peso (kg):</label>
+        <input type="number" name="peso" step="0.1" placeholder="70"
+          value={form.peso} onChange={handleChange} />
 
-      <label>Fecha de nacimiento:</label>
-      <input type="date" name="fecha_nacimiento"
-        value={form.fecha_nacimiento} onChange={handleChange} />
+        <label>Altura (m):</label>
+        <input type="number" name="altura" step="0.01" placeholder="1.75"
+          value={form.altura} onChange={handleChange} />
 
-      <label>Género:</label>
-      <select name="genero" value={form.genero} onChange={handleChange}>
-        <option value="">Seleccionar</option>
-        <option value="masculino">Masculino</option>
-        <option value="femenino">Femenino</option>
-        <option value="otro">Otro</option>
-      </select>
+        <label>Fecha de nacimiento:</label>
+        <input type="date" name="fecha_nacimiento"
+          value={form.fecha_nacimiento} onChange={handleChange} />
 
-      <label>Meta:</label>
-      <select name="meta" value={form.meta} onChange={handleChange}>
-        <option value="">Seleccionar</option>
-        <option value="perder_peso">Perder peso</option>
-        <option value="ganar_musculo">Ganar músculo</option>
-        <option value="mantenerse">Mantenerse</option>
-        <option value="mejorar_resistencia">Mejorar resistencia</option>
-      </select>
+        <label>Género:</label>
+        <select name="genero" value={form.genero} onChange={handleChange}>
+          <option value="">Seleccionar</option>
+          <option value="masculino">Masculino</option>
+          <option value="femenino">Femenino</option>
+          <option value="otro">Otro</option>
+        </select>
 
-      <label>Contraseña:</label>
-      <input type="password" name="password" placeholder="Mínimo 8 caracteres"
-        value={form.password} onChange={handleChange} required />
+        <label>Meta:</label>
+        <select name="meta" value={form.meta} onChange={handleChange}>
+          <option value="">Seleccionar</option>
+          <option value="perder_peso">Perder peso</option>
+          <option value="ganar_musculo">Ganar músculo</option>
+          <option value="mantenerse">Mantenerse</option>
+          <option value="mejorar_resistencia">Mejorar resistencia</option>
+        </select>
 
-      <label>Confirmar contraseña:</label>
-      <input type="password" name="confirmPassword" placeholder="Repite tu contraseña"
-        value={form.confirmPassword} onChange={handleChange} required />
+        <label>Contraseña:</label>
+        <input type="password" name="password" placeholder="Mínimo 8 caracteres"
+          value={form.password} onChange={handleChange} required />
 
-      <button type="submit" disabled={cargando}>
-        {cargando ? 'Registrando...' : 'Registrar'}
-      </button>
-      <button type="button" onClick={onSwitch}>Ya tengo cuenta</button>
-    </form>
+        <label>Confirmar contraseña:</label>
+        <input type="password" name="confirmPassword" placeholder="Repite tu contraseña"
+          value={form.confirmPassword} onChange={handleChange} required />
+
+        <button type="submit" disabled={cargando}>
+          {cargando ? 'Registrando...' : 'Registrar'}
+        </button>
+        <button type="button" onClick={onSwitch}>Ya tengo cuenta</button>
+      </form>
+    </>
   )
 }
