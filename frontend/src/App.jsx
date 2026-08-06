@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import ChatbotRutina from './pages/ChatbotRutina'
+import Progreso from './pages/Progreso'
 
 function RutaProtegida({ children }) {
   const token = localStorage.getItem('token')
@@ -15,12 +16,17 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<AuthPage />} />
+
         <Route path="/dashboard" element={
           <RutaProtegida><Dashboard /></RutaProtegida>
         } />
+
         <Route path="/chatbot" element={
           <RutaProtegida><ChatbotRutina /></RutaProtegida>
         } />
+
+        <Route path="/progreso" element={<Progreso />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
