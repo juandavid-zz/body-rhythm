@@ -22,3 +22,16 @@ frontend/dist/
 .idea/
 Thumbs.db
 .DS_Store
+# Python
+__pycache__/
+*.pyc
+
+# Django
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+
+# Variables entorno
+.env
