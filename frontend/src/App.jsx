@@ -1,223 +1,90 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import Home from './pages/Home'
-import AuthPage from './pages/AuthPage'
-import Dashboard from './pages/Dashboard'
-import ChatbotRutina from './pages/ChatbotRutina'
-import Progreso from './pages/Progreso'
-
-import Ejercicios from './pages/ejercicios/Ejercicios'
-import EjercicioDetalle from './pages/ejercicios/EjercicioDetalle'
-
-import Navbar from './components/Navbar'
-
+import Home from "./pages/Home";
+import AuthPage from "./pages/AuthPage";
+import Dashboard from "./pages/Dashboard";
+import ChatbotRutina from "./pages/ChatbotRutina";
+import Progreso from "./pages/Progreso";
+import Ejercicios from "./pages/ejercicios/Ejercicios";
+import EjercicioDetalle from "./pages/ejercicios/EjercicioDetalle";
+import Planes from "./pages/Planes"; // si existe
 
 function RutaProtegida({ children }) {
+  const token = localStorage.getItem("token");
 
-  const token = localStorage.getItem('token')
-
-  return token 
-    ? children 
-    : <Navigate to="/auth?modo=login" replace />
-
+  return token
+    ? children
+    : <Navigate to="/auth?modo=login" replace />;
 }
-
-
-
-function Layout({ children }) {
-
-  return (
-
-    <>
-
-      <Navbar />
-
-      {children}
-
-    </>
-
-  )
-
-}
-
-
 
 export default function App() {
-
-
   return (
-
     <BrowserRouter>
-
 
       <Routes>
 
+        <Route path="/" element={<Home />} />
 
-        {/* Inicio */}
-
-        <Route 
-          path="/" 
-          element={<Home />} 
-        />
-
-
-
-        {/* Login Registro */}
-
-        <Route 
-          path="/auth" 
-          element={<AuthPage />} 
-        />
-
-
-
-
-        {/* Dashboard */}
+        <Route path="/auth" element={<AuthPage />} />
 
         <Route
-
           path="/dashboard"
-
           element={
-
             <RutaProtegida>
-
-              <Layout>
-
-                <Dashboard />
-
-              </Layout>
-
+              <Dashboard />
             </RutaProtegida>
-
           }
-
         />
 
-
-
-
-
-        {/* Progreso */}
-
         <Route
-
           path="/progreso"
-
           element={
-
             <RutaProtegida>
-
-              <Layout>
-
-                <Progreso />
-
-              </Layout>
-
+              <Progreso />
             </RutaProtegida>
-
           }
-
         />
 
-
-
-
-
-        {/* Chatbot */}
-
         <Route
-
           path="/chatbot"
-
           element={
-
             <RutaProtegida>
-
-              <Layout>
-
-                <ChatbotRutina />
-
-              </Layout>
-
+              <ChatbotRutina />
             </RutaProtegida>
-
           }
-
         />
 
-
-
-
-
-        {/* Ejercicios */}
-
         <Route
-
           path="/ejercicios"
-
           element={
-
             <RutaProtegida>
-
-              <Layout>
-
-                <Ejercicios />
-
-              </Layout>
-
+              <Ejercicios />
             </RutaProtegida>
-
           }
-
         />
 
-
-
-
-
-        {/* Detalle ejercicio */}
-
         <Route
-
           path="/ejercicios/:id"
-
           element={
-
             <RutaProtegida>
-
-              <Layout>
-
-                <EjercicioDetalle />
-
-              </Layout>
-
+              <EjercicioDetalle />
             </RutaProtegida>
-
           }
-
         />
-
-
-
-
-
-        {/* Ruta inexistente */}
 
         <Route
-
-          path="*"
-
-          element={<Navigate to="/" replace />}
-
+          path="/planes"
+          element={
+            <RutaProtegida>
+              <Planes />
+            </RutaProtegida>
+          }
         />
 
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
 
-
     </BrowserRouter>
-
-  )
-
+  );
 }

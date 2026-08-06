@@ -1,5 +1,5 @@
+import Navbar from "../components/Navbar";
 import '../css/Progreso.css';
-
 import {
   LineChart,
   Line,
@@ -69,6 +69,8 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
 
     return (
+      
+
 
       <div className="chart-tooltip">
 
@@ -100,6 +102,7 @@ function Progreso() {
   return (
 
     <>
+      <Navbar />
 
       <div className="progreso-page">
 
