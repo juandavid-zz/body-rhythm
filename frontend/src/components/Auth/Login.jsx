@@ -23,7 +23,8 @@ export default function Login({ onSwitch }) {
         password: form.password
       })
       localStorage.setItem('token', res.data.token)
-      navigate('/dashboard')
+      localStorage.setItem('refresh', res.data.refresh)
+      navigate('/')
     } catch (err) {
       setError('Credenciales incorrectas')
     } finally {

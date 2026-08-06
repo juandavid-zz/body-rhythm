@@ -38,7 +38,8 @@ export default function Registro({ onSwitch }) {
         meta: form.meta
       })
       localStorage.setItem('token', res.data.token)
-      navigate('/dashboard')
+      localStorage.setItem('refresh', res.data.refresh)
+      navigate('/')
     } catch (err) {
       setError(err.response?.data?.email?.[0] || 'Error al registrarse')
     } finally {

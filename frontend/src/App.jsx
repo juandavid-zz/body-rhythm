@@ -1,6 +1,13 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import AuthPage from './pages/AuthPage'
+import Dashboard from './pages/Dashboard'
+import ChatbotRutina from './pages/ChatbotRutina'
+
+function RutaProtegida({ children }) {
+  const token = localStorage.getItem('token')
+  return token ? children : <Navigate to="/auth" replace />
+}
 
 export default function App() {
   return (
@@ -8,6 +15,13 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/dashboard" element={
+          <RutaProtegida><Dashboard /></RutaProtegida>
+        } />
+        <Route path="/chatbot" element={
+          <RutaProtegida><ChatbotRutina /></RutaProtegida>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

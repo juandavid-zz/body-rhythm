@@ -52,3 +52,25 @@ class Usuario(models.Model):
 
     class Meta:
         db_table = 'usuarios'
+
+class RecuperacionPassword(models.Model):
+    auth = models.ForeignKey(AuthUsuario, on_delete=models.CASCADE, db_column='auth_id')
+    codigo = models.CharField(max_length=10)
+    expira_at = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'recuperacion_password'
+
+
+class Sesion(models.Model):
+    auth = models.ForeignKey(AuthUsuario, on_delete=models.CASCADE, db_column='auth_id')
+    token = models.CharField(max_length=255)
+    dispositivo = models.CharField(max_length=150, null=True, blank=True)
+    ip = models.CharField(max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expira_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'sesiones'
