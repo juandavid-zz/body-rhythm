@@ -1,67 +1,223 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+
 import Home from './pages/Home'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import ChatbotRutina from './pages/ChatbotRutina'
 import Progreso from './pages/Progreso'
+
 import Ejercicios from './pages/ejercicios/Ejercicios'
 import EjercicioDetalle from './pages/ejercicios/EjercicioDetalle'
 
+import Navbar from './components/Navbar'
+
+
 function RutaProtegida({ children }) {
+
   const token = localStorage.getItem('token')
 
-  return token ? children : <Navigate to="/auth" replace />
+  return token 
+    ? children 
+    : <Navigate to="/auth?modo=login" replace />
+
 }
 
-export default function App() {
+
+
+function Layout({ children }) {
+
   return (
+
+    <>
+
+      <Navbar />
+
+      {children}
+
+    </>
+
+  )
+
+}
+
+
+
+export default function App() {
+
+
+  return (
+
     <BrowserRouter>
+
+
       <Routes>
 
-        <Route path="/" element={<Home />} />
-        <Route path="/auth" element={<AuthPage />} />
+
+        {/* Inicio */}
+
+        <Route 
+          path="/" 
+          element={<Home />} 
+        />
+
+
+
+        {/* Login Registro */}
+
+        <Route 
+          path="/auth" 
+          element={<AuthPage />} 
+        />
+
+
+
+
+        {/* Dashboard */}
 
         <Route
+
           path="/dashboard"
+
           element={
+
             <RutaProtegida>
-              <Dashboard />
+
+              <Layout>
+
+                <Dashboard />
+
+              </Layout>
+
             </RutaProtegida>
+
           }
+
         />
 
+
+
+
+
+        {/* Progreso */}
+
         <Route
+
+          path="/progreso"
+
+          element={
+
+            <RutaProtegida>
+
+              <Layout>
+
+                <Progreso />
+
+              </Layout>
+
+            </RutaProtegida>
+
+          }
+
+        />
+
+
+
+
+
+        {/* Chatbot */}
+
+        <Route
+
           path="/chatbot"
+
           element={
+
             <RutaProtegida>
-              <ChatbotRutina />
+
+              <Layout>
+
+                <ChatbotRutina />
+
+              </Layout>
+
             </RutaProtegida>
+
           }
+
         />
 
-        <Route path="/progreso" element={<Progreso />} />
+
+
+
+
+        {/* Ejercicios */}
 
         <Route
+
           path="/ejercicios"
+
           element={
+
             <RutaProtegida>
-              <Ejercicios />
+
+              <Layout>
+
+                <Ejercicios />
+
+              </Layout>
+
             </RutaProtegida>
+
           }
+
         />
+
+
+
+
+
+        {/* Detalle ejercicio */}
 
         <Route
+
           path="/ejercicios/:id"
+
           element={
+
             <RutaProtegida>
-              <EjercicioDetalle />
+
+              <Layout>
+
+                <EjercicioDetalle />
+
+              </Layout>
+
             </RutaProtegida>
+
           }
+
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+
+
+
+
+        {/* Ruta inexistente */}
+
+        <Route
+
+          path="*"
+
+          element={<Navigate to="/" replace />}
+
+        />
+
 
       </Routes>
+
+
     </BrowserRouter>
+
   )
+
 }
