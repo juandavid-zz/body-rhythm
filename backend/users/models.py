@@ -37,17 +37,50 @@ class Usuario(models.Model):
     peso = models.FloatField(null=True, blank=True)
     altura = models.FloatField(null=True, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
-    genero = models.CharField(max_length=10, choices=[
-        ('masculino', 'Masculino'),
-        ('femenino', 'Femenino'),
-        ('otro', 'Otro')
-    ], null=True, blank=True)
-    meta = models.CharField(max_length=30, choices=[
-        ('perder_peso', 'Perder Peso'),
-        ('ganar_musculo', 'Ganar Músculo'),
-        ('mantenerse', 'Mantenerse'),
-        ('mejorar_resistencia', 'Mejorar Resistencia')
-    ], null=True, blank=True)
+
+    genero = models.CharField(
+        max_length=10,
+        choices=[
+            ('masculino', 'Masculino'),
+            ('femenino', 'Femenino'),
+            ('otro', 'Otro')
+        ],
+        null=True,
+        blank=True
+    )
+
+    meta = models.CharField(
+        max_length=30,
+        choices=[
+            ('perder_peso', 'Perder Peso'),
+            ('ganar_musculo', 'Ganar Músculo'),
+            ('mantenerse', 'Mantenerse'),
+            ('mejorar_resistencia', 'Mejorar Resistencia')
+        ],
+        null=True,
+        blank=True
+    )
+
+    plan = models.CharField(
+        max_length=20,
+        choices=[
+            ('free', 'Free'),
+            ('pro', 'Pro'),
+            ('premium', 'Premium'),
+        ],
+        default='free'
+    )
+
+    fecha_inicio_plan = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    fecha_fin_plan = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
