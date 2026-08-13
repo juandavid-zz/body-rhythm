@@ -107,3 +107,60 @@ class Sesion(models.Model):
 
     class Meta:
         db_table = 'sesiones'
+
+class Pago(models.Model):
+    PLAN_CHOICES = [
+        ('pro', 'Pro'),
+        ('premium', 'Premium'),
+    ]
+
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('aprobado', 'Aprobado'),
+        ('rechazado', 'Rechazado'),
+    ]
+
+    METODO_CHOICES = [
+        ('tarjeta', 'Tarjeta'),
+        ('pse', 'PSE'),
+    ]
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        db_column='usuario_id',
+        related_name='pagos'
+    )
+
+    plan = models.CharField(
+        max_length=50,
+        choices=PLAN_CHOICES
+    )
+
+    precio = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
+
+    referencia = models.CharField(
+        max_length=100,
+        unique=True
+    )
+
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='pendiente'
+    )
+
+    metodo = models.CharField(
+        max_length=20,
+        choices=METODO_CHOICES
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = 'pagos'
