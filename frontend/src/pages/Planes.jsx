@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import "../css/planes.css";
+import { useNavigate } from "react-router-dom";
 
 const planes = [
   {
@@ -50,6 +51,60 @@ const planes = [
 ];
 
 function Planes() {
+  const navigate = useNavigate();
+
+  const [usuario, setUsuario] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const obtenerUsuario = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setCargando(false);
+        return;
+      }
+
+      try {
+        const respuesta = await fetch(
+          "http://127.0.0.1:8000/api/usuarios/me/",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await respuesta.json();
+
+        if (!respuesta.ok) {
+          throw new Error(
+            data.detail || "No se pudo obtener la información del usuario."
+          );
+        }
+
+        setUsuario(data);
+      } catch (error) {
+        console.error("Error obteniendo usuario:", error);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    obtenerUsuario();
+  }, []);
+
+  const seleccionarPlan = (plan) => {
+    navigate("/pago", {
+      state: {
+        plan: plan.nombre.toLowerCase(),
+        precio: plan.precio,
+      },
+    });
+  };
+
+  const planActual = usuario?.plan?.toLowerCase() || "free";
+
   return (
     <div className="planes-page">
       <Navbar />
@@ -72,71 +127,110 @@ function Planes() {
 
         {/* PLANES */}
         <section className="planes-grid">
-          {planes.map((plan) => (
-            <article
-              key={plan.nombre}
-              className={
-                "plan-card " +
-                plan.clase +
-                (plan.destacado ? " destacado" : "")
-              }
-            >
+          {planes.map((plan) => {
+            const esPlanActual =
+              plan.nombre.toLowerCase() === planActual;
 
-              {/* MÁS POPULAR */}
-              {plan.destacado && (
-                <div className="plan-popular">
-                  MÁS POPULAR
-                </div>
-              )}
+            const niveles = {
+              free: 0,
+              pro: 1,
+              premium: 2,
+            };
 
-              {/* INFORMACIÓN */}
-              <div className="plan-header">
-                <h2>{plan.nombre}</h2>
+            const nivelPlan = niveles[plan.nombre.toLowerCase()];
+            const nivelActual = niveles[planActual];
 
-                <p className="plan-description">
-                  {plan.descripcion}
-                </p>
+            const esInferior = nivelPlan < nivelActual;
 
-                <div className="plan-price">
-                  <span>$</span>
-                  {plan.precio}
-                  <small>COP / mes</small>
-                </div>
-              </div>
-
-              <div className="plan-divider"></div>
-
-              {/* BENEFICIOS */}
-              <ul className="plan-benefits">
-                {plan.beneficios.map((beneficio, index) => (
-                  <li key={index}>
-                    <span className="check">✓</span>
-                    {beneficio}
-                  </li>
-                ))}
-              </ul>
-
-              {/* BOTÓN */}
-              <button
-                className={"plan-button " + plan.clase}
-                disabled={plan.nombre === "Free"}
+            return (
+              <article
+                key={plan.nombre}
+                className={
+                  "plan-card " +
+                  plan.clase +
+                  (plan.destacado ? " destacado" : "")
+                }
               >
-                {plan.boton}
-              </button>
 
-            </article>
-          ))}
+                {/* MÁS POPULAR */}
+                {plan.destacado && (
+                  <div className="plan-popular">
+                    MÁS POPULAR
+                  </div>
+                )}
+
+                {/* INFORMACIÓN */}
+                <div className="plan-header">
+                  <h2>{plan.nombre}</h2>
+
+                  <p className="plan-description">
+                    {plan.descripcion}
+                  </p>
+
+                  <div className="plan-price">
+                    <span>$</span>
+                    {plan.precio}
+                    <small>COP / mes</small>
+                  </div>
+                </div>
+
+                <div className="plan-divider"></div>
+
+                {/* BENEFICIOS */}
+                <ul className="plan-benefits">
+                  {plan.beneficios.map((beneficio, index) => (
+                    <li key={index}>
+                      <span className="check">✓</span>
+                      {beneficio}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* BOTÓN */}
+                <button
+                  className={"plan-button " + plan.clase}
+                  disabled={esPlanActual || esInferior || cargando}
+                  onClick={() => seleccionarPlan(plan)}
+                >
+                  {cargando
+                    ? "Cargando..."
+                    : esPlanActual
+                    ? "Plan actual"
+                    : esInferior
+                    ? "Incluido en tu plan"
+                    : plan.boton}
+                </button>
+
+              </article>
+            );
+          })}
         </section>
 
-        {/* PARTE FINAL */}
-        <section className="planes-bottom">
-          <h3>Entrena. Progresa. Supera tus límites.</h3>
+        {/* INFORMACIÓN DEL PLAN ACTUAL */}
+        {!cargando && usuario && (
+          <section className="planes-bottom">
 
-          <p>
-            Elige el plan que mejor se adapte a tus objetivos y comienza a
-            construir una mejor versión de ti.
-          </p>
-        </section>
+            <h3>
+              Tu plan actual:{" "}
+              <span>
+                {usuario.plan?.toUpperCase() || "FREE"}
+              </span>
+            </h3>
+
+            {usuario.fecha_fin_plan && (
+              <p>
+                Tu plan está activo hasta el{" "}
+                <strong>
+                  {new Date(
+                    usuario.fecha_fin_plan
+                  ).toLocaleDateString("es-CO")}
+                </strong>
+                .
+              </p>
+            )}
+
+          </section>
+        )}
 
       </main>
     </div>

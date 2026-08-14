@@ -111,6 +111,34 @@ class UsuarioDetailView(APIView):
             'created_at': usuario.created_at
         })
 
+# OBTENER USUARIO AUTENTICADO
+class UsuarioMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            usuario = Usuario.objects.get(auth=request.user)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response({
+            'id': usuario.id,
+            'nombre': usuario.nombre,
+            'peso': usuario.peso,
+            'altura': usuario.altura,
+            'fecha_nacimiento': usuario.fecha_nacimiento,
+            'genero': usuario.genero,
+            'meta': usuario.meta,
+            'plan': usuario.plan,
+            'fecha_inicio_plan': usuario.fecha_inicio_plan,
+            'fecha_fin_plan': usuario.fecha_fin_plan,
+            'created_at': usuario.created_at
+        })
+
+
     def put(self, request, id):
         usuario, error = self.get_object_or_403(request, id)
         if error:
