@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import api from "../api/api";
 import "../css/formularioPago.css";
 
 function FormularioPago() {
@@ -47,45 +48,35 @@ function FormularioPago() {
 
     setCargando(true);
 
-    try {
-      const respuesta = await fetch("http://127.0.0.1:8000/api/pagos/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          plan: planSeleccionado,
-          precio: precioSeleccionado.replace(".", ""),
-          metodo,
-          referencia: generarReferencia(),
-        }),
-      });
+try {
+  const respuesta = await api.post("/pagos/", {
+    plan: planSeleccionado,
+    precio: precioSeleccionado.replace(".", ""),
+    metodo,
+    referencia: generarReferencia(),
+  });
 
-        const data = await respuesta.json();
+  const data = respuesta.data;
 
-        console.log("STATUS:", respuesta.status);
-        console.log("RESPUESTA DEL BACKEND:", data);
+  console.log("STATUS:", respuesta.status);
+  console.log("RESPUESTA DEL BACKEND:", data);
 
-        if (!respuesta.ok) {
-        throw new Error(
-            data.error ||
-            data.detail ||
-            `Error del servidor (${respuesta.status})`
-        );
-        }
-
-        navigate("/pago-exitoso", {
-        state: {
-            pago: data.pago,
-            fechaFin: data.fecha_fin,
+  navigate("/pago-exitoso", {
+    state: {
+      pago: data.pago,
+      fechaFin: data.fecha_fin,
     },
-});
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setCargando(false);
-    }
+  });
+} catch (error) {
+  setError(
+    error.response?.data?.error ||
+    error.response?.data?.detail ||
+    error.message ||
+    "No se pudo realizar el pago."
+  );
+} finally {
+  setCargando(false);
+}
   };
 
   return (
