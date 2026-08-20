@@ -24,7 +24,6 @@ function Ejercicios() {
 
       <Navbar />
 
-       <Navbar />
 
       <div className="ejercicios-container">
         <h1>Ejercicios</h1>
