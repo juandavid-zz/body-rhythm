@@ -75,9 +75,17 @@ export default function Navbar() {
           <a href="#">Nutrición</a>
         </li>
 
-        <li>
-          <a href="#">Planes</a>
-        </li>
+<li>
+  <a
+    href="/planes"
+    onClick={(e) => {
+      e.preventDefault();
+      navigate("/planes");
+    }}
+  >
+    Planes
+  </a>
+</li>
       </ul>
 
       {!token ? (

@@ -7,8 +7,9 @@ import ChatbotRutina from "./pages/ChatbotRutina";
 import Progreso from "./pages/Progreso";
 import Ejercicios from "./pages/ejercicios/Ejercicios";
 import EjercicioDetalle from "./pages/ejercicios/EjercicioDetalle";
-import Planes from "./pages/Planes"; // si existe
-
+import Planes from "./pages/Planes"; 
+import FormularioPago from "./pages/FormularioPago";
+import PagoExitoso from "./pages/PagoExitoso";
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -72,15 +73,24 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/planes"
-          element={
-            <RutaProtegida>
-              <Planes />
-            </RutaProtegida>
-          }
-        />
+<Route path="/planes" element={<Planes />} />
+<Route
+  path="/pago"
+  element={
+    <RutaProtegida>
+      <FormularioPago />
+    </RutaProtegida>
+  }
+/>
 
+<Route
+  path="/pago-exitoso"
+  element={
+    <RutaProtegida>
+      <PagoExitoso />
+    </RutaProtegida>
+  }
+/>
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>

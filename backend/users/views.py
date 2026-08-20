@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from .models import AuthUsuario, Usuario
+from .models import AuthUsuario, Usuario, Pago
 from .serializers import RegistroSerializer, LoginSerializer
 
 # CREATE - Registro
@@ -111,6 +111,34 @@ class UsuarioDetailView(APIView):
             'created_at': usuario.created_at
         })
 
+# OBTENER USUARIO AUTENTICADO
+class UsuarioMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            usuario = Usuario.objects.get(auth=request.user)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response({
+            'id': usuario.id,
+            'nombre': usuario.nombre,
+            'peso': usuario.peso,
+            'altura': usuario.altura,
+            'fecha_nacimiento': usuario.fecha_nacimiento,
+            'genero': usuario.genero,
+            'meta': usuario.meta,
+            'plan': usuario.plan,
+            'fecha_inicio_plan': usuario.fecha_inicio_plan,
+            'fecha_fin_plan': usuario.fecha_fin_plan,
+            'created_at': usuario.created_at
+        })
+
+
     def put(self, request, id):
         usuario, error = self.get_object_or_403(request, id)
         if error:
@@ -130,3 +158,83 @@ class UsuarioDetailView(APIView):
             return error
         usuario.auth.delete()
         return Response({'mensaje': 'Usuario eliminado correctamente'})
+
+    # CREAR PAGO
+class PagoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        usuario = Usuario.objects.get(auth=request.user)
+
+        plan = request.data.get('plan')
+        precio = request.data.get('precio')
+        metodo = request.data.get('metodo')
+        referencia = request.data.get('referencia')
+
+        if plan not in ['pro', 'premium']:
+            return Response(
+                {'error': 'Plan inválido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if metodo not in ['tarjeta', 'pse']:
+            return Response(
+                {'error': 'Método de pago inválido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not precio:
+            return Response(
+                {'error': 'El precio es obligatorio'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not referencia:
+            return Response(
+                {'error': 'La referencia es obligatoria'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if Pago.objects.filter(referencia=referencia).exists():
+            return Response(
+                {'error': 'La referencia del pago ya existe'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        pago = Pago.objects.create(
+            usuario=usuario,
+            plan=plan,
+            precio=precio,
+            referencia=referencia,
+            metodo=metodo,
+            estado='aprobado'
+        )
+
+        # Activar el plan inmediatamente
+        ahora = timezone.now()
+
+        usuario.plan = plan
+        usuario.fecha_inicio_plan = ahora
+
+        if plan == 'pro':
+            usuario.fecha_fin_plan = ahora + timezone.timedelta(days=30)
+        elif plan == 'premium':
+            usuario.fecha_fin_plan = ahora + timezone.timedelta(days=30)
+
+        usuario.save()
+
+        return Response({
+            'mensaje': 'Pago realizado correctamente',
+            'pago': {
+                'id': pago.id,
+                'plan': pago.plan,
+                'precio': str(pago.precio),
+                'referencia': pago.referencia,
+                'estado': pago.estado,
+                'metodo': pago.metodo,
+                'fecha': pago.fecha
+            },
+            'plan_usuario': usuario.plan,
+            'fecha_inicio': usuario.fecha_inicio_plan,
+            'fecha_fin': usuario.fecha_fin_plan
+        }, status=status.HTTP_201_CREATED)
