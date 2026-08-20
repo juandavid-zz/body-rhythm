@@ -84,123 +84,242 @@ nav {
 }
 
 /* ── HERO ── */
+
 .hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
-  padding: 5rem 3rem 4rem;
+
   min-height: calc(100vh - 62px);
-  gap: 3rem;
-  position: relative;
-}
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(ellipse 60% 80% at 60% 50%, rgba(88, 28, 135, 0.18) 0%, transparent 70%);
-  pointer-events: none;
-}
+  padding: 3rem 3rem 4rem;
 
-.hero-left {
-  position: relative;
-  z-index: 1;
-}
-
-h1 {
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
-  font-weight: 900;
-  line-height: 1.05;
-  color: #fff;
-  margin-bottom: 0.2rem;
-}
-
-.h1-accent {
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
-  font-weight: 900;
-  line-height: 1.1;
-  background: linear-gradient(135deg, #a855f7 30%, #ec4899 80%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: block;
-  margin-bottom: 1.5rem;
-}
-
-.hero-sub {
-  font-size: 0.98rem;
-  color: #94a3b8;
-  line-height: 1.65;
-  max-width: 420px;
-  margin-bottom: 2.2rem;
-}
-
-.hero-btns {
-  display: flex;
   gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
-.btn-primary {
-  background: linear-gradient(135deg, #a855f7, #ec4899);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  padding: 0.75rem 1.8rem;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  transition: opacity 0.15s;
-}
-
-.btn-primary:hover {
-  opacity: 0.85;
-}
-
-/* ── VISUAL CARD ── */
-.hero-right {
   position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: center;
-}
 
-.visual-card {
-  background: linear-gradient(160deg, #1e1b4b 0%, #2d1b69 50%, #1a0a2e 100%);
-  border-radius: 20px;
-  width: 340px;
-  height: 340px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  position: relative;
   overflow: hidden;
 }
 
-.visual-card::before {
+
+/* ── FONDO DEL HERO ── */
+
+.hero::before {
   content: '';
+
+  position: absolute;
+  inset: -25px;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(9, 7, 20, 0.90) 0%,
+      rgba(14, 8, 30, 0.76) 45%,
+      rgba(18, 8, 35, 0.68) 100%
+    ),
+    url('../assets/gym-fondo.jpg')
+      center center / cover no-repeat;
+
+  filter: blur(6px);
+
+  transform: scale(1.04);
+
+  z-index: 0;
+
+  pointer-events: none;
+}
+
+
+/* ── BRILLO MORADO ── */
+
+.hero::after {
+  content: '';
+
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 65%);
-}
 
-.lifter-emoji {
-  font-size: 8rem;
-  line-height: 1;
-  position: relative;
+  background:
+    radial-gradient(
+      circle at 72% 50%,
+      rgba(129, 55, 210, 0.22),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(87, 24, 140, 0.14),
+      transparent 45%
+    );
+
   z-index: 1;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
-  animation: bob 3s ease-in-out infinite;
+
+  pointer-events: none;
 }
 
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+/* ── TEXTO ── */
+
+.hero-left {
+  position: relative;
+
+  z-index: 2;
+
+  max-width: 650px;
+
+  padding-left: 0.5rem;
 }
 
+
+h1 {
+  font-size: clamp(2.8rem, 4.8vw, 4.2rem);
+
+  font-weight: 900;
+
+  line-height: 1;
+
+  color: #ffffff;
+
+  margin-bottom: 0.3rem;
+}
+
+
+.h1-accent {
+  display: block;
+
+  font-size: clamp(2.8rem, 4.8vw, 4.2rem);
+
+  font-weight: 900;
+
+  line-height: 1.05;
+
+  margin-bottom: 1.4rem;
+
+  background:
+    linear-gradient(
+      135deg,
+      #a855f7 20%,
+      #c14cff 55%,
+      #ec4899 100%
+    );
+
+  -webkit-background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  background-clip: text;
+}
+
+
+.hero-sub {
+  max-width: 500px;
+
+  font-size: 1rem;
+
+  line-height: 1.65;
+
+  color: #a6afc0;
+
+  margin-bottom: 2rem;
+}
+
+
+/* ── BOTÓN ── */
+
+.hero-btns {
+  display: flex;
+
+  align-items: center;
+
+  gap: 1rem;
+}
+
+
+.btn-primary {
+  padding: 0.85rem 1.8rem;
+
+  border: none;
+
+  border-radius: 9px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #a855f7,
+      #ec4899
+    );
+
+  color: white;
+
+  font-family: 'Inter', sans-serif;
+
+  font-size: 0.95rem;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+
+/* ── LOGO ── */
+
+.hero-right {
+  position: relative;
+
+  z-index: 2;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  min-height: 460px;
+}
+
+
+.visual-card {
+  width: 100%;
+
+  height: 460px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  position: relative;
+
+  overflow: visible;
+}
+
+
+.hero-logo {
+  width: 550px;
+
+  max-width: 95%;
+
+  height: auto;
+
+  object-fit: contain;
+
+  position: relative;
+
+  z-index: 2;
+
+  filter:
+    drop-shadow(
+      0 18px 35px rgba(0, 0, 0, 0.55)
+    );
+}
 /* ── RESPONSIVE ── */
 @media (max-width: 700px) {
   nav .nav-links { display: none; }
