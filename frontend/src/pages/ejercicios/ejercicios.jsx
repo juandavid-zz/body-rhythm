@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ejercicios } from "../../data/ejercicios";
 import ExerciseCard from "../../components/ExerciseCard";
-
+import Navbar from "../../components/Navbar";
 import "../../css/ejercicios.css";
 
 function Ejercicios() {
@@ -21,6 +21,11 @@ function Ejercicios() {
 
   return (
     <>
+
+      <Navbar />
+
+       <Navbar />
+
       <div className="ejercicios-container">
         <h1>Ejercicios</h1>
 

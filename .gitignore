@@ -1,37 +1,20 @@
-# Entornos y secretos
-.env
-backend/.env
-frontend/.env
-backend/venv/
+# Python
+__pycache__/
+*.py[cod]
+
+# Entornos virtuales
 venv/
+.venv/
 
-# Python
-__pycache__/
-*.pyc
-
-# Node
-node_modules/
-frontend/node_modules/
-
-# Vite / build
-dist/
-frontend/dist/
-
-# Editor / SO
-.vscode/
-.idea/
-Thumbs.db
-.DS_Store
-# Python
-__pycache__/
-*.pyc
-
-# Django
-*.sqlite3
-
-# Node
-node_modules/
-dist/
-
-# Variables entorno
+# Variables de entorno
 .env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+
+# Sistema
+.DS_Store
+Thumbs.db
