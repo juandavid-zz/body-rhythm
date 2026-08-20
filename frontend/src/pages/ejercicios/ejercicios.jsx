@@ -21,7 +21,10 @@ function Ejercicios() {
 
   return (
     <>
+
       <Navbar />
+
+       <Navbar />
 
       <div className="ejercicios-container">
         <h1>Ejercicios</h1>
