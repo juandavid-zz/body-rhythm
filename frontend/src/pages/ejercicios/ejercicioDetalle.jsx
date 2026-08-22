@@ -34,8 +34,76 @@ export default function EjercicioDetalle() {
         />
 
         <p className="descripcion">
-          <strong>Descripción:</strong> {ejercicio.descripcion}
+          <strong>Descripción:</strong>{" "}
+          {ejercicio.descripcion}
         </p>
+
+        {ejercicio.musculosPrincipales && (
+          <section className="detalle-seccion">
+            <h2>Músculos principales</h2>
+
+            <ul>
+              {ejercicio.musculosPrincipales.map((musculo) => (
+                <li key={musculo}>{musculo}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {ejercicio.musculosSecundarios && (
+          <section className="detalle-seccion">
+            <h2>Músculos secundarios</h2>
+
+            <ul>
+              {ejercicio.musculosSecundarios.map((musculo) => (
+                <li key={musculo}>{musculo}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {ejercicio.equipamiento && (
+          <section className="detalle-seccion">
+            <h2>Equipamiento</h2>
+            <p>{ejercicio.equipamiento}</p>
+          </section>
+        )}
+
+        {ejercicio.instrucciones && (
+          <section className="detalle-seccion">
+            <h2>¿Cómo ejecutarlo?</h2>
+
+            <ol>
+              {ejercicio.instrucciones.map((paso, index) => (
+                <li key={index}>{paso}</li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {ejercicio.erroresComunes && (
+          <section className="detalle-seccion">
+            <h2>Errores comunes</h2>
+
+            <ul>
+              {ejercicio.erroresComunes.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {ejercicio.consejos && (
+          <section className="detalle-seccion">
+            <h2>Consejos</h2>
+
+            <ul>
+              {ejercicio.consejos.map((consejo) => (
+                <li key={consejo}>{consejo}</li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import "../../css/ejercicios.css";
 
 function Ejercicios() {
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState("Todos");
+  const [filtroGrupo, setFiltroGrupo] = useState("Todos");
 
   const ejerciciosFiltrados = ejercicios.filter((ejercicio) => {
     const coincideBusqueda = ejercicio.nombre
@@ -14,19 +14,19 @@ function Ejercicios() {
       .includes(busqueda.toLowerCase());
 
     const coincideGrupo =
-      filtro === "Todos" || ejercicio.grupo === filtro;
+      filtroGrupo === "Todos" ||
+      ejercicio.grupo === filtroGrupo;
 
     return coincideBusqueda && coincideGrupo;
-  });
+        
+    });
 
   return (
     <>
-
       <Navbar />
 
-
       <div className="ejercicios-container">
-        <h1>Ejercicios</h1>
+        <h1>Biblioteca de ejercicios</h1>
 
         <input
           type="text"
@@ -35,43 +35,41 @@ function Ejercicios() {
           onChange={(e) => setBusqueda(e.target.value)}
         />
 
-<div className="filtros">
-  <button
-    className={`filtro-btn ${
-      filtro === "Todos" ? "filtro-activo" : ""
-    }`}
-    onClick={() => setFiltro("Todos")}
-  >
-    Todos
-  </button>
+        <h2>Grupo muscular</h2>
 
-  <button
-    className={`filtro-btn ${
-      filtro === "Pecho" ? "filtro-activo" : ""
-    }`}
-    onClick={() => setFiltro("Pecho")}
-  >
-    Pecho
-  </button>
+        <div className="filtros">
+          {[
+            "Todos",
+            "Pecho",
+            "Espalda",
+            "Pierna",
+            "Hombro",
+            "Brazo",
+            "Core",
+            "Cardio",
+          ].map((grupo) => (
+            <button
+              key={grupo}
+              className={`filtro-btn ${
+                filtroGrupo === grupo
+                  ? "filtro-activo"
+                  : ""
+              }`}
+              onClick={() => setFiltroGrupo(grupo)}
+            >
+              {grupo}
+            </button>
+          ))}
+        </div>
 
-  <button
-    className={`filtro-btn ${
-      filtro === "Espalda" ? "filtro-activo" : ""
-    }`}
-    onClick={() => setFiltro("Espalda")}
-  >
-    Espalda
-  </button>
+ 
 
-  <button
-    className={`filtro-btn ${
-      filtro === "Pierna" ? "filtro-activo" : ""
-    }`}
-    onClick={() => setFiltro("Pierna")}
-  >
-    Pierna
-  </button>
-</div>
+        <p className="contador-ejercicios">
+          {ejerciciosFiltrados.length}{" "}
+          {ejerciciosFiltrados.length === 1
+            ? "ejercicio encontrado"
+            : "ejercicios encontrados"}
+        </p>
 
         <div className="lista-ejercicios">
           {ejerciciosFiltrados.map((ejercicio) => (

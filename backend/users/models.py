@@ -52,3 +52,27 @@ class Usuario(models.Model):
 
     class Meta:
         db_table = 'usuarios'
+
+
+class Ejercicio(models.Model):
+    wger_id = models.IntegerField(unique=True, null=True, blank=True)
+    nombre = models.CharField(max_length=200)
+    grupo = models.CharField(max_length=100)
+
+    musculos_principales = models.JSONField(default=list, blank=True)
+    musculos_secundarios = models.JSONField(default=list, blank=True)
+    equipamiento = models.JSONField(default=list, blank=True)
+
+    descripcion = models.TextField(blank=True)
+    imagen = models.URLField(max_length=500, blank=True)
+    videos = models.JSONField(default=list, blank=True)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'biblioteca_ejercicios'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
