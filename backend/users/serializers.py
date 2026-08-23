@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AuthUsuario, Usuario
+from .models import AuthUsuario, Usuario, Ejercicio
 import bcrypt
 
 class RegistroSerializer(serializers.Serializer):
@@ -20,3 +20,21 @@ class RegistroSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+class EjercicioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ejercicio
+        fields = [
+            'id',
+            'wger_id',
+            'nombre',
+            'grupo',
+            'musculos_principales',
+            'musculos_secundarios',
+            'equipamiento',
+            'descripcion',
+            'imagen',
+            'videos',
+            'creado_en',
+            'actualizado_en',
+        ]

@@ -4,8 +4,8 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from .models import AuthUsuario, Usuario
-from .serializers import RegistroSerializer, LoginSerializer
+from .models import AuthUsuario, Usuario, Ejercicio
+from .serializers import RegistroSerializer, LoginSerializer, EjercicioSerializer
 
 # CREATE - Registro
 class RegistroView(APIView):
@@ -125,3 +125,12 @@ class UsuarioDetailView(APIView):
             return Response({'mensaje': 'Usuario eliminado correctamente'})
         except Usuario.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        # READ - Obtener todos los ejercicios
+class EjercicioListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        ejercicios = Ejercicio.objects.all()
+        serializer = EjercicioSerializer(ejercicios, many=True)
+        return Response(serializer.data)
