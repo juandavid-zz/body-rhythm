@@ -1,17 +1,63 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ejercicios } from "../../data/ejercicios";
 import "../../css/ejercicios.css";
 
 export default function EjercicioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const ejercicio = ejercicios.find(
-    (e) => e.id === Number(id)
-  );
+  const [ejercicio, setEjercicio] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
 
-  if (!ejercicio) {
-    return <h2>Ejercicio no encontrado</h2>;
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/ejercicios/")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los ejercicios");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        const ejercicioEncontrado = data.find(
+          (ejercicio) => ejercicio.id === Number(id)
+        );
+
+        if (!ejercicioEncontrado) {
+          setError("Ejercicio no encontrado");
+          return;
+        }
+
+        setEjercicio(ejercicioEncontrado);
+      })
+      .catch((error) => {
+        console.error("Error al cargar el ejercicio:", error);
+        setError("No se pudo cargar el ejercicio.");
+      })
+      .finally(() => {
+        setCargando(false);
+      });
+  }, [id]);
+
+  if (cargando) {
+    return (
+      <div className="detalle-container">
+        <h2>Cargando ejercicio...</h2>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="detalle-container">
+        <h2>{error}</h2>
+
+        <button onClick={() => navigate("/ejercicios")}>
+          ← Volver
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -27,79 +73,72 @@ export default function EjercicioDetalle() {
           {ejercicio.grupo}
         </p>
 
-        <img
-          src={ejercicio.imagen}
-          alt={ejercicio.nombre}
-          className="ejercicio-gif"
-        />
+        {ejercicio.imagen && (
+          <img
+            src={ejercicio.imagen}
+            alt={ejercicio.nombre}
+            className="ejercicio-gif"
+          />
+        )}
 
-        <p className="descripcion">
-          <strong>Descripción:</strong>{" "}
-          {ejercicio.descripcion}
-        </p>
+        {ejercicio.descripcion && (
+          <p className="descripcion">
+            <strong>Descripción:</strong>{" "}
+            {ejercicio.descripcion}
+          </p>
+        )}
 
-        {ejercicio.musculosPrincipales && (
+        {ejercicio.musculos_principales?.length > 0 && (
           <section className="detalle-seccion">
             <h2>Músculos principales</h2>
 
             <ul>
-              {ejercicio.musculosPrincipales.map((musculo) => (
-                <li key={musculo}>{musculo}</li>
+              {ejercicio.musculos_principales.map((musculo) => (
+                <li key={musculo}>
+                  {musculo}
+                </li>
               ))}
             </ul>
           </section>
         )}
 
-        {ejercicio.musculosSecundarios && (
+        {ejercicio.musculos_secundarios?.length > 0 && (
           <section className="detalle-seccion">
             <h2>Músculos secundarios</h2>
 
             <ul>
-              {ejercicio.musculosSecundarios.map((musculo) => (
-                <li key={musculo}>{musculo}</li>
+              {ejercicio.musculos_secundarios.map((musculo) => (
+                <li key={musculo}>
+                  {musculo}
+                </li>
               ))}
             </ul>
           </section>
         )}
 
-        {ejercicio.equipamiento && (
+        {ejercicio.equipamiento?.length > 0 && (
           <section className="detalle-seccion">
             <h2>Equipamiento</h2>
-            <p>{ejercicio.equipamiento}</p>
-          </section>
-        )}
-
-        {ejercicio.instrucciones && (
-          <section className="detalle-seccion">
-            <h2>¿Cómo ejecutarlo?</h2>
-
-            <ol>
-              {ejercicio.instrucciones.map((paso, index) => (
-                <li key={index}>{paso}</li>
-              ))}
-            </ol>
-          </section>
-        )}
-
-        {ejercicio.erroresComunes && (
-          <section className="detalle-seccion">
-            <h2>Errores comunes</h2>
 
             <ul>
-              {ejercicio.erroresComunes.map((error) => (
-                <li key={error}>{error}</li>
+              {ejercicio.equipamiento.map((equipo) => (
+                <li key={equipo}>
+                  {equipo}
+                </li>
               ))}
             </ul>
           </section>
         )}
 
-        {ejercicio.consejos && (
+        {ejercicio.videos?.length > 0 && (
           <section className="detalle-seccion">
-            <h2>Consejos</h2>
+            <h2>Videos</h2>
 
             <ul>
-              {ejercicio.consejos.map((consejo) => (
-                <li key={consejo}>{consejo}</li>
+              {ejercicio.videos.map((video) => (
+                <li key={video}>
+                  {video}
+                </li>
               ))}
             </ul>
           </section>

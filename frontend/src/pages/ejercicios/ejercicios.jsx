@@ -1,25 +1,56 @@
-import { useState } from "react";
-import { ejercicios } from "../../data/ejercicios";
+import { useEffect, useState } from "react";
 import ExerciseCard from "../../components/ExerciseCard";
 import Navbar from "../../components/Navbar";
 import "../../css/ejercicios.css";
 
 function Ejercicios() {
+  const [ejercicios, setEjercicios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrupo, setFiltroGrupo] = useState("Todos");
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const gruposWger = {
+  Pecho: "Chest",
+  Espalda: "Back",
+  Pierna: "Legs",
+  Hombro: "Shoulders",
+  Brazo: "Arms",
+  Core: "Abs",
+  Cardio: "Cardio",
+};
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/ejercicios/")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los ejercicios");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setEjercicios(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar ejercicios:", error);
+        setError("No se pudieron cargar los ejercicios.");
+      })
+      .finally(() => {
+        setCargando(false);
+      });
+  }, []);
 
   const ejerciciosFiltrados = ejercicios.filter((ejercicio) => {
     const coincideBusqueda = ejercicio.nombre
       .toLowerCase()
       .includes(busqueda.toLowerCase());
 
-    const coincideGrupo =
-      filtroGrupo === "Todos" ||
-      ejercicio.grupo === filtroGrupo;
+  const coincideGrupo =
+    filtroGrupo === "Todos" ||
+    ejercicio.grupo === gruposWger[filtroGrupo];
 
     return coincideBusqueda && coincideGrupo;
-        
-    });
+  });
 
   return (
     <>
@@ -51,9 +82,7 @@ function Ejercicios() {
             <button
               key={grupo}
               className={`filtro-btn ${
-                filtroGrupo === grupo
-                  ? "filtro-activo"
-                  : ""
+                filtroGrupo === grupo ? "filtro-activo" : ""
               }`}
               onClick={() => setFiltroGrupo(grupo)}
             >
@@ -62,23 +91,37 @@ function Ejercicios() {
           ))}
         </div>
 
- 
+        {cargando && (
+          <p className="contador-ejercicios">
+            Cargando ejercicios...
+          </p>
+        )}
 
-        <p className="contador-ejercicios">
-          {ejerciciosFiltrados.length}{" "}
-          {ejerciciosFiltrados.length === 1
-            ? "ejercicio encontrado"
-            : "ejercicios encontrados"}
-        </p>
+        {error && (
+          <p className="contador-ejercicios">
+            {error}
+          </p>
+        )}
 
-        <div className="lista-ejercicios">
-          {ejerciciosFiltrados.map((ejercicio) => (
-            <ExerciseCard
-              key={ejercicio.id}
-              ejercicio={ejercicio}
-            />
-          ))}
-        </div>
+        {!cargando && !error && (
+          <>
+            <p className="contador-ejercicios">
+              {ejerciciosFiltrados.length}{" "}
+              {ejerciciosFiltrados.length === 1
+                ? "ejercicio encontrado"
+                : "ejercicios encontrados"}
+            </p>
+
+            <div className="lista-ejercicios">
+              {ejerciciosFiltrados.map((ejercicio) => (
+                <ExerciseCard
+                  key={ejercicio.id}
+                  ejercicio={ejercicio}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </>
   );
