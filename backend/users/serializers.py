@@ -26,15 +26,14 @@ class EjercicioSerializer(serializers.ModelSerializer):
         model = Ejercicio
         fields = [
             'id',
-            'wger_id',
+            'repdb_id',
             'nombre',
             'grupo',
             'musculos_principales',
             'musculos_secundarios',
-            'equipamiento',
             'descripcion',
-            'imagen',
-            'videos',
+            'imagen_inicio',
+            'imagen_final',
             'creado_en',
             'actualizado_en',
         ]

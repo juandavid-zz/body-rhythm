@@ -127,10 +127,15 @@ class UsuarioDetailView(APIView):
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
         # READ - Obtener todos los ejercicios
+# READ - Obtener todos los ejercicios
 class EjercicioListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        ejercicios = Ejercicio.objects.all()
+        ejercicios = Ejercicio.objects.filter(
+            repdb_id__isnull=False
+        )
+
         serializer = EjercicioSerializer(ejercicios, many=True)
+
         return Response(serializer.data)

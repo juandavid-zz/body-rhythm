@@ -55,17 +55,23 @@ class Usuario(models.Model):
 
 
 class Ejercicio(models.Model):
-    wger_id = models.IntegerField(unique=True, null=True, blank=True)
+    repdb_id = models.CharField(
+    max_length=100,
+    unique=True,
+    null=True,
+    blank=True
+)
+
     nombre = models.CharField(max_length=200)
     grupo = models.CharField(max_length=100)
 
     musculos_principales = models.JSONField(default=list, blank=True)
     musculos_secundarios = models.JSONField(default=list, blank=True)
-    equipamiento = models.JSONField(default=list, blank=True)
 
     descripcion = models.TextField(blank=True)
-    imagen = models.URLField(max_length=500, blank=True)
-    videos = models.JSONField(default=list, blank=True)
+
+    imagen_inicio = models.CharField(max_length=500, blank=True)
+    imagen_final = models.CharField(max_length=500, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
