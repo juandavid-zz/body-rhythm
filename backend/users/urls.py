@@ -1,12 +1,15 @@
 from django.urls import path
+
 from .views import (
     RegistroView,
     LoginView,
     UsuarioListView,
     UsuarioDetailView,
     UsuarioMeView,
-    PagoView
+    PagoView,
+    EjercicioListView,
 )
+
 urlpatterns = [
     path('registro/', RegistroView.as_view()),
     path('login/', LoginView.as_view()),
@@ -14,4 +17,5 @@ urlpatterns = [
     path('usuarios/<int:id>/', UsuarioDetailView.as_view()),
     path('usuarios/me/', UsuarioMeView.as_view()),
     path('pagos/', PagoView.as_view()),
+    path('ejercicios/', EjercicioListView.as_view()),
 ]
