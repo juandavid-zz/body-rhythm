@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import google.generativeai as genai
 
 from django.conf import settings
@@ -59,16 +60,29 @@ def generar_rutina_ia(usuario, lugar, equipo, grupo_muscular="cuerpo completo"):
         linea_grupo_muscular = f"Grupo muscular a enfocar: {grupo_muscular}"
 
     prompt = f"""
-Eres un entrenador personal. Genera una rutina de ejercicio en JSON puro
-(sin texto adicional, sin ```json) con esta forma exacta:
+Eres un entrenador personal experto. Genera una rutina de ejercicio
+COMPLETA en JSON puro (sin texto adicional, sin ```json) con esta forma
+exacta:
 
 {{
   "nombre": "string",
-  "descripcion": "string",
+  "descripcion": "string (2-3 frases, cercano y motivador)",
+  "objetivo": "string breve, ej: 'Ganar fuerza y masa muscular en tren inferior'",
+  "nivel": "principiante" | "intermedio" | "avanzado",
   "dias_por_semana": number,
   "duracion_minutos": number,
+  "calentamiento": "string con una sugerencia breve y concreta de calentamiento (5-8 min) antes de empezar",
+  "enfriamiento": "string con una sugerencia breve de estiramiento/enfriamiento al terminar",
+  "consejos_generales": ["string", "string", "string"],
   "ejercicios": [
-    {{"dia": "Día 1", "nombre": "string", "series": number, "repeticiones": number}}
+    {{
+      "dia": "Día 1",
+      "nombre": "string",
+      "series": number,
+      "repeticiones": number,
+      "descanso_segundos": number,
+      "consejo": "string breve de técnica o seguridad, SOLO si aporta valor real (ej. cuidar alineación de rodilla, evitar arquear la espalda); si no hay nada relevante que advertir, usa null"
+    }}
   ]
 }}
 
@@ -78,21 +92,48 @@ Lugar de entrenamiento: {lugar}
 Equipo disponible: {equipo}
 {linea_grupo_muscular}
 
-Ajusta la intensidad y los ejercicios según el IMC, prioriza el grupo
-muscular indicado por el usuario, y evita ejercicios de alto impacto si
-el IMC indica sobrepeso u obesidad.
+Instrucciones:
+- Ajusta la intensidad y los ejercicios según el IMC, prioriza el grupo
+  muscular indicado por el usuario, y evita ejercicios de alto impacto si
+  el IMC indica sobrepeso u obesidad.
+- "consejos_generales" debe traer entre 2 y 4 tips prácticos y variados
+  para esta rutina en concreto (progresión de carga, descanso entre
+  sesiones, hidratación, técnica general, etc.) — nada genérico de relleno.
+- El campo "consejo" de cada ejercicio es OPCIONAL: solo inclúyelo cuando
+  realmente aporte (técnica, riesgo de lesión, alineación). Si el ejercicio
+  es simple y no necesita advertencia, pon null — no inventes consejos
+  triviales para llenar espacio.
+- Sé específico y realista con series/repeticiones/descanso según el nivel
+  y el equipo disponible.
 """
 
-    modelo = genai.GenerativeModel(MODELO)
+    modelo = genai.GenerativeModel(
+        MODELO,
+        generation_config={"response_mime_type": "application/json"},
+    )
+    inicio = time.time()
     respuesta = modelo.generate_content(prompt)
+    print(f"[chatbot_service] Gemini (generar_rutina_ia) tardó {time.time() - inicio:.2f}s")
     texto = respuesta.text.strip()
 
-    # Por si Gemini igual envuelve el JSON en ```json ... ```
+    # Por si Gemini igual envuelve el JSON en ```json ... ``` o le agrega
+    # texto antes/después: nos quedamos solo con lo que hay entre el primer
+    # '{' y el último '}'.
     if texto.startswith("```"):
         texto = texto.strip("`")
         texto = texto.replace("json\n", "", 1)
 
-    return json.loads(texto)
+    inicio_json = texto.find("{")
+    fin_json = texto.rfind("}")
+    if inicio_json != -1 and fin_json != -1:
+        texto = texto[inicio_json:fin_json + 1]
+
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError as e:
+        print(f"[chatbot_service] Gemini devolvió JSON inválido: {e}")
+        print(f"[chatbot_service] Texto recibido (primeros 800 caracteres):\n{texto[:800]}")
+        raise
 
 
 # ── 2) NUEVO: respuesta libre para el chat (texto/Markdown) ──
@@ -130,5 +171,7 @@ Contexto del usuario:
         system_instruction=instrucciones_sistema,
     )
     chat = modelo.start_chat(history=contenido_previo)
+    inicio = time.time()
     respuesta = chat.send_message(mensaje)
+    print(f"[chatbot_service] Gemini (responder_pregunta_ia) tardó {time.time() - inicio:.2f}s")
     return respuesta.text.strip()

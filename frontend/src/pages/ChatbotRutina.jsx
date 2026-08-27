@@ -5,6 +5,69 @@ import remarkGfm from 'remark-gfm'
 import api from '../api/api'
 import '../css/dashboard.css'
 
+// ── Efecto de escritura progresiva (estilo ChatGPT) ──
+function useTypewriter(text, { enabled = true, speed = 16, chunk = 2 } = {}) {
+  const [mostrado, setMostrado] = useState(enabled ? '' : text || '')
+  const [terminado, setTerminado] = useState(!enabled)
+  const onTickRef = useRef(null)
+
+  useEffect(() => {
+    if (!enabled) {
+      setMostrado(text || '')
+      setTerminado(true)
+      return
+    }
+    if (!text) {
+      setMostrado('')
+      setTerminado(true)
+      return
+    }
+    setMostrado('')
+    setTerminado(false)
+    let i = 0
+    const id = setInterval(() => {
+      i += chunk
+      setMostrado(text.slice(0, i))
+      onTickRef.current?.()
+      if (i >= text.length) {
+        clearInterval(id)
+        setTerminado(true)
+      }
+    }, speed)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, enabled])
+
+  return { mostrado, terminado, onTickRef }
+}
+
+function TextoAnimado({ text, enabled, onTick }) {
+  const { mostrado, terminado, onTickRef } = useTypewriter(text, { enabled })
+  onTickRef.current = onTick
+  return (
+    <>
+      {mostrado}
+      {!terminado && <span className="cursor-escritura">▍</span>}
+    </>
+  )
+}
+
+function MarkdownAnimado({ text, enabled, onTick }) {
+  const { mostrado, terminado, onTickRef } = useTypewriter(text, {
+    enabled,
+    speed: 12,
+    chunk: 3,
+  })
+  onTickRef.current = onTick
+  return (
+    <div className="markdown-bubble">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{mostrado}</ReactMarkdown>
+      {!terminado && <span className="cursor-escritura">▍</span>}
+    </div>
+  )
+}
+
+
 const PASOS = {
   LUGAR: 'lugar',
   EQUIPO: 'equipo',
@@ -88,10 +151,40 @@ export default function ChatbotRutina() {
   const [textoLibre, setTextoLibre] = useState('')
   const [enviandoLibre, setEnviandoLibre] = useState(false)
   const finChat = useRef(null)
+  const chatIdAnterior = useRef(chatActualId)
+  const esPrimeraCarga = useRef(true)
+  const umbralAnimacion = useRef({}) // { [chatId]: índice desde donde animar mensajes nuevos }
 
   useEffect(() => {
+    // La primera vez que se entra a una conversación (o al cambiar de una
+    // a otra), los mensajes que ya existían no se vuelven a "escribir":
+    // solo animamos los mensajes que se agreguen de aquí en adelante.
+    if (umbralAnimacion.current[chatActualId] === undefined) {
+      const chat = chats.find((c) => c.id === chatActualId)
+      umbralAnimacion.current[chatActualId] = chat ? chat.mensajes.length : 0
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatActualId])
+
+  const nudgeScroll = () => {
+    finChat.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
+  }
+
+  useEffect(() => {
+    // No hacer scroll automático al entrar al chatbot ni al cambiar
+    // de conversación en el historial — solo cuando de verdad se está
+    // chateando (mensaje nuevo dentro de la misma conversación).
+    if (esPrimeraCarga.current) {
+      esPrimeraCarga.current = false
+      chatIdAnterior.current = chatActualId
+      return
+    }
+    if (chatIdAnterior.current !== chatActualId) {
+      chatIdAnterior.current = chatActualId
+      return
+    }
     finChat.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatActual.mensajes, chatActual.paso])
+  }, [chatActual.mensajes, chatActual.paso, chatActualId])
 
   useEffect(() => {
     guardarChats(chats)
@@ -327,13 +420,25 @@ export default function ChatbotRutina() {
                       <span className="rutina-imc">
                         IMC {m.rutina.imc} · {m.rutina.rango_imc}
                       </span>
+                      {m.rutina.rutina.nivel && (
+                        <span className="rutina-nivel">{m.rutina.rutina.nivel}</span>
+                      )}
 
                       <h3>{m.rutina.rutina.nombre}</h3>
+                      {m.rutina.rutina.objetivo && (
+                        <p className="rutina-objetivo">🎯 {m.rutina.rutina.objetivo}</p>
+                      )}
                       <p className="rutina-desc">{m.rutina.rutina.descripcion}</p>
                       <p className="rutina-meta">
                         {m.rutina.rutina.dias_por_semana} días/semana ·{' '}
                         {m.rutina.rutina.duracion_minutos} min por sesión
                       </p>
+
+                      {m.rutina.rutina.calentamiento && (
+                        <div className="rutina-nota rutina-nota-calentamiento">
+                          <strong>🔥 Calentamiento:</strong> {m.rutina.rutina.calentamiento}
+                        </div>
+                      )}
 
                       {Object.entries(agruparPorDia(m.rutina.rutina.ejercicios)).map(
                         ([dia, ejercicios]) => (
@@ -345,20 +450,50 @@ export default function ChatbotRutina() {
                                   <strong>{ej.nombre}</strong>
                                   {ej.series && ej.repeticiones && ` — ${ej.series}x${ej.repeticiones}`}
                                   {ej.duracion_segundos && ` — ${ej.duracion_segundos}s`}
+                                  {ej.descanso_segundos && ` · descanso ${ej.descanso_segundos}s`}
+                                  {ej.consejo && (
+                                    <div className="ejercicio-consejo">💡 {ej.consejo}</div>
+                                  )}
                                 </li>
                               ))}
                             </ul>
                           </div>
                         )
                       )}
+
+                      {m.rutina.rutina.enfriamiento && (
+                        <div className="rutina-nota rutina-nota-enfriamiento">
+                          <strong>🧘 Enfriamiento:</strong> {m.rutina.rutina.enfriamiento}
+                        </div>
+                      )}
+
+                      {Array.isArray(m.rutina.rutina.consejos_generales) &&
+                        m.rutina.rutina.consejos_generales.length > 0 && (
+                          <div className="rutina-consejos">
+                            <h4>💡 Consejos para esta rutina</h4>
+                            <ul>
+                              {m.rutina.rutina.consejos_generales.map((c, idx) => (
+                                <li key={idx}>{c}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                     </div>
                   </div>
                 ) : (
                   <div className="msg-bubble">
                     {m.markdown ? (
-                      <div className="markdown-bubble">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
-                      </div>
+                      <MarkdownAnimado
+                        text={m.text}
+                        enabled={m.from === 'bot' && i >= umbralAnimacion.current[chatActualId]}
+                        onTick={nudgeScroll}
+                      />
+                    ) : m.from === 'bot' ? (
+                      <TextoAnimado
+                        text={m.text}
+                        enabled={i >= umbralAnimacion.current[chatActualId]}
+                        onTick={nudgeScroll}
+                      />
                     ) : (
                       m.text
                     )}
