@@ -18,12 +18,18 @@ load_dotenv()
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
+WOMPI_PUBLIC_KEY = os.environ.get('WOMPI_PUBLIC_KEY')
+WOMPI_PRIVATE_KEY = os.environ.get('WOMPI_PRIVATE_KEY')
+WOMPI_INTEGRITY_SECRET = os.environ.get('WOMPI_INTEGRITY_SECRET')
+WOMPI_EVENTS_SECRET = os.environ.get('WOMPI_EVENTS_SECRET')
+WOMPI_API_URL = os.environ.get('WOMPI_API_URL', 'https://sandbox.wompi.co/v1')
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "card-alike-albuquerque-viewpicture.trycloudflare.com"]
 
 
 # Application definition

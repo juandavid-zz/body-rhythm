@@ -7,7 +7,12 @@ from .views import (
     UsuarioDetailView,
     UsuarioMeView,
     PagoView,
+
     EjercicioListView,
+
+    WompiPagoView,
+    WompiWebhookView
+
 )
 
 urlpatterns = [
@@ -17,5 +22,10 @@ urlpatterns = [
     path('usuarios/<int:id>/', UsuarioDetailView.as_view()),
     path('usuarios/me/', UsuarioMeView.as_view()),
     path('pagos/', PagoView.as_view()),
+
     path('ejercicios/', EjercicioListView.as_view()),
+
+    path('pagos/wompi/', WompiPagoView.as_view()),
+    path('pagos/webhook/', WompiWebhookView.as_view()),
+
 ]
