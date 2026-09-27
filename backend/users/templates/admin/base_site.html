@@ -1,6 +1,43 @@
 {% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}Body Rhythm Admin{% endblock %}
+
+{% block branding %}
+<div class="br-brand">
+    <div class="br-brand-mark">BR</div>
+    <div class="br-brand-text">
+        <strong>BODY RHYTHM</strong>
+        <span>PANEL DE ADMINISTRACIÓN</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block usertools %}
+{% if has_permission %}
+<div id="user-tools" class="br-user-tools">
+    <div class="br-user-copy">
+        <span>ADMINISTRADOR</span>
+        <strong class="br-user-email">{% firstof user.email user.get_username %}</strong>
+    </div>
+
+    <div class="br-user-actions">
+        <a class="br-btn br-btn-ghost" href="/" target="_blank" rel="noopener">Ver sitio</a>
+
+        {% if user.is_active and user.is_staff and user.has_usable_password %}
+        <a class="br-btn br-btn-ghost" href="{% url 'admin:password_change' %}">Cambiar contraseña</a>
+        {% endif %}
+
+        <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="br-btn br-btn-logout">Cerrar sesión</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="/static/admin/css/custom.css">
+<link rel="stylesheet" href="{% static 'admin/css/custom.css' %}?v=5">
 {% endblock %}

@@ -27,6 +27,6 @@ class RutinaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Rutina
-        fields = ['id', 'nombre', 'descripcion', 'nivel', 'es_favorita',
+        fields = ['id', 'nombre', 'descripcion', 'es_favorita',
                   'created_at', 'ejercicios_detalle']
         read_only_fields = ['created_at']

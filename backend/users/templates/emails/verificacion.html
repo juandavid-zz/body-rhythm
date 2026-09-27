@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Confirma tu cuenta</title></head>
+<body style="margin:0;padding:0;background:#0b0b10;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0b10;padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#12121a;border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;">
+
+        <tr><td style="padding:28px 32px 10px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:42px;height:42px;background:#a653c0;border-radius:12px;color:#fff;font-weight:bold;font-size:13px;text-align:center;vertical-align:middle;">BR</td>
+            <td style="padding-left:12px;color:#f7f4fa;font-size:14px;font-weight:bold;letter-spacing:2px;">BODY RHYTHM</td>
+          </tr></table>
+        </td></tr>
+
+        <tr><td style="padding:14px 32px 0;">
+          <h1 style="margin:0 0 10px;color:#ffffff;font-size:24px;">Confirma tu cuenta</h1>
+          <p style="margin:0 0 18px;color:#a9a3b4;font-size:14px;line-height:1.6;">
+            Hola <strong style="color:#ffffff;">{{ nombre }}</strong>, ya casi estás listo para entrenar.
+            Toca el botón para activar tu cuenta de Body Rhythm.
+          </p>
+        </td></tr>
+
+        <tr><td align="center" style="padding:6px 32px 20px;">
+          <a href="{{ enlace }}" style="display:inline-block;padding:14px 28px;border-radius:12px;background:#a653c0;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">
+            Confirmar mi cuenta
+          </a>
+        </td></tr>
+
+        <tr><td style="padding:0 32px 18px;">
+          <p style="margin:0 0 8px;color:#807a8c;font-size:12px;">¿El botón no funciona? Copia y pega este enlace:</p>
+          <p style="margin:0;word-break:break-all;"><a href="{{ enlace }}" style="color:#d785e8;font-size:12px;">{{ enlace }}</a></p>
+        </td></tr>
+
+        <tr><td style="padding:0 32px 26px;">
+          <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;text-align:center;">
+            <div style="color:#807a8c;font-size:11px;letter-spacing:2px;">CÓDIGO DE VERIFICACIÓN</div>
+            <div style="color:#ffffff;font-size:26px;font-weight:bold;letter-spacing:6px;padding-top:6px;">{{ codigo }}</div>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:16px 32px 26px;border-top:1px solid rgba(255,255,255,.07);">
+          <p style="margin:0;color:#6c6678;font-size:11px;line-height:1.6;">
+            El enlace vence en {{ horas }} horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

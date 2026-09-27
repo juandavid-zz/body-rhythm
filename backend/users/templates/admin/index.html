@@ -1,0 +1,96 @@
+{% extends "admin/base_site.html" %}
+{% load i18n log %}
+
+{% block bodyclass %}{{ block.super }} br-dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div class="br-dashboard-shell">
+    <section class="br-welcome">
+        <div>
+            <span class="br-kicker">PANEL DE CONTROL</span>
+            <h1>Bienvenido, <em>Admin</em></h1>
+            <p>Administra usuarios, ejercicios y rutinas de Body Rhythm.</p>
+        </div>
+    </section>
+
+    <section class="br-quick-grid">
+        {% for app in app_list %}
+            {% for model in app.models %}
+                {% if model.admin_url %}
+                <a class="br-quick-card" href="{{ model.admin_url }}">
+                    <div class="br-quick-top">
+                        <span class="br-quick-icon">
+                            {% if model.object_name == 'Ejercicio' %}<svg viewBox="0 0 24 24"><path d="M7 7v10M4 9v6M17 7v10M20 9v6M7 12h10M4 12H2M22 12h-2"/></svg>
+                            {% elif model.object_name == 'Rutina' %}<svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg>
+                            {% elif model.object_name == 'Usuario' or model.object_name == 'AuthUsuario' %}<svg viewBox="0 0 24 24"><path d="M16 20v-1.8c0-2-1.8-3.7-4-3.7s-4 1.7-4 3.7V20M12 11.3a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/></svg>
+                            {% elif model.object_name == 'Group' %}<svg viewBox="0 0 24 24"><path d="M8 20v-2.2c0-1.9 1.8-3.5 4-3.5s4 1.6 4 3.5V20M12 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM5 20v-1.6c0-1.4.8-2.7 2-3.2M19 20v-1.6c0-1.4-.8-2.7-2-3.2"/></svg>
+                            {% else %}<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>{% endif %}
+                        </span>
+                        <span class="br-open">Abrir</span>
+                    </div>
+                    <strong>{{ model.name }}</strong>
+                    <small>{{ app.name }}</small>
+                </a>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    </section>
+
+    <div class="br-dashboard-grid">
+        <section class="br-card">
+            <div class="br-card-head">
+                <div>
+                    <span class="br-kicker">GESTIÓN</span>
+                    <h2>Módulos de Body Rhythm</h2>
+                </div>
+                <span class="br-count">{{ app_list|length }} áreas</span>
+            </div>
+            <div class="br-module-grid">
+                {% for app in app_list %}
+                <div class="br-module-block">
+                    <div class="br-module-label"><i></i>{{ app.name }}</div>
+                    {% for model in app.models %}
+                    <a href="{{ model.admin_url|default:model.add_url }}" class="br-module-row">
+                        <span>{{ model.name }}</span>
+                        <span>Gestionar <b>→</b></span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% empty %}
+                <div class="br-empty">No hay módulos disponibles.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <aside class="br-card">
+            <div class="br-card-head">
+                <div>
+                    <span class="br-kicker">ACTIVIDAD</span>
+                    <h2>Últimos movimientos</h2>
+                </div>
+            </div>
+            {% get_admin_log 7 as admin_log for_user user %}
+            {% if admin_log %}
+            <div class="br-activity">
+                {% for entry in admin_log %}
+                <div class="br-activity-row">
+                    <div class="br-activity-dot {% if entry.is_deletion %}danger{% elif entry.is_addition %}success{% endif %}"></div>
+                    <div class="br-activity-copy">
+                        {% if entry.is_deletion or not entry.get_admin_url %}
+                            <strong>{{ entry.object_repr }}</strong>
+                        {% else %}
+                            <a href="{{ entry.get_admin_url }}"><strong>{{ entry.object_repr }}</strong></a>
+                        {% endif %}
+                        <span>{% if entry.content_type %}{{ entry.content_type.name|capfirst }}{% else %}Actividad administrativa{% endif %}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="br-empty">Todavía no hay actividad registrada.</div>
+            {% endif %}
+        </aside>
+    </div>
+</div>
+{% endblock %}

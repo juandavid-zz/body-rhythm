@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from .models import AuthUsuario, Usuario
 from .serializers import RegistroSerializer, LoginSerializer
+from .emails import enviar_correo_verificacion, token_vigente
 
 # CREATE - Registro
 class RegistroView(APIView):
@@ -34,10 +35,19 @@ class RegistroView(APIView):
                 genero=data.get('genero'),
                 meta=data.get('meta')
             )
-            refresh = RefreshToken.for_user(auth)
+            # La cuenta nace SIN verificar: primero hay que confirmar el correo.
+            enviado = enviar_correo_verificacion(auth, nombre=data['nombre'])
+
+            mensaje = (
+                'Cuenta creada. Revisa tu correo para confirmar la cuenta.'
+                if enviado else
+                'Cuenta creada, pero no pudimos enviar el correo de confirmación. Puedes solicitar otro.'
+            )
             return Response({
-                'token': str(refresh.access_token),
-                'mensaje': 'Usuario registrado correctamente'
+                'mensaje': mensaje,
+                'email': auth.email,
+                'correo_enviado': enviado,
+                'requiere_verificacion': True,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -59,6 +69,14 @@ class LoginView(APIView):
                 auth.intentos_fallidos += 1
                 auth.save()
                 return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Sin correo confirmado no se entrega token
+            if not auth.verificado:
+                return Response({
+                    'error': 'Debes confirmar tu correo antes de iniciar sesión.',
+                    'requiere_verificacion': True,
+                    'email': auth.email,
+                }, status=status.HTTP_403_FORBIDDEN)
 
             auth.intentos_fallidos = 0
             auth.ultimo_login = timezone.now()
@@ -122,3 +140,92 @@ class UsuarioDetailView(APIView):
             return Response({'mensaje': 'Usuario eliminado correctamente'})
         except Usuario.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        # PERFIL - Usuario logueado
+class PerfilView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            usuario = Usuario.objects.get(auth=request.user)
+            return Response({
+                'id': usuario.id,
+                'nombre': usuario.nombre,
+                'peso': usuario.peso,
+                'altura': usuario.altura,
+                'genero': usuario.genero,
+                'meta': usuario.meta,
+            })
+        except Usuario.DoesNotExist:
+            return Response({'error': 'Perfil no encontrado'}, status=404)
+
+# VERIFICAR CORREO - el usuario abre el enlace que le llego a Gmail
+class VerificarEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        return self._verificar(token)
+
+    def post(self, request, token=None):
+        return self._verificar(token or request.data.get('token', ''))
+
+    def _verificar(self, token):
+        if not token:
+            return Response({'error': 'Falta el token de verificación'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            auth = AuthUsuario.objects.get(token=token)
+        except AuthUsuario.DoesNotExist:
+            return Response({'error': 'El enlace no es válido o ya fue usado'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esta cuenta ya estaba confirmada', 'ya_verificada': True})
+
+        if not token_vigente(auth):
+            return Response({
+                'error': 'El enlace venció. Solicita uno nuevo.',
+                'expirado': True,
+                'email': auth.email,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        auth.verificado = True
+        auth.token = None
+        auth.token_expira = None
+        auth.codigo_verificacion = None
+        auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion'])
+
+        refresh = RefreshToken.for_user(auth)
+        return Response({
+            'mensaje': 'Cuenta confirmada correctamente',
+            'token': str(refresh.access_token),
+        })
+
+
+# REENVIAR el correo de confirmacion
+class ReenviarVerificacionView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        if not email:
+            return Response({'error': 'Ingresa tu correo'}, status=status.HTTP_400_BAD_REQUEST)
+
+        respuesta = {'mensaje': 'Si el correo existe y está pendiente, te enviamos un nuevo enlace.'}
+        try:
+            auth = AuthUsuario.objects.get(email__iexact=email)
+        except AuthUsuario.DoesNotExist:
+            return Response(respuesta)  # No revelamos si el correo existe o no
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esa cuenta ya está confirmada', 'ya_verificada': True})
+
+        nombre = getattr(getattr(auth, 'usuario', None), 'nombre', '')
+        enviado = enviar_correo_verificacion(auth, nombre=nombre)
+        return Response({
+            'mensaje': (
+                'Te enviamos un nuevo enlace de confirmación.'
+                if enviado else
+                'No pudimos enviar el correo de confirmación. Inténtalo nuevamente.'
+            ),
+            'correo_enviado': enviado,
+        })

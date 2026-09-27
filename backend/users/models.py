@@ -21,18 +21,18 @@ class AuthUsuarioManager(BaseUserManager):
 
 
 class AuthUsuario(AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField(unique=True)
-    password_hash = models.CharField(max_length=255, blank=True)
-    token = models.CharField(max_length=255, null=True, blank=True)
-    token_expira = models.DateTimeField(null=True, blank=True)
-    verificado = models.BooleanField(default=False)
-    codigo_verificacion = models.CharField(max_length=10, null=True, blank=True)
-    intentos_fallidos = models.IntegerField(default=0)
-    bloqueado_hasta = models.DateTimeField(null=True, blank=True)
-    ultimo_login = models.DateTimeField(null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    email = models.EmailField('Correo electrónico', unique=True)
+    password_hash = models.CharField('Hash de contraseña', max_length=255, blank=True)
+    token = models.CharField('Token', max_length=255, null=True, blank=True)
+    token_expira = models.DateTimeField('Vencimiento del token', null=True, blank=True)
+    verificado = models.BooleanField('Cuenta verificada', default=False)
+    codigo_verificacion = models.CharField('Código de verificación', max_length=10, null=True, blank=True)
+    intentos_fallidos = models.IntegerField('Intentos fallidos', default=0)
+    bloqueado_hasta = models.DateTimeField('Bloqueado hasta', null=True, blank=True)
+    ultimo_login = models.DateTimeField('Último inicio de sesión', null=True, blank=True)
+    is_active = models.BooleanField('Activo', default=True)
+    is_staff = models.BooleanField('Acceso al administrador', default=False)
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -40,32 +40,36 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = 'auth_usuarios'
+        verbose_name = 'Cuenta de acceso'
+        verbose_name_plural = 'Cuentas de acceso'
 
     def __str__(self):
         return self.email
 
 
 class Usuario(models.Model):
-    auth = models.OneToOneField(AuthUsuario, on_delete=models.CASCADE)
-    nombre = models.CharField(max_length=100)
-    peso = models.FloatField(null=True, blank=True)
-    altura = models.FloatField(null=True, blank=True)
-    fecha_nacimiento = models.DateField(null=True, blank=True)
-    genero = models.CharField(max_length=10, choices=[
+    auth = models.OneToOneField(AuthUsuario, on_delete=models.CASCADE, verbose_name='Cuenta de acceso')
+    nombre = models.CharField('Nombre', max_length=100)
+    peso = models.FloatField('Peso (kg)', null=True, blank=True)
+    altura = models.FloatField('Altura (cm)', null=True, blank=True)
+    fecha_nacimiento = models.DateField('Fecha de nacimiento', null=True, blank=True)
+    genero = models.CharField('Género', max_length=10, choices=[
         ('masculino', 'Masculino'),
         ('femenino', 'Femenino'),
         ('otro', 'Otro')
     ], null=True, blank=True)
-    meta = models.CharField(max_length=30, choices=[
+    meta = models.CharField('Objetivo', max_length=30, choices=[
         ('perder_peso', 'Perder Peso'),
         ('ganar_musculo', 'Ganar Músculo'),
         ('mantenerse', 'Mantenerse'),
         ('mejorar_resistencia', 'Mejorar Resistencia')
     ], null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
 
     class Meta:
         db_table = 'usuarios'
+        verbose_name = 'Perfil de usuario'
+        verbose_name_plural = 'Perfiles de usuario'
 
     def __str__(self):
         return self.nombre

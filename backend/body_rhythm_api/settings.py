@@ -21,9 +21,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = []
-
-
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        'ALLOWED_HOSTS',
+        '127.0.0.1,localhost,192.168.1.3'
+    ).split(',')
+    if host.strip()
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -37,11 +42,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'rutinas',
+    'nutricion',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -123,7 +130,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
+    origin.strip()
+    for origin in os.getenv(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://192.168.1.3:5173'
+    ).split(',')
+    if origin.strip()
+]
+# CSRF
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://localhost:5173,http://192.168.1.3:5173'
+    ).split(',')
+    if origin.strip()
 ]
 
 # REST FRAMEWORK
@@ -142,3 +163,35 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'users' / 'static',
 ]
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# =====================================================================
+# CORREO (Gmail SMTP) - verificacion de cuenta
+# En .env:
+#   EMAIL_HOST_USER=tucorreo@gmail.com
+#   EMAIL_HOST_PASSWORD=contrasena-de-aplicacion-de-16-letras
+#   DEFAULT_FROM_EMAIL=Body Rhythm <tucorreo@gmail.com>
+#   FRONTEND_URL=http://localhost:5173
+# =====================================================================
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_TIMEOUT = 20
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or (EMAIL_HOST_USER or 'no-reply@bodyrhythm.app')
+
+# Si todavia no hay credenciales, los correos se imprimen en la consola
+# del servidor en vez de fallar: asi se puede probar el flujo completo.
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# URL del frontend: se usa para armar el enlace del correo.
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
