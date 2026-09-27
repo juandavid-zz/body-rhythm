@@ -5,8 +5,11 @@ from .views import (
     UsuarioListView,
     UsuarioDetailView,
     UsuarioMeView,
-    PagoView
+    PagoView,
+    WompiPagoView,
+    WompiWebhookView
 )
+
 urlpatterns = [
     path('registro/', RegistroView.as_view()),
     path('login/', LoginView.as_view()),
@@ -14,4 +17,6 @@ urlpatterns = [
     path('usuarios/<int:id>/', UsuarioDetailView.as_view()),
     path('usuarios/me/', UsuarioMeView.as_view()),
     path('pagos/', PagoView.as_view()),
+    path('pagos/wompi/', WompiPagoView.as_view()),
+    path('pagos/webhook/', WompiWebhookView.as_view()),
 ]

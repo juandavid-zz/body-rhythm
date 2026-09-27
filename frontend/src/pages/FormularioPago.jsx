@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../css/formularioPago.css";
@@ -10,33 +10,27 @@ function FormularioPago() {
   const planSeleccionado = location.state?.plan || "pro";
   const precioSeleccionado = location.state?.precio || "19.900";
 
-  const [metodo, setMetodo] = useState("tarjeta");
-  const [numeroTarjeta, setNumeroTarjeta] = useState("");
-  const [nombreTitular, setNombreTitular] = useState("");
-  const [fechaVencimiento, setFechaVencimiento] = useState("");
-  const [cvv, setCvv] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const generarReferencia = () => {
-    return `BR-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-  };
+  useEffect(() => {
+    const scriptExistente = document.querySelector(
+      'script[src="https://checkout.wompi.co/widget.js"]'
+    );
+
+    if (!scriptExistente) {
+      const script = document.createElement("script");
+
+      script.src = "https://checkout.wompi.co/widget.js";
+      script.async = true;
+
+      document.body.appendChild(script);
+    }
+  }, []);
 
   const realizarPago = async (e) => {
     e.preventDefault();
     setError("");
-
-    if (metodo === "tarjeta") {
-      if (
-        !numeroTarjeta ||
-        !nombreTitular ||
-        !fechaVencimiento ||
-        !cvv
-      ) {
-        setError("Completa todos los datos de la tarjeta.");
-        return;
-      }
-    }
 
     const token = localStorage.getItem("token");
 
@@ -48,40 +42,82 @@ function FormularioPago() {
     setCargando(true);
 
     try {
-      const respuesta = await fetch("http://127.0.0.1:8000/api/pagos/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          plan: planSeleccionado,
-          precio: precioSeleccionado.replace(".", ""),
-          metodo,
-          referencia: generarReferencia(),
-        }),
-      });
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/api/pagos/wompi/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            plan: planSeleccionado,
+          }),
+        }
+      );
 
-        const data = await respuesta.json();
+      const data = await respuesta.json();
 
-        console.log("STATUS:", respuesta.status);
-        console.log("RESPUESTA DEL BACKEND:", data);
+      console.log("STATUS WOMPI:", respuesta.status);
+      console.log("RESPUESTA WOMPI:", data);
 
-        if (!respuesta.ok) {
+      if (!respuesta.ok) {
         throw new Error(
-            data.error ||
+          data.error ||
             data.detail ||
             `Error del servidor (${respuesta.status})`
         );
-        }
+      }
 
-        navigate("/pago-exitoso", {
-        state: {
-            pago: data.pago,
-            fechaFin: data.fecha_fin,
-    },
+      if (!window.WidgetCheckout) {
+        throw new Error(
+          "El Widget de Wompi todavía no está disponible. Intenta nuevamente."
+        );
+      }
+
+      console.log("DATOS ENVIADOS AL WIDGET:", {
+        currency: data.currency,
+        amountInCents: data.amount_in_cents,
+        reference: data.reference,
+        publicKey: data.public_key,
+        signature: data.signature,
 });
+
+      const checkout = new window.WidgetCheckout({
+        currency: data.currency,
+        amountInCents: data.amount_in_cents,
+        reference: data.reference,
+        publicKey: data.public_key,
+        signature: {
+          integrity: data.signature,
+        },
+      });
+
+      checkout.open(function (result) {
+        console.log("RESPUESTA DEL WIDGET WOMPI:", result);
+
+        const transaction = result.transaction;
+
+        console.log("ID DE TRANSACCIÓN:", transaction.id);
+        console.log("ESTADO:", transaction.status);
+
+        if (transaction.status === "APPROVED") {
+          alert(
+            "El pago fue aprobado por Wompi.\n\n" +
+              "La activación del plan se realizará mediante la confirmación del backend."
+          );
+        } else if (transaction.status === "DECLINED") {
+          setError("El pago fue rechazado.");
+        } else if (transaction.status === "VOIDED") {
+          setError("El pago fue anulado.");
+        } else {
+          setError(
+            `El pago terminó con estado: ${transaction.status}`
+          );
+        }
+      });
     } catch (error) {
+      console.error("Error preparando el pago:", error);
       setError(error.message);
     } finally {
       setCargando(false);
@@ -93,7 +129,6 @@ function FormularioPago() {
       <Navbar />
 
       <main className="pago-container">
-
         <section className="pago-card">
 
           <div className="pago-header">
@@ -115,98 +150,28 @@ function FormularioPago() {
 
             <div>
               <span>Total</span>
+
               <strong>
-                ${Number(
+                $
+                {Number(
                   precioSeleccionado.replace(".", "")
-                ).toLocaleString("es-CO")} COP
+                ).toLocaleString("es-CO")}{" "}
+                COP
               </strong>
             </div>
           </div>
 
           <form onSubmit={realizarPago}>
 
-            <div className="metodos-pago">
+            <div className="pago-info">
+              <p>
+                Serás dirigido al proceso seguro de pago de Wompi.
+              </p>
 
-              <button
-                type="button"
-                className={metodo === "tarjeta" ? "metodo activo" : "metodo"}
-                onClick={() => setMetodo("tarjeta")}
-              >
-                Tarjeta
-              </button>
-
-              <button
-                type="button"
-                className={metodo === "pse" ? "metodo activo" : "metodo"}
-                onClick={() => setMetodo("pse")}
-              >
-                PSE
-              </button>
-
+              <p>
+                Tus datos de pago serán procesados directamente por Wompi.
+              </p>
             </div>
-
-            {metodo === "tarjeta" && (
-              <div className="datos-tarjeta">
-
-                <label>
-                  Número de tarjeta
-                  <input
-                    type="text"
-                    placeholder="1234 5678 9012 3456"
-                    value={numeroTarjeta}
-                    onChange={(e) => setNumeroTarjeta(e.target.value)}
-                    maxLength="19"
-                  />
-                </label>
-
-                <label>
-                  Nombre del titular
-                  <input
-                    type="text"
-                    placeholder="Nombre completo"
-                    value={nombreTitular}
-                    onChange={(e) => setNombreTitular(e.target.value)}
-                  />
-                </label>
-
-                <div className="pago-row">
-
-                  <label>
-                    Vencimiento
-                    <input
-                      type="text"
-                      placeholder="MM/AA"
-                      value={fechaVencimiento}
-                      onChange={(e) =>
-                        setFechaVencimiento(e.target.value)
-                      }
-                      maxLength="5"
-                    />
-                  </label>
-
-                  <label>
-                    CVV
-                    <input
-                      type="password"
-                      placeholder="123"
-                      value={cvv}
-                      onChange={(e) => setCvv(e.target.value)}
-                      maxLength="4"
-                    />
-                  </label>
-
-                </div>
-
-              </div>
-            )}
-
-            {metodo === "pse" && (
-              <div className="pse-info">
-                <p>
-                  Serás dirigido al proceso de pago mediante PSE.
-                </p>
-              </div>
-            )}
 
             {error && (
               <div className="pago-error">
@@ -219,7 +184,9 @@ function FormularioPago() {
               className="btn-pagar"
               disabled={cargando}
             >
-              {cargando ? "Procesando..." : "Confirmar pago"}
+              {cargando
+                ? "Preparando pago..."
+                : "Continuar con Wompi"}
             </button>
 
           </form>
@@ -233,7 +200,6 @@ function FormularioPago() {
           </button>
 
         </section>
-
       </main>
     </div>
   );

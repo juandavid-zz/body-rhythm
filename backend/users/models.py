@@ -31,6 +31,7 @@ class AuthUsuario(AbstractBaseUser):
     class Meta:
         db_table = 'auth_usuarios'
 
+
 class Usuario(models.Model):
     auth = models.OneToOneField(AuthUsuario, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
@@ -86,8 +87,13 @@ class Usuario(models.Model):
     class Meta:
         db_table = 'usuarios'
 
+
 class RecuperacionPassword(models.Model):
-    auth = models.ForeignKey(AuthUsuario, on_delete=models.CASCADE, db_column='auth_id')
+    auth = models.ForeignKey(
+        AuthUsuario,
+        on_delete=models.CASCADE,
+        db_column='auth_id'
+    )
     codigo = models.CharField(max_length=10)
     expira_at = models.DateTimeField()
     usado = models.BooleanField(default=False)
@@ -98,7 +104,11 @@ class RecuperacionPassword(models.Model):
 
 
 class Sesion(models.Model):
-    auth = models.ForeignKey(AuthUsuario, on_delete=models.CASCADE, db_column='auth_id')
+    auth = models.ForeignKey(
+        AuthUsuario,
+        on_delete=models.CASCADE,
+        db_column='auth_id'
+    )
     token = models.CharField(max_length=255)
     dispositivo = models.CharField(max_length=150, null=True, blank=True)
     ip = models.CharField(max_length=50, null=True, blank=True)
@@ -107,6 +117,7 @@ class Sesion(models.Model):
 
     class Meta:
         db_table = 'sesiones'
+
 
 class Pago(models.Model):
     PLAN_CHOICES = [
@@ -164,3 +175,33 @@ class Pago(models.Model):
 
     class Meta:
         db_table = 'pagos'
+
+
+class Ejercicio(models.Model):
+    repdb_id = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
+    nombre = models.CharField(max_length=200)
+    grupo = models.CharField(max_length=100)
+
+    musculos_principales = models.JSONField(default=list, blank=True)
+    musculos_secundarios = models.JSONField(default=list, blank=True)
+
+    descripcion = models.TextField(blank=True)
+
+    imagen_inicio = models.CharField(max_length=500, blank=True)
+    imagen_final = models.CharField(max_length=500, blank=True)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'biblioteca_ejercicios'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
