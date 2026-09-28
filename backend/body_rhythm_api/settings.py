@@ -16,19 +16,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv(
-        'ALLOWED_HOSTS',
-        '127.0.0.1,localhost,192.168.1.3'
-    ).split(',')
-    if host.strip()
-]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -42,13 +39,15 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'rutinas',
+    'entrenamientos',
     'nutricion',
+    'progreso',
+    'chatbot_ia',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -62,7 +61,7 @@ ROOT_URLCONF = 'body_rhythm_api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'users' / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -113,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'es'
+LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
 
@@ -130,21 +129,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        'CORS_ALLOWED_ORIGINS',
-        'http://localhost:5173,http://192.168.1.3:5173'
-    ).split(',')
-    if origin.strip()
-]
-# CSRF
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        'CSRF_TRUSTED_ORIGINS',
-        'http://localhost:5173,http://192.168.1.3:5173'
-    ).split(',')
-    if origin.strip()
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
 ]
 
 # REST FRAMEWORK
@@ -158,40 +146,3 @@ REST_FRAMEWORK = {
     ),
 }
 AUTH_USER_MODEL = 'users.AuthUsuario'
-
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'users' / 'static',
-]
-
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
-
-# =====================================================================
-# CORREO (Gmail SMTP) - verificacion de cuenta
-# En .env:
-#   EMAIL_HOST_USER=tucorreo@gmail.com
-#   EMAIL_HOST_PASSWORD=contrasena-de-aplicacion-de-16-letras
-#   DEFAULT_FROM_EMAIL=Body Rhythm <tucorreo@gmail.com>
-#   FRONTEND_URL=http://localhost:5173
-# =====================================================================
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_TIMEOUT = 20
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or (EMAIL_HOST_USER or 'no-reply@bodyrhythm.app')
-
-# Si todavia no hay credenciales, los correos se imprimen en la consola
-# del servidor en vez de fallar: asi se puede probar el flujo completo.
-if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-# URL del frontend: se usa para armar el enlace del correo.
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')

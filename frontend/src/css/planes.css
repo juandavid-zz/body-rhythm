@@ -1,0 +1,752 @@
+/* =====================================================
+   BODY RHYTHM - PLANES
+===================================================== */
+
+.planes-page {
+  min-height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at 18% 45%,
+      rgba(168, 85, 247, 0.13),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(236, 72, 153, 0.10),
+      transparent 25%
+    ),
+    linear-gradient(
+      135deg,
+      #09070d 0%,
+      #0d0912 50%,
+      #09070d 100%
+    );
+
+  color: #fff;
+}
+
+
+/* =====================================================
+   CONTENEDOR PRINCIPAL
+===================================================== */
+
+.planes-container {
+  width: min(1400px, 94%);
+
+  min-height: calc(100vh - 55px);
+
+  margin: 0 auto;
+
+  padding: 70px 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 65px;
+}
+
+
+/* =====================================================
+   SECCIÓN IZQUIERDA
+===================================================== */
+
+.planes-hero {
+  width: 36%;
+
+  margin: 0;
+
+  text-align: left;
+
+  position: relative;
+}
+
+
+/* pequeño brillo detrás */
+
+.planes-hero::before {
+  content: "";
+
+  position: absolute;
+
+  width: 280px;
+  height: 280px;
+
+  left: -120px;
+  top: 50px;
+
+  background: rgba(168, 85, 247, 0.08);
+
+  border-radius: 50%;
+
+  filter: blur(70px);
+
+  pointer-events: none;
+}
+
+
+/* =====================================================
+   BADGE
+===================================================== */
+
+.planes-badge {
+  position: relative;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  padding: 8px 15px;
+
+  border: 1px solid rgba(168, 85, 247, 0.35);
+
+  border-radius: 50px;
+
+  background: rgba(168, 85, 247, 0.08);
+
+  color: #c084fc;
+
+  font-size: 0.7rem;
+
+  font-weight: 800;
+
+  letter-spacing: 2px;
+
+  box-shadow:
+    0 0 25px rgba(168, 85, 247, 0.08);
+}
+
+.planes-badge::before {
+  content: "";
+
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #c084fc;
+
+  box-shadow:
+    0 0 10px rgba(192, 132, 252, 0.9);
+}
+
+
+/* =====================================================
+   TITULO
+===================================================== */
+
+.planes-hero h1 {
+  position: relative;
+
+  max-width: 520px;
+
+  margin: 25px 0 25px;
+
+  font-size: clamp(3rem, 4vw, 4.5rem);
+
+  line-height: 1.03;
+
+  font-weight: 900;
+
+  letter-spacing: -2.5px;
+}
+
+.planes-hero h1 span {
+  display: inline;
+
+  background:
+    linear-gradient(
+      90deg,
+      #a855f7,
+      #d946ef,
+      #ec4899
+    );
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* =====================================================
+   DESCRIPCIÓN
+===================================================== */
+
+.planes-hero p {
+  position: relative;
+
+  max-width: 470px;
+
+  margin: 0;
+
+  color: #98919f;
+
+  font-size: 1rem;
+
+  line-height: 1.75;
+}
+
+
+/* =====================================================
+   TEXTO EXTRA DECORATIVO
+===================================================== */
+
+.planes-hero::after {
+  content: "ENTRENA • PROGRESA • SUPERA";
+
+  display: block;
+
+  margin-top: 35px;
+
+  color: rgba(255, 255, 255, 0.22);
+
+  font-size: 0.65rem;
+
+  font-weight: 800;
+
+  letter-spacing: 3px;
+}
+
+
+/* =====================================================
+   GRID DE PLANES
+===================================================== */
+
+.planes-grid {
+  width: 90%;
+
+  display: grid;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 14px;
+
+  align-items: center;
+}
+
+
+/* =====================================================
+   TARJETAS
+===================================================== */
+
+.plan-card {
+  position: relative;
+
+  display: flex;
+
+  flex-direction: column;
+
+  min-height: 525px;
+
+  padding: 30px 24px 24px;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(255, 255, 255, 0.075);
+
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(28, 23, 37, 0.97),
+      rgba(13, 10, 18, 0.98)
+    );
+
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.28);
+
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+
+/* brillo superior */
+
+.plan-card::before {
+  content: "";
+
+  position: absolute;
+
+  top: -100px;
+  right: -80px;
+
+  width: 210px;
+  height: 210px;
+
+  border-radius: 50%;
+
+  background: rgba(168, 85, 247, 0.09);
+
+  filter: blur(35px);
+
+  pointer-events: none;
+}
+
+
+/* línea superior */
+
+.plan-card::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 20%;
+  right: 20%;
+
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,0.18),
+      transparent
+    );
+}
+
+
+/* hover */
+
+.plan-card:hover {
+  transform: translateY(-8px);
+
+  border-color: rgba(168, 85, 247, 0.35);
+
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(168, 85, 247, 0.08);
+}
+
+
+/* =====================================================
+   PRO DESTACADO
+===================================================== */
+
+.plan-card.destacado {
+  min-height: 550px;
+
+  border-color: rgba(168, 85, 247, 0.7);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(43, 27, 60, 0.98),
+      rgba(16, 11, 23, 0.98)
+    );
+
+  box-shadow:
+    0 25px 65px rgba(0, 0, 0, 0.45),
+    0 0 45px rgba(168, 85, 247, 0.12);
+
+  transform: translateY(-12px);
+}
+
+.plan-card.destacado:hover {
+  transform: translateY(-19px);
+
+  border-color: rgba(192, 132, 252, 0.9);
+
+  box-shadow:
+    0 35px 75px rgba(0, 0, 0, 0.5),
+    0 0 55px rgba(168, 85, 247, 0.2);
+}
+
+
+/* =====================================================
+   MÁS POPULAR
+===================================================== */
+
+.plan-popular {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+  right: 0;
+
+  padding: 9px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #7c3aed,
+      #a855f7,
+      #ec4899
+    );
+
+  text-align: center;
+
+  color: white;
+
+  font-size: 0.62rem;
+
+  font-weight: 900;
+
+  letter-spacing: 1.7px;
+}
+
+
+/* =====================================================
+   HEADER PLAN
+===================================================== */
+
+.plan-card.destacado .plan-header {
+  margin-top: 18px;
+}
+
+.plan-header h2 {
+  margin: 0 0 10px;
+
+  font-size: 1.65rem;
+
+  font-weight: 850;
+}
+
+.plan-description {
+  min-height: 68px;
+
+  margin: 0;
+
+  color: #96909e;
+
+  font-size: 0.82rem;
+
+  line-height: 1.6;
+}
+
+
+/* =====================================================
+   PRECIO
+===================================================== */
+
+.plan-price {
+  display: flex;
+
+  align-items: baseline;
+
+  gap: 2px;
+
+  margin-top: 20px;
+
+  color: #fff;
+
+  font-size: 2.25rem;
+
+  font-weight: 900;
+
+  letter-spacing: -1.5px;
+}
+
+.plan-price span {
+  color: #c084fc;
+
+  font-size: 1rem;
+}
+
+.plan-price small {
+  margin-left: 6px;
+
+  color: #746e7b;
+
+  font-size: 0.62rem;
+
+  font-weight: 500;
+
+  letter-spacing: 0;
+}
+
+
+/* =====================================================
+   SEPARADOR
+===================================================== */
+
+.plan-divider {
+  height: 1px;
+
+  margin: 22px 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,0.09),
+      transparent
+    );
+}
+
+
+/* =====================================================
+   BENEFICIOS
+===================================================== */
+
+.plan-benefits {
+  display: flex;
+
+  flex-direction: column;
+
+  flex: 1;
+
+  gap: 13px;
+
+  padding: 0;
+
+  margin: 0;
+
+  list-style: none;
+}
+
+.plan-benefits li {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  color: #d1ccd6;
+
+  font-size: 0.78rem;
+
+  line-height: 1.35;
+}
+
+
+/* check */
+
+.check {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 21px;
+  height: 21px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: rgba(168, 85, 247, 0.12);
+
+  border: 1px solid rgba(168, 85, 247, 0.22);
+
+  color: #c084fc;
+
+  font-size: 0.65rem;
+
+  font-weight: 900;
+}
+
+
+/* =====================================================
+   BOTONES
+===================================================== */
+
+.plan-button {
+  width: 100%;
+
+  margin-top: 25px;
+
+  padding: 13px 15px;
+
+  border: 1px solid transparent;
+
+  border-radius: 11px;
+
+  font-family: inherit;
+
+  font-size: 0.8rem;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.plan-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  filter: brightness(1.08);
+}
+
+
+/* FREE */
+
+.plan-button.free {
+  background: rgba(255,255,255,0.045);
+
+  border-color: rgba(255,255,255,0.08);
+
+  color: #817b87;
+
+  cursor: default;
+}
+
+
+/* PRO */
+
+.plan-button.pro {
+  background:
+    linear-gradient(
+      135deg,
+      #7c3aed,
+      #a855f7
+    );
+
+  color: white;
+
+  box-shadow:
+    0 10px 25px rgba(168, 85, 247, 0.2);
+}
+
+.plan-button.pro:hover {
+  box-shadow:
+    0 15px 35px rgba(168, 85, 247, 0.38);
+}
+
+
+/* PREMIUM */
+
+.plan-button.premium {
+  background:
+    linear-gradient(
+      135deg,
+      #a855f7,
+      #ec4899
+    );
+
+  color: white;
+
+  box-shadow:
+    0 10px 25px rgba(236, 72, 153, 0.2);
+}
+
+.plan-button.premium:hover {
+  box-shadow:
+    0 15px 35px rgba(236, 72, 153, 0.35);
+}
+
+
+/* =====================================================
+   OCULTAR TEXTO INFERIOR
+===================================================== */
+
+.planes-bottom {
+  display: none;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1150px) {
+
+  .planes-container {
+    gap: 35px;
+  }
+
+  .planes-hero {
+    width: 34%;
+  }
+
+  .planes-grid {
+    width: 66%;
+
+    gap: 12px;
+  }
+
+  .planes-hero h1 {
+    font-size: 3.2rem;
+  }
+
+  .plan-card {
+    padding: 28px 20px 22px;
+  }
+
+  .plan-price {
+    font-size: 2rem;
+  }
+}
+
+
+/* =====================================================
+   TABLET PEQUEÑA
+===================================================== */
+
+@media (max-width: 950px) {
+
+  .planes-container {
+    flex-direction: column;
+
+    align-items: center;
+
+    padding: 60px 0;
+  }
+
+  .planes-hero {
+    width: 100%;
+
+    text-align: center;
+  }
+
+  .planes-hero p {
+    margin: 0 auto;
+  }
+
+  .planes-hero::after {
+    display: none;
+  }
+
+  .planes-grid {
+    width: 100%;
+
+    max-width: 850px;
+  }
+}
+
+
+/* =====================================================
+   CELULAR
+===================================================== */
+
+@media (max-width: 700px) {
+
+  .planes-container {
+    width: 90%;
+
+    padding: 50px 0;
+  }
+
+  .planes-hero h1 {
+    font-size: 2.6rem;
+
+    letter-spacing: -1.5px;
+  }
+
+  .planes-grid {
+    grid-template-columns: 1fr;
+
+    max-width: 450px;
+  }
+
+  .plan-card,
+  .plan-card.destacado {
+    min-height: auto;
+
+    transform: none;
+  }
+
+  .plan-card.destacado:hover,
+  .plan-card:hover {
+    transform: translateY(-6px);
+  }
+}

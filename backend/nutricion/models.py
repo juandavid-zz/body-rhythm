@@ -2,67 +2,25 @@ from django.db import models
 from users.models import Usuario
 
 
-class CategoriaAlimento(models.Model):
-    nombre = models.CharField(max_length=80, unique=True)
-
-    class Meta:
-        db_table = 'categorias_alimentos'
-        ordering = ['nombre']
-        verbose_name = 'Categoría de alimento'
-        verbose_name_plural = 'Categorías de alimentos'
-
-    def __str__(self):
-        return self.nombre
-
-
-class Alimento(models.Model):
-    categoria = models.ForeignKey(
-        CategoriaAlimento,
-        on_delete=models.PROTECT,
-        related_name='alimentos',
-    )
-    nombre = models.CharField(max_length=150, unique=True)
-    descripcion = models.TextField(blank=True)
-    calorias_100g = models.FloatField(default=0)
-    proteinas_100g = models.FloatField(default=0)
-    carbohidratos_100g = models.FloatField(default=0)
-    grasas_100g = models.FloatField(default=0)
-    activo = models.BooleanField(default=True)
-
-    class Meta:
-        db_table = 'alimentos'
-        ordering = ['nombre']
-        verbose_name = 'Alimento'
-        verbose_name_plural = 'Alimentos'
-
-    def __str__(self):
-        return self.nombre
-
-
 class PlanNutricional(models.Model):
     usuario = models.ForeignKey(
-        Usuario,
-        on_delete=models.CASCADE,
-        related_name='planes_nutricionales',
-        db_column='usuario_id',
+        Usuario, on_delete=models.CASCADE,
+        related_name='planes_nutricionales', db_column='usuario_id'
     )
-    nombre = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True)
-    calorias_diarias = models.FloatField(default=0)
-    proteinas_g = models.FloatField(default=0)
-    carbohidratos_g = models.FloatField(default=0)
-    grasas_g = models.FloatField(default=0)
+    nombre = models.CharField(max_length=150, null=True, blank=True)
+    descripcion = models.TextField(null=True, blank=True)
+    calorias_diarias = models.FloatField(null=True, blank=True)
+    proteinas_g = models.FloatField(null=True, blank=True)
+    carbohidratos_g = models.FloatField(null=True, blank=True)
+    grasas_g = models.FloatField(null=True, blank=True)
     generada_por_ia = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'planes_nutricionales'
-        ordering = ['-created_at']
-        verbose_name = 'Plan alimenticio'
-        verbose_name_plural = 'Planes alimenticios'
 
     def __str__(self):
-        return self.nombre
+        return self.nombre or f"Plan #{self.id}"
 
 
 class Comida(models.Model):
@@ -72,33 +30,20 @@ class Comida(models.Model):
         ('cena', 'Cena'),
         ('snack', 'Snack'),
     ]
-
     plan = models.ForeignKey(
-        PlanNutricional,
-        on_delete=models.CASCADE,
-        related_name='comidas',
+        PlanNutricional, on_delete=models.CASCADE,
+        related_name='comidas', db_column='plan_id'
     )
-    alimento = models.ForeignKey(
-        Alimento,
-        on_delete=models.PROTECT,
-        related_name='comidas_en_planes',
-        null=True,
-        blank=True,
-    )
-    tipo = models.CharField(max_length=20, choices=TIPOS)
-    nombre = models.CharField(max_length=120)
-    descripcion = models.TextField(blank=True)
-    calorias = models.FloatField(default=0)
-    proteinas_g = models.FloatField(default=0)
-    carbohidratos_g = models.FloatField(default=0)
-    grasas_g = models.FloatField(default=0)
-    orden = models.PositiveIntegerField(default=0)
+    nombre = models.CharField(max_length=150)
+    tipo = models.CharField(max_length=8, choices=TIPOS, null=True, blank=True)
+    descripcion = models.TextField(null=True, blank=True)
+    calorias = models.FloatField(null=True, blank=True)
+    proteinas_g = models.FloatField(null=True, blank=True)
+    carbohidratos_g = models.FloatField(null=True, blank=True)
+    grasas_g = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = 'comidas'
-        ordering = ['orden', 'id']
-        verbose_name = 'Comida del plan'
-        verbose_name_plural = 'Comidas del plan'
 
     def __str__(self):
         return self.nombre
@@ -106,24 +51,16 @@ class Comida(models.Model):
 
 class RegistroComida(models.Model):
     usuario = models.ForeignKey(
-        Usuario,
-        on_delete=models.CASCADE,
-        related_name='registros_comida',
-        db_column='usuario_id',
+        Usuario, on_delete=models.CASCADE,
+        related_name='registros_comida', db_column='usuario_id'
     )
     comida = models.ForeignKey(
-        Comida,
-        on_delete=models.CASCADE,
-        related_name='registros',
-        db_column='comida_id',
+        Comida, on_delete=models.CASCADE, db_column='comida_id'
     )
-    fecha = models.DateField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'registro_comidas'
-        ordering = ['-fecha', '-id']
-        verbose_name = 'Comida registrada'
-        verbose_name_plural = 'Comidas registradas'
 
     def __str__(self):
-        return f'{self.usuario.nombre} comió {self.comida.nombre} el {self.fecha}'
+        return f"{self.usuario} comió {self.comida} el {self.fecha}"
