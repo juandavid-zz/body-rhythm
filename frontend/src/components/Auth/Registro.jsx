@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../../api/api'
 import Toast from './Toast'
 import PasswordChecklist from './PasswordChecklist'
@@ -41,7 +40,6 @@ const OPCIONES_META = [
 ]
 
 export default function Registro({ onSwitch }) {
-  const navigate = useNavigate()
   const [paso, setPaso] = useState(1)
 
   const [form, setForm] = useState({
@@ -55,6 +53,8 @@ export default function Registro({ onSwitch }) {
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
   const [toast, setToast] = useState(null)
+  const [emailEnviado, setEmailEnviado] = useState('')
+  const [reenviando, setReenviando] = useState(false)
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -87,12 +87,8 @@ export default function Registro({ onSwitch }) {
         fecha_nacimiento: form.fecha_nacimiento,
         genero: form.genero, meta: form.meta
       })
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('refresh', res.data.refresh)
-      const primerNombre = form.nombre.trim().split(' ')[0]
-      localStorage.setItem('nombre', form.nombre.trim())
-      setToast(`¡Registro exitoso! Bienvenido, ${primerNombre} 🎉`)
-      setTimeout(() => navigate('/'), 2200)
+      setEmailEnviado(res.data.email || form.email)
+      setPaso(3)
     } catch (err) {
       const data = err.response?.data
       const mensaje = data?.email?.[0] || data?.error || data?.password?.[0] || 'Error al registrarse'
@@ -103,17 +99,33 @@ export default function Registro({ onSwitch }) {
     }
   }
 
+  const handleReenviar = async () => {
+    setReenviando(true)
+    try {
+      await api.post('/reenviar-verificacion/', { email: emailEnviado })
+      setToast('Te reenviamos el correo de confirmación 📩')
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo reenviar el correo')
+    } finally {
+      setReenviando(false)
+    }
+  }
+
   return (
     <>
       {toast && <Toast mensaje={toast} tipo="exito" duracion={2200} />}
 
-      <div className="paso-indicador">
-        <div className={`paso-segmento ${paso >= 1 ? 'completo' : ''}`} />
-        <div className={`paso-segmento ${paso >= 2 ? 'activo' : ''}`} />
-      </div>
-      <p className="paso-etiqueta">
-        {paso === 1 ? 'Paso 1 de 2 · Acceso' : 'Paso 2 de 2 · Datos personales'}
-      </p>
+      {paso < 3 && (
+        <>
+          <div className="paso-indicador">
+            <div className={`paso-segmento ${paso >= 1 ? 'completo' : ''}`} />
+            <div className={`paso-segmento ${paso >= 2 ? 'activo' : ''}`} />
+          </div>
+          <p className="paso-etiqueta">
+            {paso === 1 ? 'Paso 1 de 2 · Acceso' : 'Paso 2 de 2 · Datos personales'}
+          </p>
+        </>
+      )}
 
       {paso === 1 && (
         <form onSubmit={handleContinuar}>
@@ -231,6 +243,24 @@ export default function Registro({ onSwitch }) {
           </button>
           <button type="button" className="btn-secundario" onClick={handleAtras}>Atrás</button>
         </form>
+      )}
+
+      {paso === 3 && (
+        <div className="paso-confirmacion">
+          <h3>Revisa tu correo 📩</h3>
+          <p>
+            Te enviamos un enlace de confirmación a <strong>{emailEnviado}</strong>.
+            Ábrelo para activar tu cuenta.
+          </p>
+          {error && <p className="error">{error}</p>}
+          {toast && <p className="exito">{toast}</p>}
+          <button type="button" className="btn-primario" onClick={handleReenviar} disabled={reenviando}>
+          {reenviando ? 'Enviando...' : 'Reenviar correo de confirmación'}
+            </button>
+          <button type="button" className="btn-switch" onClick={onSwitch}>
+            Ya lo confirmé, iniciar sesión
+          </button>
+        </div>
       )}
     </>
   )
