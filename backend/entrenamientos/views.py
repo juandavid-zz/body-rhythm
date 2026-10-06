@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from . import chatbot_service
-from .models import Rutina, Ejercicio
+from rutinas.models import Rutina, Ejercicio
 
 # Ajusta este import al modelo real de tu app chatbot_ia
 from chatbot_ia.models import ConversacionIa
@@ -41,37 +41,48 @@ MAPA_GRUPO_MUSCULAR = {
 
 def _rutina_respaldo(meta, rango_imc, grupo_muscular=None):
     """
-    Busca en el catálogo precargado (tabla Rutina, usuario=None) una rutina
-    que coincida con el objetivo y el rango de IMC del usuario.
+    Busca en el catálogo precargado una rutina
+    que coincida con el objetivo y rango de IMC.
     """
+
     rutina = Rutina.objects.filter(
-        objetivo=meta, rango_imc=rango_imc, usuario__isnull=True
+        objetivo=meta,
+        rango_imc=rango_imc,
+        usuario__isnull=True
     ).first()
 
     if not rutina:
-        # Si no hay una combinación exacta, al menos respeta el rango de IMC
         rutina = Rutina.objects.filter(
-            rango_imc=rango_imc, usuario__isnull=True
+            rango_imc=rango_imc,
+            usuario__isnull=True
         ).first()
 
     if not rutina:
         return None
 
-    ejercicios = list(Ejercicio.objects.filter(rutina=rutina).order_by("dia", "orden"))
+    relaciones = list(
+        RutinaEjercicio.objects
+        .filter(rutina=rutina)
+        .select_related('ejercicio')
+        .order_by('orden')
+    )
 
-    # Intento best-effort de respetar el grupo muscular pedido. Si no hay
-    # coincidencias (el catálogo no tiene variedad suficiente), se deja la
-    # rutina completa tal cual, para no devolver una lista vacía.
     if grupo_muscular:
         clave = grupo_muscular.strip().lower()
         palabras_clave = MAPA_GRUPO_MUSCULAR.get(clave)
+
         if palabras_clave:
             filtrados = [
-                ej for ej in ejercicios
-                if any(p in (ej.grupo_muscular or "").lower() for p in palabras_clave)
+                relacion
+                for relacion in relaciones
+                if any(
+                    palabra in (relacion.ejercicio.grupo_muscular or "").lower()
+                    for palabra in palabras_clave
+                )
             ]
+
             if filtrados:
-                ejercicios = filtrados
+                relaciones = filtrados
 
     return {
         "nombre": rutina.nombre,
@@ -80,14 +91,16 @@ def _rutina_respaldo(meta, rango_imc, grupo_muscular=None):
         "duracion_minutos": rutina.duracion_minutos,
         "ejercicios": [
             {
-                "id": ej.id,
-                "dia": ej.dia,
-                "nombre": ej.nombre,
-                "series": ej.series,
-                "repeticiones": ej.repeticiones,
-                "duracion_segundos": ej.duracion_segundos,
+                "id": relacion.ejercicio.id,
+                "nombre": relacion.ejercicio.nombre,
+                "descripcion": relacion.ejercicio.descripcion,
+                "grupo_muscular": relacion.ejercicio.grupo_muscular,
+                "series": relacion.series,
+                "repeticiones": relacion.repeticiones,
+                "descanso_segundos": relacion.descanso_segundos,
+                "orden": relacion.orden,
             }
-            for ej in ejercicios
+            for relacion in relaciones
         ],
     }
 

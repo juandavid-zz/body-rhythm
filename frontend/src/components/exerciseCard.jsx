@@ -1,37 +1,45 @@
 import { useNavigate } from "react-router-dom";
 
 const nombresGrupos = {
-  chest: "Pecho",
-  back: "Espalda",
-  upper_legs: "Piernas",
-  lower_legs: "Pantorrillas",
-  shoulders: "Hombros",
-  upper_arms: "Brazos",
-  lower_arms: "Antebrazos",
-  core: "Core",
-  full_body: "Cuerpo completo",
+  pecho: "Pecho",
+  espalda: "Espalda",
+  hombros: "Hombros",
+  biceps: "Bíceps",
+  triceps: "Tríceps",
+  abdomen: "Core",
+  cuadriceps: "Cuádriceps",
+  femoral: "Femoral",
+  gluteos: "Glúteos",
+  pantorrillas: "Pantorrillas",
+  cardio: "Cardio",
+  cuerpo_completo: "Cuerpo completo",
 };
 
 const clasesGrupos = {
-  chest: "pecho",
-  back: "espalda",
-  upper_legs: "piernas",
-  lower_legs: "pantorrillas",
-  shoulders: "hombros",
-  upper_arms: "brazos",
-  lower_arms: "antebrazos",
-  core: "core",
-  full_body: "cuerpo-completo",
+  pecho: "pecho",
+  espalda: "espalda",
+  hombros: "hombros",
+  biceps: "brazos",
+  triceps: "brazos",
+  abdomen: "core",
+  cuadriceps: "piernas",
+  femoral: "piernas",
+  gluteos: "piernas",
+  pantorrillas: "pantorrillas",
+  cardio: "cardio",
+  cuerpo_completo: "cuerpo-completo",
 };
 
 function ExerciseCard({ ejercicio }) {
   const navigate = useNavigate();
 
-  const grupoNombre =
-    nombresGrupos[ejercicio.grupo] || ejercicio.grupo;
+  const grupo = ejercicio.grupo_muscular;
 
-  const grupoClase =
-    clasesGrupos[ejercicio.grupo] || "default";
+const grupoNombre =
+  nombresGrupos[ejercicio.grupo] || ejercicio.grupo;
+
+const grupoClase =
+  clasesGrupos[ejercicio.grupo] || "default";
 
   const abrirDetalle = () => {
     navigate(`/ejercicios/${ejercicio.id}`);
@@ -43,11 +51,13 @@ function ExerciseCard({ ejercicio }) {
       onClick={abrirDetalle}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
           abrirDetalle();
         }
       }}
       role="button"
       tabIndex={0}
+      aria-label={`Ver detalles de ${ejercicio.nombre}`}
     >
       <div className="card-image-wrapper">
 
@@ -68,6 +78,8 @@ function ExerciseCard({ ejercicio }) {
                 loading="lazy"
               />
             )}
+
+            <div className="card-image-gradient" />
           </>
         ) : (
           <div className="card-image-placeholder">
@@ -76,34 +88,29 @@ function ExerciseCard({ ejercicio }) {
           </div>
         )}
 
+        <span
+          className={`grupo-badge grupo-badge--${grupoClase}`}
+        >
+          {grupoNombre}
+        </span>
+
+        <div className="card-view">
+          <span>Ver ejercicio</span>
+          <span>↗</span>
+        </div>
       </div>
 
       <div className="card-content">
 
-        <div className="card-top">
-          <span
-            className={`grupo-badge grupo-badge--${grupoClase}`}
-          >
-            {grupoNombre}
-          </span>
-        </div>
+        <div className="card-heading">
+          <h3>{ejercicio.nombre}</h3>
 
-        <h3>{ejercicio.nombre}</h3>
+        </div>
 
         <p className="card-description">
           {ejercicio.descripcion ||
             "Consulta los detalles de este ejercicio."}
         </p>
-
-        <div className="card-footer">
-          <span>
-            Ver detalles
-          </span>
-
-          <span className="card-arrow">
-            →
-          </span>
-        </div>
 
       </div>
     </article>

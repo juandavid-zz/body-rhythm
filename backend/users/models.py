@@ -64,12 +64,10 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = 'auth_usuarios'
 
-<<<<<<< HEAD
+
     def __str__(self):
         return self.email
 
-=======
->>>>>>> 6645070 (Implento de wompi pagos y webhook activacion de plan)
 
 class Usuario(models.Model):
     auth = models.OneToOneField(
