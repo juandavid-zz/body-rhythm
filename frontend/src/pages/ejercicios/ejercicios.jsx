@@ -47,23 +47,42 @@ function Ejercicios() {
 
     cargarEjercicios();
   }, []);
+  
+const ejerciciosFiltrados = ejercicios.filter((ejercicio) => {
+  const normalizarTexto = (texto = "") =>
+    texto
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
 
-  const ejerciciosFiltrados = ejercicios.filter((ejercicio) => {
-    const textoBusqueda = busqueda.trim().toLowerCase();
+  const textoBusqueda = normalizarTexto(busqueda);
 
-    const coincideBusqueda =
-      !textoBusqueda ||
-      ejercicio.nombre?.toLowerCase().includes(textoBusqueda) ||
-      ejercicio.descripcion?.toLowerCase().includes(textoBusqueda);
+  const coincideBusqueda =
+    !textoBusqueda ||
+    normalizarTexto(ejercicio.nombre).includes(textoBusqueda) ||
+    normalizarTexto(ejercicio.descripcion).includes(textoBusqueda);
 
-    const grupoSeleccionado = grupos[filtroGrupo];
+  const grupoSeleccionado = grupos[filtroGrupo];
 
-    const coincideGrupo =
-      !grupoSeleccionado ||
-      ejercicio.grupo === grupoSeleccionado;
+  let coincideGrupo = true;
 
-    return coincideBusqueda && coincideGrupo;
-  });
+  if (grupoSeleccionado) {
+    if (filtroGrupo === "Brazos") {
+      coincideGrupo = ["upper_arms", "lower_arms"].includes(
+        ejercicio.grupo
+      );
+    } else if (filtroGrupo === "Piernas") {
+      coincideGrupo = ["upper_legs", "lower_legs"].includes(
+        ejercicio.grupo
+      );
+    } else {
+      coincideGrupo = ejercicio.grupo === grupoSeleccionado;
+    }
+  }
+
+  return coincideBusqueda && coincideGrupo;
+});
 
   return (
     <>
@@ -71,27 +90,36 @@ function Ejercicios() {
 
       <main className="ejercicios-container">
 
+        {/* HEADER */}
         <div className="ejercicios-header">
-          <div>
+          <div className="ejercicios-header-content">
             <span className="ejercicios-overline">
-              BODY RHYTHM
+              BIBLIOTECA DE ENTRENAMIENTO
             </span>
 
-            <h1>Ejercicios</h1>
+            <h1>
+              Encuentra tu próximo <span>ejercicio.</span>
+            </h1>
 
             <p>
-              Explora ejercicios y encuentra los que necesites
-              para complementar tus entrenamientos.
+              Explora nuestra biblioteca y encuentra ejercicios
+              para cada grupo muscular y objetivo.
             </p>
+          </div>
+
+          <div className="ejercicios-header-count">
+            <strong>{ejercicios.length}</strong>
+            <span>ejercicios</span>
           </div>
         </div>
 
+        {/* BUSCADOR */}
         <div className="ejercicios-search">
           <span className="search-icon">⌕</span>
 
           <input
             type="text"
-            placeholder="Buscar ejercicio..."
+            placeholder="Buscar por nombre o ejercicio..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
@@ -108,8 +136,11 @@ function Ejercicios() {
           )}
         </div>
 
+        {/* FILTROS */}
         <div className="filtros-header">
-          <h2 className="filtros-title">Grupo muscular</h2>
+          <h2 className="filtros-title">
+            Grupo muscular
+          </h2>
 
           <span>
             {ejerciciosFiltrados.length} ejercicios
@@ -122,7 +153,9 @@ function Ejercicios() {
               key={grupo}
               type="button"
               className={`filtro-btn ${
-                filtroGrupo === grupo ? "filtro-activo" : ""
+                filtroGrupo === grupo
+                  ? "filtro-activo"
+                  : ""
               }`}
               onClick={() => setFiltroGrupo(grupo)}
             >
@@ -131,6 +164,7 @@ function Ejercicios() {
           ))}
         </div>
 
+        {/* LOADING */}
         {cargando && (
           <div className="ejercicios-loading">
             <div className="ejercicios-spinner"></div>
@@ -138,9 +172,11 @@ function Ejercicios() {
           </div>
         )}
 
+        {/* ERROR */}
         {error && !cargando && (
           <div className="ejercicios-error">
             <span>!</span>
+
             <p>{error}</p>
 
             <button
@@ -152,14 +188,9 @@ function Ejercicios() {
           </div>
         )}
 
+        {/* RESULTADOS */}
         {!cargando && !error && (
           <>
-            <p className="contador-ejercicios">
-              {ejerciciosFiltrados.length === 1
-                ? "1 ejercicio encontrado"
-                : `${ejerciciosFiltrados.length} ejercicios encontrados`}
-            </p>
-
             {ejerciciosFiltrados.length > 0 ? (
               <div className="lista-ejercicios">
                 {ejerciciosFiltrados.map((ejercicio) => (
@@ -173,11 +204,13 @@ function Ejercicios() {
               <div className="ejercicios-vacio">
                 <span>⌕</span>
 
-                <h3>No encontramos ejercicios</h3>
+                <h3>
+                  No encontramos ejercicios
+                </h3>
 
                 <p>
-                  Intenta buscar otro nombre o seleccionar otro
-                  grupo muscular.
+                  Intenta buscar otro nombre o
+                  seleccionar otro grupo muscular.
                 </p>
 
                 <button
@@ -193,7 +226,6 @@ function Ejercicios() {
             )}
           </>
         )}
-
       </main>
     </>
   );
