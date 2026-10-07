@@ -11,6 +11,7 @@ from .serializers import (
     LoginSerializer,
     EjercicioSerializer
 )
+from .emails import enviar_correo_verificacion, token_vigente
 
 
 # CREATE - Registro
@@ -44,13 +45,13 @@ class RegistroView(APIView):
                 meta=data.get('meta')
             )
 
-            refresh = RefreshToken.for_user(auth)
+            enviado = enviar_correo_verificacion(auth, nombre=data['nombre'])
 
             return Response({
-                'token': str(refresh.access_token),
-                'refresh': str(refresh),
-                'mensaje': 'Usuario registrado correctamente',
-                'nombre': data['nombre']
+                'mensaje': 'Cuenta creada. Te enviamos un correo para confirmarla.',
+                'email': auth.email,
+                'correo_enviado': enviado,
+                'requiere_verificacion': True,
             }, status=status.HTTP_201_CREATED)
 
         return Response(
@@ -85,6 +86,13 @@ class LoginView(APIView):
                     {'error': 'Credenciales incorrectas'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
+
+            if not auth.verificado:
+                return Response({
+                    'error': 'Debes confirmar tu correo antes de iniciar sesión.',
+                    'requiere_verificacion': True,
+                    'email': auth.email,
+                }, status=status.HTTP_403_FORBIDDEN)
 
             auth.intentos_fallidos = 0
             auth.ultimo_login = timezone.now()
@@ -331,3 +339,88 @@ class EjercicioListView(APIView):
         )
 
         return Response(serializer.data)
+
+
+# VERIFICAR CUENTA POR CORREO
+class VerificarEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def _verificar(self, request, token):
+        try:
+            auth = AuthUsuario.objects.get(token=token)
+        except AuthUsuario.DoesNotExist:
+            return Response(
+                {'error': 'El enlace de verificación no es válido.', 'expirado': False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esta cuenta ya estaba verificada.'})
+
+        if not token_vigente(auth):
+            return Response(
+                {
+                    'error': 'El enlace venció. Pide que te reenvíen el correo.',
+                    'expirado': True,
+                    'email': auth.email,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth.verificado = True
+        auth.token = None
+        auth.token_expira = None
+        auth.codigo_verificacion = None
+        auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion'])
+
+        refresh = RefreshToken.for_user(auth)
+
+        return Response({
+            'mensaje': 'Cuenta verificada correctamente. Ya puedes iniciar sesión.',
+            'token': str(refresh.access_token),
+            'refresh': str(refresh),
+        })
+
+    def get(self, request, token):
+        return self._verificar(request, token)
+
+    def post(self, request, token):
+        return self._verificar(request, token)
+
+
+# REENVIAR CORREO DE VERIFICACIÓN
+class ReenviarVerificacionView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response(
+                {'error': 'El correo es obligatorio.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            auth = AuthUsuario.objects.get(email=email)
+        except AuthUsuario.DoesNotExist:
+            return Response(
+                {'error': 'No encontramos una cuenta con ese correo.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esta cuenta ya está verificada.'})
+
+        try:
+            usuario = Usuario.objects.get(auth=auth)
+            nombre = usuario.nombre
+        except Usuario.DoesNotExist:
+            nombre = ''
+
+        enviado = enviar_correo_verificacion(auth, nombre=nombre)
+
+        return Response({
+            'mensaje': 'Te reenviamos el correo de confirmación.',
+            'correo_enviado': enviado,
+        })

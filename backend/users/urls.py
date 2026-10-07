@@ -8,6 +8,8 @@ from .views import (
     UsuarioMeView,
     PagoView,
     EjercicioListView,
+    VerificarEmailView,
+    ReenviarVerificacionView,
 )
 
 urlpatterns = [
@@ -18,4 +20,6 @@ urlpatterns = [
     path('usuarios/me/', UsuarioMeView.as_view()),
     path('pagos/', PagoView.as_view()),
     path('ejercicios/', EjercicioListView.as_view()),
+    path('verificar/<str:token>/', VerificarEmailView.as_view()),
+    path('reenviar-verificacion/', ReenviarVerificacionView.as_view()),
 ]

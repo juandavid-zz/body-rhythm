@@ -67,9 +67,13 @@ export default function VerificarPage() {
             <p className="br-auth-message br-auth-message-success">{mensaje}</p>
             <p className="br-auth-verification-message">Ya puedes empezar a entrenar con Body Rhythm.</p>
             <div className="br-auth-actions">
-              <button className="br-auth-btn br-auth-btn-primary" type="button" onClick={() => navigate('/rutinas')}>
-                Ir a mis rutinas
-              </button>
+            <button
+  className="br-auth-btn br-auth-btn-primary"
+  type="button"
+  onClick={() => navigate('/')}
+>
+  Ir al inicio
+</button>
             </div>
           </>
         )}

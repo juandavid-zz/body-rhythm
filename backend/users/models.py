@@ -1,6 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin
 )
+
 
 class AuthUsuarioManager(BaseUserManager):
     def create_user(self, email, password=None):
@@ -63,6 +67,8 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = 'auth_usuarios'
+        verbose_name = 'Autenticación'
+        verbose_name_plural = 'Autenticaciones'
 
     def __str__(self):
         return self.email
@@ -108,10 +114,138 @@ class Usuario(models.Model):
         blank=True
     )
 
+    plan = models.CharField(
+        max_length=20,
+        choices=[
+            ('free', 'Free'),
+            ('pro', 'Pro'),
+            ('premium', 'Premium')
+        ],
+        default='free'
+    )
+
+    fecha_inicio_plan = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
+    fecha_fin_plan = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'usuarios'
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+
+    def __str__(self):
+        return self.nombre
+
+
+class Pago(models.Model):
+    PLAN_CHOICES = [
+        ('pro', 'Pro'),
+        ('premium', 'Premium'),
+    ]
+
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('aprobado', 'Aprobado'),
+        ('rechazado', 'Rechazado'),
+    ]
+
+    METODO_CHOICES = [
+        ('tarjeta', 'Tarjeta'),
+        ('pse', 'PSE'),
+    ]
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        db_column='usuario_id',
+        related_name='pagos'
+    )
+
+    plan = models.CharField(
+        max_length=50,
+        choices=PLAN_CHOICES
+    )
+
+    precio = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
+
+    referencia = models.CharField(
+        max_length=100,
+        unique=True
+    )
+
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='pendiente'
+    )
+
+    metodo = models.CharField(
+        max_length=20,
+        choices=METODO_CHOICES
+    )
+
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pagos'
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+
+
+class Ejercicio(models.Model):
+    nombre = models.CharField(max_length=200)
+
+    grupo = models.CharField(max_length=100)
+
+    musculos_principales = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    musculos_secundarios = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    descripcion = models.TextField(blank=True)
+
+    imagen_inicio = models.CharField(
+        max_length=500,
+        blank=True
+    )
+
+    imagen_final = models.CharField(
+        max_length=500,
+        blank=True
+    )
+
+    repdb_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        unique=True
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'biblioteca_ejercicios'
+        ordering = ['nombre']
+        verbose_name = 'Ejercicio'
+        verbose_name_plural = 'Ejercicios'
 
     def __str__(self):
         return self.nombre

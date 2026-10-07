@@ -1,0 +1,28 @@
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('users', '0005_alter_authusuario_id_alter_recuperacionpassword_id_and_more'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Pago',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('plan', models.CharField(choices=[('pro', 'Pro'), ('premium', 'Premium')], max_length=50)),
+                ('precio', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('referencia', models.CharField(max_length=100, unique=True)),
+                ('estado', models.CharField(choices=[('pendiente', 'Pendiente'), ('aprobado', 'Aprobado'), ('rechazado', 'Rechazado')], default='pendiente', max_length=20)),
+                ('metodo', models.CharField(choices=[('tarjeta', 'Tarjeta'), ('pse', 'PSE')], max_length=20)),
+                ('fecha', models.DateTimeField(auto_now_add=True)),
+                ('usuario', models.ForeignKey(db_column='usuario_id', on_delete=django.db.models.deletion.CASCADE, related_name='pagos', to='users.usuario')),
+            ],
+            options={
+                'db_table': 'pagos',
+            },
+        ),
+    ]

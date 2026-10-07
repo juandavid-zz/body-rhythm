@@ -79,7 +79,7 @@ export default function RutinasPage() {
       try {
         setCargando(true);
 
-        const perfilRes = await api.get("/perfil/", { headers });
+        const perfilRes = await api.get("/usuarios/me/", { headers });
         const idUsuario = perfilRes.data.id;
 
         if (!activo) return;

@@ -47,7 +47,6 @@ class RutinaAdmin(admin.ModelAdmin):
     list_filter = ['es_favorita', 'created_at']
     search_fields = ['nombre', 'usuario__nombre', 'usuario__auth__email']
     ordering = ['-created_at']
-    date_hierarchy = 'created_at'
     list_per_page = 25
     list_select_related = ['usuario']
     autocomplete_fields = ['usuario']

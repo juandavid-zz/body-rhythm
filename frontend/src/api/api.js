@@ -6,7 +6,7 @@ const api = axios.create({
   timeout: 45000, // 45s — evita que el chat se quede "escribiendo..." para siempre
 })
 
-const RUTAS_PUBLICAS = ['/registro/', '/login/', '/token/refresh/']
+const RUTAS_PUBLICAS = ['/registro/', '/login/', '/token/refresh/', '/verificar/', '/reenviar-verificacion/']
 
 api.interceptors.request.use((config) => {
   const esPublica = RUTAS_PUBLICAS.some((ruta) => config.url.includes(ruta))

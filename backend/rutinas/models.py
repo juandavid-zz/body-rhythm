@@ -25,7 +25,7 @@ class Ejercicio(models.Model):
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
 
     class Meta:
-        db_table = 'ejercicios'
+        db_table = 'rutinas_ejercicios'
         verbose_name = 'Ejercicio'
         verbose_name_plural = 'Ejercicios'
 
@@ -47,7 +47,7 @@ class Rutina(models.Model):
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
 
     class Meta:
-        db_table = 'rutinas'
+        db_table = 'rutinas_rutinas'
         verbose_name = 'Rutina'
         verbose_name_plural = 'Rutinas'
 

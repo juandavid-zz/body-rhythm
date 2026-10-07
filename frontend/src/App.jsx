@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
 import RutinasPage from "./pages/RutinasPage";
@@ -15,7 +16,7 @@ import EjercicioDetalle from "./pages/ejercicios/EjercicioDetalle";
 import Planes from "./pages/Planes";
 import FormularioPago from "./pages/FormularioPago";
 import PagoExitoso from "./pages/PagoExitoso";
-
+import EsperandoVerificacion from './pages/EsperandoVerificacion'
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -34,6 +35,7 @@ export default function App() {
 
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/verificar/:token" element={<VerificarPage />} />
+<Route path="/verificacion-pendiente" element={<EsperandoVerificacion />} />
 
         <Route
           path="/rutinas"

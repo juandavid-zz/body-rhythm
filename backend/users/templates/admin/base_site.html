@@ -41,3 +41,79 @@
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/custom.css' %}?v=5">
 {% endblock %}
+
+<style>
+html, body {
+    background: #09090d !important;
+    color: #f7f4fa !important;
+}
+
+#container {
+    background: #09090d !important;
+}
+
+#header {
+    background: #09090d !important;
+    border-bottom: 1px solid rgba(255,255,255,.13) !important;
+}
+
+#nav-sidebar {
+    background: #0d0d13 !important;
+    border-right: 1px solid rgba(255,255,255,.13) !important;
+}
+
+#nav-sidebar .module,
+#nav-sidebar table,
+#nav-sidebar tr,
+#nav-sidebar th,
+#nav-sidebar td {
+    background: transparent !important;
+}
+
+#nav-sidebar .module th a,
+#nav-sidebar .model a:not(.addlink) {
+    color: #aaa5b5 !important;
+}
+
+#nav-sidebar a.addlink {
+    background: rgba(139,63,163,.10) !important;
+    color: #d9b3e4 !important;
+    border-color: rgba(166,83,192,.32) !important;
+}
+
+#nav-sidebar tr.current-model {
+    background: linear-gradient(
+        90deg,
+        rgba(139,63,163,.28),
+        rgba(224,82,160,.05)
+    ) !important;
+}
+
+.main,
+#content-start {
+    background: #09090d !important;
+}
+
+#content {
+    background: #09090d !important;
+}
+
+.breadcrumbs {
+    background: #09090d !important;
+    color: #9792a4 !important;
+}
+
+.module,
+.inline-group,
+.results {
+    background: #111118 !important;
+    border-color: rgba(255,255,255,.13) !important;
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+    background: linear-gradient(90deg,#34203c,#221825) !important;
+    color: #eee8f1 !important;
+}
+</style>

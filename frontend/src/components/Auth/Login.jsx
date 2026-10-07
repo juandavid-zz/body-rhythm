@@ -33,6 +33,8 @@ export default function Login({ onSwitch }) {
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
   const [toast, setToast] = useState(null)
+  const [pendiente, setPendiente] = useState(false)
+  const [reenviando, setReenviando] = useState(false)
 
   const handleChange = (e) => {
     setForm({
@@ -44,6 +46,7 @@ export default function Login({ onSwitch }) {
   const handleLogin = async (e) => {
     e.preventDefault()
     setError('')
+    setPendiente(false)
     setCargando(true)
 
     try {
@@ -72,9 +75,23 @@ export default function Login({ onSwitch }) {
       setTimeout(() => navigate('/'), 2000)
 
     } catch (err) {
-      setError(err.response?.data?.error || 'Credenciales incorrectas')
+      const data = err.response?.data || {}
+      setPendiente(Boolean(data.requiere_verificacion))
+      setError(data.error || 'Credenciales incorrectas')
     } finally {
       setCargando(false)
+    }
+  }
+
+  const reenviarVerificacion = async () => {
+    setReenviando(true)
+    try {
+      await api.post('/reenviar-verificacion/', { email: form.email })
+      setToast('Te reenviamos el correo de confirmación 📩')
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo reenviar el correo')
+    } finally {
+      setReenviando(false)
     }
   }
 
@@ -93,6 +110,11 @@ export default function Login({ onSwitch }) {
       <form onSubmit={handleLogin}>
 
         {error && <p className="error">{error}</p>}
+        {pendiente && (
+          <button type="button" className="btn-secundario" onClick={reenviarVerificacion} disabled={reenviando}>
+            {reenviando ? 'Enviando...' : 'Reenviar correo de confirmación'}
+          </button>
+        )}
 
         <div className="form-group">
           <label>Correo electrónico</label>
