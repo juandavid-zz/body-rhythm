@@ -60,6 +60,7 @@ class PlanNutricional(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Plan alimenticio'
         verbose_name_plural = 'Planes alimenticios'
+        unique_together = [('usuario', 'nombre')]
 
     def __str__(self):
         return self.nombre

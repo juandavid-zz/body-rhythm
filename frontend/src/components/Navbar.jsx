@@ -42,6 +42,14 @@ export default function Navbar() {
     }
   };
 
+  const irANutricion = () => {
+    if (logueado) {
+      navigate("/nutricion");
+    } else {
+      navigate("/auth?modo=login");
+    }
+  };
+
   return (
     <nav>
       <a href="/" className="logo">
@@ -72,7 +80,15 @@ export default function Navbar() {
         </li>
 
         <li>
-          <a href="#">Nutrición</a>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              irANutricion();
+            }}
+          >
+            Nutrición
+          </a>
         </li>
 
 <li>
