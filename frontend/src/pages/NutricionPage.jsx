@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../api/api'
+import Navbar from '../components/Navbar'
 import '../css/nutricion.css'
 
 const formatearTipo = (tipo) => {
@@ -191,18 +192,23 @@ export default function NutricionPage() {
       .reduce((total, registro) => total + (Number(registro.calorias) || 0), 0)
   }, [registros])
 
-  if (cargando) {
+    if (cargando) {
     return (
-      <main className="nutricion-page">
-        <section className="nutricion-loading">
-          <div className="nutricion-spinner" />
-          <p>Cargando nutrición...</p>
-        </section>
-      </main>
+      <>
+        <Navbar />
+        <main className="nutricion-page">
+          <section className="nutricion-loading">
+            <div className="nutricion-spinner" />
+            <p>Cargando nutrición...</p>
+          </section>
+        </main>
+      </>
     )
   }
 
   return (
+    <>
+      <Navbar/>
     <main className="nutricion-page">
       <div className="nutricion-container">
         <section className="nutricion-hero">
@@ -567,5 +573,6 @@ export default function NutricionPage() {
         </section>
       </div>
     </main>
+  </>
   )
 }

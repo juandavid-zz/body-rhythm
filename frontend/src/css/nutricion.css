@@ -762,6 +762,7 @@
    ===================================================== */
 
 .nutricion-objetivo-card {
+  padding: 1.25rem;
   background:
     linear-gradient(150deg, rgba(168, 85, 247, .16), rgba(236, 72, 153, .06));
 }
