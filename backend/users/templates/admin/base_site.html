@@ -22,8 +22,7 @@
     </div>
 
     <div class="br-user-actions">
-        <a class="br-btn br-btn-ghost" href="/" target="_blank" rel="noopener">Ver sitio</a>
-
+                <a class="br-btn br-btn-ghost" href="http://localhost:5173/" target="_blank" rel="noopener">Ver sitio</a>
         {% if user.is_active and user.is_staff and user.has_usable_password %}
         <a class="br-btn br-btn-ghost" href="{% url 'admin:password_change' %}">Cambiar contraseña</a>
         {% endif %}

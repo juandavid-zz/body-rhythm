@@ -55,10 +55,10 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
     )
 
     # NUEVO
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    is_staff = models.BooleanField(default=True, verbose_name='Administrador')
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []

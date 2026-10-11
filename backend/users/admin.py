@@ -93,7 +93,7 @@ admin.site.site_header = 'Body Rhythm Admin'
 admin.site.site_title = 'Body Rhythm Admin'
 admin.site.index_title = 'Panel de control'
 admin.site.empty_value_display = '—'
-
+admin.site.site_url = 'http://localhost:5173/'
 
 # --- Indicadores del dashboard -------------------------------------------
 _each_context_original = admin.site.each_context

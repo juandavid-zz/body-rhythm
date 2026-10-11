@@ -187,6 +187,7 @@ export default function ActiveWorkoutPage() {
   const [finalizado, setFinalizado] = useState(null);
   const [mostrarDescartar, setMostrarDescartar] = useState(false);
   const [mostrarFinalizar, setMostrarFinalizar] = useState(false);
+  const [ejercicioAEliminar, setEjercicioAEliminar] = useState(null);
 
   const [ejercicios, setEjercicios] = useState(() => {
     if (!rutina?.ejercicios_detalle) return progresoInicial?.ejercicios || [];
@@ -522,10 +523,15 @@ export default function ActiveWorkoutPage() {
     setMenuEjercicioAbierto(null);
   };
 
-  const eliminarEjercicio = (idx) => {
-    if (!confirm("¿Quitar este ejercicio del entrenamiento?")) return;
-    setEjercicios((prev) => prev.filter((_, i) => i !== idx));
+    const eliminarEjercicio = (idx) => {
     setMenuEjercicioAbierto(null);
+    setEjercicioAEliminar(idx);
+  };
+
+  const confirmarEliminarEjercicio = () => {
+    if (ejercicioAEliminar === null) return;
+    setEjercicios((prev) => prev.filter((_, i) => i !== ejercicioAEliminar));
+    setEjercicioAEliminar(null);
   };
 
   const cambiarUnidadPeso = (ejIdx, nuevaUnidad) => {
@@ -822,27 +828,30 @@ export default function ActiveWorkoutPage() {
                       ⋮
                     </button>
 
-                    {menuEjercicioAbierto === ejIdx && (
+                                       {menuEjercicioAbierto === ejIdx && (
                       <div style={menuEjercicioStyle}>
                         <button
                           disabled={ejIdx === 0}
                           onClick={() => moverEjercicio(ejIdx, -1)}
-                          style={{ ...estilos.menuItem, opacity: ejIdx === 0 ? 0.35 : 1 }}
+                          style={menuEjercicioItemStyle(ejIdx === 0)}
                         >
-                          ↑ Mover arriba
+                          <span style={menuEjercicioItemIcon}>↑</span>
+                          Mover arriba
                         </button>
                         <button
                           disabled={ejIdx === ejercicios.length - 1}
                           onClick={() => moverEjercicio(ejIdx, 1)}
-                          style={{ ...estilos.menuItem, opacity: ejIdx === ejercicios.length - 1 ? 0.35 : 1 }}
+                          style={menuEjercicioItemStyle(ejIdx === ejercicios.length - 1)}
                         >
-                          ↓ Mover abajo
+                          <span style={menuEjercicioItemIcon}>↓</span>
+                          Mover abajo
                         </button>
                         <button
                           onClick={() => eliminarEjercicio(ejIdx)}
-                          style={{ ...estilos.menuItem, color: "#ef4444" }}
+                          style={menuEjercicioDeleteStyle}
                         >
-                          🗑 Quitar ejercicio
+                          <span style={{ ...menuEjercicioItemIcon, color: "#ef4444", background: "rgba(239,68,68,0.14)" }}>🗑</span>
+                          Quitar ejercicio
                         </button>
                       </div>
                     )}
@@ -1260,8 +1269,33 @@ export default function ActiveWorkoutPage() {
               <button type="button" onClick={() => setMostrarDescartar(false)} style={discardContinueButtonStyle}>
                 Continuar entrenando
               </button>
-              <button type="button" onClick={confirmarDescartar} style={discardConfirmButtonStyle}>
+                    <button type="button" onClick={confirmarDescartar} style={discardConfirmButtonStyle}>
                 Descartar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ejercicioAEliminar !== null && (
+        <div style={modalOverlayStyle}>
+          <div style={discardModalStyle}>
+            <div style={{ ...discardModalIconStyle, background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>🗑</div>
+            <div style={discardModalEyebrowStyle}>QUITAR EJERCICIO</div>
+            <h2 style={discardModalTitleStyle}>¿Quitar este ejercicio del entrenamiento?</h2>
+            <p style={discardModalTextStyle}>
+              Se eliminará "{ejercicios[ejercicioAEliminar]?.nombre}" de esta sesión junto con sus series. El resto de tu entrenamiento no se verá afectado.
+            </p>
+            <div style={discardActionsStyle}>
+              <button type="button" onClick={() => setEjercicioAEliminar(null)} style={discardContinueButtonStyle}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminarEjercicio}
+                style={{ ...discardConfirmButtonStyle, background: "linear-gradient(135deg, #ef4444, #dc2626)", boxShadow: "0 10px 25px rgba(239,68,68,0.28)" }}
+              >
+                Quitar ejercicio
               </button>
             </div>
           </div>
@@ -1270,7 +1304,6 @@ export default function ActiveWorkoutPage() {
     </>
   );
 }
-
 // ======================================================
 // ESTILOS
 // ======================================================
@@ -1665,14 +1698,64 @@ const menuTrigger = {
 const menuEjercicioStyle = {
   position: "absolute",
   right: 0,
-  top: "1.8rem",
+  top: "2.1rem",
   zIndex: 100,
-  minWidth: "175px",
-  background: "#1a0533",
-  border: "1px solid rgba(168,85,247,0.3)",
-  borderRadius: "10px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.45)",
+  minWidth: "190px",
+  padding: "0.35rem",
+  background: "#19101f",
+  border: "1px solid rgba(168,85,247,0.28)",
+  borderRadius: "12px",
+  boxShadow: "0 14px 35px rgba(0,0,0,0.6)",
   overflow: "hidden",
+};
+
+const menuEjercicioItemStyle = (disabled) => ({
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.55rem",
+  padding: "0.5rem 0.55rem",
+  minHeight: "42px",
+  border: "1px solid transparent",
+  borderRadius: "9px",
+  background: "transparent",
+  color: "#f4f4f5",
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.35 : 1,
+  textAlign: "left",
+  fontSize: "0.82rem",
+  fontWeight: 600,
+});
+
+const menuEjercicioItemIcon = {
+  width: "26px",
+  height: "26px",
+  minWidth: "26px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "7px",
+  background: "rgba(168,85,247,0.14)",
+  color: "#c4b5fd",
+  fontSize: "0.85rem",
+};
+
+const menuEjercicioDeleteStyle = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.55rem",
+  marginTop: "0.2rem",
+  padding: "0.5rem 0.55rem",
+  minHeight: "42px",
+  border: "none",
+  borderTop: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: "9px",
+  background: "transparent",
+  color: "#ef4444",
+  cursor: "pointer",
+  textAlign: "left",
+  fontSize: "0.82rem",
+  fontWeight: 700,
 };
 
 const gridStyle = (porTiempo, encabezado = false) => ({
