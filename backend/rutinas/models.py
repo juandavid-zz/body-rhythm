@@ -33,15 +33,20 @@ class Ejercicio(models.Model):
         return f"{self.nombre} ({self.get_grupo_muscular_display()})"
 
 
-class Rutina(models.Model):
 
+class Rutina(models.Model):
     usuario = models.ForeignKey(
-        Usuario, on_delete=models.CASCADE, related_name='rutinas', verbose_name='Usuario'
+        Usuario,
+        on_delete=models.CASCADE,
+        verbose_name='Usuario'
     )
     nombre = models.CharField('Nombre', max_length=100)
     descripcion = models.TextField('Descripción', blank=True)
     ejercicios = models.ManyToManyField(
-        Ejercicio, through='RutinaEjercicio', blank=True, verbose_name='Ejercicios'
+        'users.Ejercicio',
+        through='RutinaEjercicio',
+        blank=True,
+        verbose_name='Ejercicios'
     )
     es_favorita = models.BooleanField('Es favorita', default=False)
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
@@ -52,12 +57,20 @@ class Rutina(models.Model):
         verbose_name_plural = 'Rutinas'
 
     def __str__(self):
-        return f"{self.nombre} - {self.usuario.nombre}"
+        return self.nombre
 
 
 class RutinaEjercicio(models.Model):
-    rutina = models.ForeignKey(Rutina, on_delete=models.CASCADE, verbose_name='Rutina')
-    ejercicio = models.ForeignKey(Ejercicio, on_delete=models.CASCADE, verbose_name='Ejercicio')
+    rutina = models.ForeignKey(
+        Rutina,
+        on_delete=models.CASCADE,
+        verbose_name='Rutina'
+    )
+    ejercicio = models.ForeignKey(
+        'users.Ejercicio',
+        on_delete=models.PROTECT,
+        verbose_name='Ejercicio'
+    )
     series = models.IntegerField('Series', default=3)
     repeticiones = models.IntegerField('Repeticiones', default=10)
     descanso_segundos = models.IntegerField('Descanso (segundos)', default=60)

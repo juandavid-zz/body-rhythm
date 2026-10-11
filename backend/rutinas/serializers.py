@@ -1,32 +1,52 @@
+
 from rest_framework import serializers
-from .models import Ejercicio, Rutina, RutinaEjercicio
+from users.models import Ejercicio as EjercicioBiblioteca
+from .models import Rutina, RutinaEjercicio
 
 
 class EjercicioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Ejercicio
-        fields = '__all__'
+        model = EjercicioBiblioteca
+        fields = "__all__"
 
 
 class RutinaEjercicioSerializer(serializers.ModelSerializer):
     ejercicio = EjercicioSerializer(read_only=True)
+
     ejercicio_id = serializers.PrimaryKeyRelatedField(
-        queryset=Ejercicio.objects.all(), source='ejercicio', write_only=True
+        queryset=EjercicioBiblioteca.objects.all(),
+        source="ejercicio",
+        write_only=True,
     )
 
     class Meta:
         model = RutinaEjercicio
-        fields = ['id', 'ejercicio', 'ejercicio_id', 'series', 'repeticiones',
-                  'descanso_segundos', 'orden']
+        fields = [
+            "id",
+            "ejercicio",
+            "ejercicio_id",
+            "series",
+            "repeticiones",
+            "descanso_segundos",
+            "orden",
+        ]
 
 
 class RutinaSerializer(serializers.ModelSerializer):
     ejercicios_detalle = RutinaEjercicioSerializer(
-        source='rutinaejercicio_set', many=True, read_only=True
+        source="rutinaejercicio_set",
+        many=True,
+        read_only=True,
     )
 
     class Meta:
         model = Rutina
-        fields = ['id', 'nombre', 'descripcion', 'es_favorita',
-                  'created_at', 'ejercicios_detalle']
-        read_only_fields = ['created_at']
+        fields = [
+            "id",
+            "nombre",
+            "descripcion",
+            "es_favorita",
+            "created_at",
+            "ejercicios_detalle",
+        ]
+        read_only_fields = ["created_at"]
