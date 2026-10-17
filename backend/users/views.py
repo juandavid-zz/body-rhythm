@@ -36,7 +36,7 @@ class RegistroView(APIView):
                 email=data['email'],
                 password=data['password']
             )
-
+           
             Usuario.objects.create(
                 auth=auth,
                 nombre=data['nombre'],
