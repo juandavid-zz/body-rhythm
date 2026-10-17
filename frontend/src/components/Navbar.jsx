@@ -50,6 +50,14 @@ export default function Navbar() {
     }
   };
 
+  const irARutinas = () => {
+    if (logueado) {
+      navigate("/rutinas");
+    } else {
+      navigate("/auth?modo=login");
+    }
+  };
+
   return (
     <nav>
       <a href="/" className="logo">
@@ -91,6 +99,17 @@ export default function Navbar() {
           </a>
         </li>
 
+        <li>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              irARutinas();
+            }}
+          >
+            Rutinas
+          </a>
+        </li>
 <li>
   <a
     href="/planes"
