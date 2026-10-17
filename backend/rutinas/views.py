@@ -730,108 +730,112 @@ def _patron_movimiento(ejercicio, grupo):
 
 
 
+EJERCICIOS_BASE_POR_GRUPO = {
+    "chest": [
+        "Bench Press", "Butterfly", "Aperturas con Mancuernas",
+        "Aperturas con Cable",
+        "Apertura con mancuernas en banco inclinado",
+        "Cable Chest Press - Incline", "Cable Chest Press - Decline",
+    ],
+    "back": [
+        "Bent Over Dumbbell Rows", "Assisted Pull-Up",
+        "Barbell Row (Overhand)",
+        "Close-grip supinated lat pulldown",
+        "1-Arm Half-Kneeling Lat Pulldown",
+    ],
+    "shoulders": [
+        "Arnold Shoulder Press", "Lateral Raises",
+        "Elevación Lateral con Mancuernas",
+        "Elevación Lateral con Mancuerna Sentado",
+        "Elevación Lateral en Polea",
+    ],
+    "upper_arms": [
+        "Biceps Curls With Dumbbell", "Barbell Triceps Extension",
+        "Biceps Curl Machine", "Biceps Curl With Cable",
+        "Alternating dumbbell hammer curl",
+    ],
+    "upper_legs": [
+        "Leg Extension", "Leg Curl",
+        "Dumbbell Romanian Deadlift", "Romanian Deadlift",
+        "Barbell Lunges Walking", "Peso Muerto Rumano",
+        "Sentadilla con Peso Corporal", "Sentadilla Goblet",
+        "Bodyweight Squat HD", "Barbell Full Squat",
+        "Dumbbell Goblet Squat", "Leg Press", "Prensa de Piernas",
+    ],
+    "legs": [
+        "Barbell Full Squat", "Bodyweight lunge HD",
+        "Dumbbell Goblet Squat", "Leg Press",
+        "Barbell Hack Squats", "Leg Extension", "Leg Curl",
+        "Dumbbell Romanian Deadlift", "Romanian Deadlift",
+        "Bodyweight Squat HD", "Sentadilla con Peso Corporal",
+        "Sentadilla Goblet", "Prensa de Piernas", "Peso Muerto Rumano",
+    ],
+    "glutes": [
+        "Glute Bridge", "Hip Thrust", "Dumbbell Hip Thrust",
+        "Cable glute extension", "Glute Kickback (Machine)",
+        "Puente de Glúteos", "Sentadilla con Peso Corporal",
+        "Sentadilla Goblet", "Sentadilla Trasera con Barra",
+    ],
+    "calves": [
+        "Standing Calf Raises", "Sitting Calf Raises",
+        "Seated Dumbbell Calf Raise", "Double Leg Calf Raise",
+        "Calf Raises on Hackenschmitt Machine",
+        "Calf Press Using Leg Press Machine",
+    ],
+    "abs": ["Abdominal Crunch"],
+    "cardio": [
+        "Caminata Rápida", "Corda de Salto: saltos básicos",
+        "Jumping Jack HD", "Cycling", "Walking", "Elliptical",
+        "Recumbent Bike", "March or jog in place",
+        "Skipping - Standard", "Polichinelos", "Saltar la Cuerda",
+    ],
+    "full_body": [
+        "Cuerdas de Batalla", "Bicicleta de Aire",
+        "Burpees", "Caminata del Granjero con Mancuernas",
+    ],
+}
+
+
 def _seleccionar_ejercicios(grupo, cantidad, seleccionados):
-    grupo_objetivo = grupo.casefold()
-    musculos_objetivo = MUSCULOS_POR_GRUPO.get(
-        grupo_objetivo, set()
-    )
+    grupo_objetivo = (grupo or "").strip().casefold()
+    permitidos = EJERCICIOS_BASE_POR_GRUPO.get(grupo_objetivo, [])
+
+    if not permitidos or cantidad <= 0:
+        return []
+
+    prioridad = {
+        nombre.strip().casefold(): indice
+        for indice, nombre in enumerate(permitidos)
+    }
 
     candidatos = []
+    for ejercicio in EjercicioBiblioteca.objects.all().order_by("id"):
+        nombre = (ejercicio.nombre or "").strip().casefold()
 
-    for ejercicio in EjercicioBiblioteca.objects.all().order_by('id'):
-
-        nombre = (ejercicio.nombre or '').casefold()
-
-        if grupo_objetivo == 'chest' and 'wiper' in nombre:
+        if nombre not in prioridad or ejercicio.id in seleccionados:
             continue
 
-        if grupo_objetivo == 'back' and any(
-            palabra in nombre
-            for palabra in (
-                'flexões de braço',
-                'push-up',
-                'push up',
-                'pushup',
-                'wall push',
-            )
-        ):
-            continue       
+        candidatos.append((prioridad[nombre], ejercicio.id, ejercicio))
 
-        if ejercicio.id in seleccionados:
-            continue
-
-        principales = _normalizar_musculos(
-            ejercicio.musculos_principales
-        )
-        secundarios = _normalizar_musculos(
-            ejercicio.musculos_secundarios
-        )
-        grupo_ejercicio = (ejercicio.grupo or '').strip().casefold()
-
-        if grupo_objetivo == 'cardio':
-            if grupo_ejercicio != 'cardio':
-                continue
-            puntuacion = 10
-
-        elif grupo_objetivo == 'full_body':
-            if grupo_ejercicio != 'full_body':
-                continue
-            puntuacion = 10 + min(len(principales), 5)
-
-        else:
-            principales_coincidentes = (
-                principales & musculos_objetivo
-            )
-            secundarios_coincidentes = (
-                secundarios & musculos_objetivo
-            )
-
-            if not principales_coincidentes and not secundarios_coincidentes:
-                continue
-
-            puntuacion = 0
-
-            if principales_coincidentes:
-                puntuacion += 10 + 2 * (
-                    len(principales_coincidentes) - 1
-                )
-
-            puntuacion += 3 * len(secundarios_coincidentes)
-
-            if grupo_ejercicio == grupo_objetivo:
-                puntuacion += 4
-
-            puntuacion -= min(
-                len(principales - musculos_objetivo), 4
-            )
-
-        patron = _patron_movimiento(ejercicio, grupo_objetivo)
-        candidatos.append((puntuacion, ejercicio.id, ejercicio, patron))
-
-    candidatos.sort(key=lambda item: (-item[0], item[1]))
+    candidatos.sort(key=lambda item: (item[0], item[1]))
 
     elegidos = []
-    patrones_usados = set()
+    nombres_usados = set()
 
-    while candidatos and len(elegidos) < cantidad:
-        mejor_puntuacion = candidatos[0][0]
+    for _, ejercicio_id, ejercicio in candidatos:
+        nombre = (ejercicio.nombre or "").strip().casefold()
 
-        # Prioriza otro patrón si su puntuación es suficientemente cercana.
-        opciones_variedad = [
-            item for item in candidatos
-            if item[0] >= mejor_puntuacion - 6
-            and item[3] not in patrones_usados
-        ]
+        if nombre in nombres_usados:
+            continue
 
-        elegido = opciones_variedad[0] if opciones_variedad else candidatos[0]
+        elegidos.append(ejercicio)
+        seleccionados.add(ejercicio_id)
+        nombres_usados.add(nombre)
 
-        elegidos.append(elegido[2])
-        seleccionados.add(elegido[1])
-        patrones_usados.add(elegido[3])
-        candidatos.remove(elegido)
+        if len(elegidos) >= cantidad:
+            break
 
     return elegidos
-
 
 
 class GenerarCatalogoRutinasView(APIView):
