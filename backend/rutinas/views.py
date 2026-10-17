@@ -729,6 +729,153 @@ def _patron_movimiento(ejercicio, grupo):
     return 'otro'
 
 
+def _patron_movimiento(ejercicio, grupo):
+    nombre = _normalizar_valor(ejercicio.nombre)
+    grupo = _normalizar_valor(grupo)
+
+    # PANTORRILLAS
+    if grupo == "calves":
+        if any(p in nombre for p in (
+            "calf_raise", "calf_raises", "calf_press",
+            "calf_machine", "pantorrilla", "panturrilha",
+            "gemelo", "elevacao_da_panturrilha",
+            "tibialis_raise",
+        )):
+            return "pantorrilla"
+        return "otro"
+
+    # ESPALDA
+    if grupo == "back":
+        if any(p in nombre for p in (
+            "pulldown", "pull_down", "pull_up", "chin_up",
+            "dominada", "jalon",
+        )):
+            return "traccion_vertical"
+
+        if any(p in nombre for p in ("remo", "row", "rowing")):
+            return "traccion_horizontal"
+
+        if any(p in nombre for p in (
+            "deadlift", "peso_muerto", "levantamento_terra",
+            "back_extension", "hip_extension",
+        )):
+            return "extension_espalda_cadera"
+
+    # PECHO
+    if grupo == "chest":
+        if any(p in nombre for p in (
+            "fly", "butterfly", "crossover", "apertura", "pec_deck",
+        )):
+            return "apertura"
+
+        if any(p in nombre for p in (
+            "press", "bench", "supino", "push_up", "pushup",
+            "flexion", "flexao",
+        )):
+            return "empuje"
+
+    # PIERNAS Y GLÚTEOS
+    if grupo in ("legs", "upper_legs", "glutes"):
+        if any(p in nombre for p in (
+            "hip_thrust", "glute_bridge", "glute_bridges",
+            "glute_kickback", "kickback", "puente_de_gluteo",
+            "puente_de_gluteos", "empuje_de_cadera",
+        )):
+            return "extension_gluteo"
+
+        if any(p in nombre for p in (
+            "leg_extension", "knee_extension",
+            "extension_de_pierna", "extension_de_cuadriceps",
+            "extensao_de_pernas",
+        )):
+            return "extension_cuadriceps"
+
+
+        if any(p in nombre for p in (
+            "leg_curl", "hamstring_curl", "nordic_curl",
+            "curl_femoral", "curl_de_isquiotibiales",
+            "curl_de_pierna", "curl_de_piernas",
+            "flexao_de_pernas",
+        )):
+            return "curl_femoral"
+
+
+        if any(p in nombre for p in (
+            "deadlift", "romanian_deadlift", "rdl",
+            "peso_muerto", "buenos_dias", "good_morning",
+            "levantamento_terra",
+        )):
+            return "bisagra_cadera"
+
+        if any(p in nombre for p in (
+            "squat", "sentadilla", "agachamento",
+        )):
+            return "sentadilla"
+
+        if any(p in nombre for p in (
+            "lunge", "zancada", "zancadas",
+            "bulgarian_split_squat",
+        )):
+            return "unilateral_pierna"
+
+        if any(p in nombre for p in (
+            "hip_abduction", "abduccion_de_cadera",
+            "hip_adduction", "adduccion_de_cadera",
+        )):
+            return "abduccion_adduccion_cadera"
+
+    # HOMBROS
+    if grupo == "shoulders":
+        if any(p in nombre for p in (
+            "lateral_raise", "elevacion_lateral", "side_raise",
+        )):
+            return "elevacion_lateral"
+
+        if any(p in nombre for p in (
+            "rear_delt", "reverse_fly", "face_pull",
+            "posterior_deltoid", "pajaro",
+        )):
+            return "deltoide_posterior"
+
+        if any(p in nombre for p in (
+            "overhead_press", "shoulder_press", "military_press",
+            "press_militar",
+        )):
+            return "empuje_hombro"
+
+    # BRAZOS
+    if grupo == "upper_arms":
+        if any(p in nombre for p in ("curl", "biceps", "bicep")):
+            return "flexion_codo"
+
+        if any(p in nombre for p in (
+            "triceps", "tricep", "pushdown", "push_down",
+            "pressdown", "skull_crusher", "extension_de_triceps",
+        )):
+            return "extension_codo"
+
+    # ABDOMEN
+    if grupo == "abs":
+        if any(p in nombre for p in (
+            "plank", "plancha", "stabilization", "stabilisation",
+        )):
+            return "estabilidad_core"
+
+        if any(p in nombre for p in (
+            "crunch", "sit_up", "situp", "abdominal", "leg_raise",
+        )):
+            return "flexion_abdominal"
+
+        if any(p in nombre for p in (
+            "woodchop", "wood_chop", "russian_twist",
+            "oblique", "rotacion_de_tronco",
+        )):
+            return "rotacion_core"
+
+    return "otro"
+
+
+
 
 EJERCICIOS_BASE_POR_GRUPO = {
     "chest": [
@@ -796,33 +943,353 @@ EJERCICIOS_BASE_POR_GRUPO = {
 }
 
 
-def _seleccionar_ejercicios(grupo, cantidad, seleccionados):
-    grupo_objetivo = (grupo or "").strip().casefold()
-    permitidos = EJERCICIOS_BASE_POR_GRUPO.get(grupo_objetivo, [])
 
-    if not permitidos or cantidad <= 0:
+def _normalizar_valor(valor):
+    import unicodedata
+
+    valor = str(valor or "").strip().casefold()
+    valor = unicodedata.normalize("NFKD", valor)
+    valor = "".join(
+        caracter for caracter in valor
+        if not unicodedata.combining(caracter)
+    )
+    return valor.replace(" ", "_").replace("-", "_")
+
+
+
+
+GRUPOS_COMPATIBLES = {
+    "chest": {"chest"},
+    "back": {"back"},
+    "shoulders": {"shoulders"},
+    "upper_arms": {"arms", "upper_arms"},
+    "upper_legs": {"legs", "upper_legs"},
+    "legs": {"legs", "upper_legs"},
+    "glutes": {"legs", "upper_legs"},
+    "calves": {"calves", "lower_legs"},
+    "abs": {"abs", "core"},
+    "cardio": {"cardio"},
+    "full_body": {"full_body"},
+}
+
+
+# Unifica las distintas formas en que la biblioteca registra músculos.
+ALIAS_MUSCULOS = {
+    "pectoralis_major": "chest",
+    "pectoralis_minor": "chest",
+    "latissimus_dorsi": "lats",
+    "rhomboids": "back",
+    "erector_spinae": "back",
+    "trapezius": "trapezius",
+    "anterior_deltoid": "shoulders",
+    "lateral_deltoid": "shoulders",
+    "posterior_deltoid": "shoulders",
+    "biceps_brachii": "biceps",
+    "triceps_brachii": "triceps",
+    "brachialis": "brachialis",
+    "quadriceps": "quads",
+    "gluteus_maximus": "glutes",
+    "gluteus_medius": "glutes",
+    "gluteus_minimus": "glutes",
+    "gastrocnemius": "calves",
+    "soleus": "calves",
+    "rectus_abdominis": "abs",
+    "transverse_abdominis": "abs",
+    "obliquus_externus_abdominis": "obliques",
+}
+
+
+def _musculos_canonicos(musculos):
+    resultado = set()
+
+    for musculo in musculos or []:
+        normalizado = _normalizar_valor(musculo)
+        canonico = ALIAS_MUSCULOS.get(normalizado, normalizado)
+        resultado.add(canonico)
+
+    return resultado
+
+
+def _seleccionar_ejercicios(grupo, cantidad, seleccionados):
+    if cantidad <= 0:
         return []
 
-    prioridad = {
-        nombre.strip().casefold(): indice
-        for indice, nombre in enumerate(permitidos)
+    grupo_objetivo = _normalizar_valor(grupo)
+    grupos_validos = GRUPOS_COMPATIBLES.get(
+        grupo_objetivo, {grupo_objetivo}
+    )
+
+    # Los patrones ayudan a distinguir movimientos específicos.
+    patrones_validos = {
+        "chest": {"empuje", "apertura"},
+        "back": {
+            "traccion_vertical",
+            "traccion_horizontal",
+            "extension_espalda_cadera",
+        },
+        "shoulders": {
+            "elevacion_lateral",
+            "deltoide_posterior",
+            "empuje_hombro",
+        },
+        "upper_arms": {"flexion_codo", "extension_codo"},
+        "upper_legs": {
+            "sentadilla",
+            "unilateral_pierna",
+            "bisagra_cadera",
+            "curl_femoral",
+            "extension_cuadriceps",
+        },
+        "legs": {
+            "sentadilla",
+            "unilateral_pierna",
+            "bisagra_cadera",
+            "curl_femoral",
+            "extension_cuadriceps",
+        },
+        "glutes": {
+            "extension_gluteo",
+            "bisagra_cadera",
+            "sentadilla",
+            "unilateral_pierna",
+            "abduccion_adduccion_cadera",
+        },
+        "calves": {"pantorrilla"},
+        "abs": {
+            "estabilidad_core",
+            "flexion_abdominal",
+            "rotacion_core",
+        },
     }
 
-    candidatos = []
-    for ejercicio in EjercicioBiblioteca.objects.all().order_by("id"):
-        nombre = (ejercicio.nombre or "").strip().casefold()
+    # Cardio: no confundirlo con ejercicios de fuerza o estiramientos.
+    if grupo_objetivo == "cardio":
+        palabras_excluidas = (
+            "stretch", "alongamento", "cool-down", "cool down",
+            "mobility", "mobilidade", "warmup", "warm-up",
+            "warm up", "aquecimento",
+        )
+        candidatos = EjercicioBiblioteca.objects.filter(
+            grupo__iexact="Cardio"
+            ).order_by("id")
 
-        if nombre not in prioridad or ejercicio.id in seleccionados:
+        elegidos = []
+
+        for ejercicio in candidatos:
+            nombre = _normalizar_valor(ejercicio.nombre)
+
+            if ejercicio.id in seleccionados:
+                continue
+
+            if any(p in nombre for p in palabras_excluidas):
+                continue
+
+            elegidos.append(ejercicio)
+            seleccionados.add(ejercicio.id)
+
+            if len(elegidos) >= cantidad:
+                break
+
+        return elegidos
+
+    # Cuerpo completo: exigir varios músculos principales y evitar
+    # ejercicios de cuello, estiramientos y movimientos aislados.
+    if grupo_objetivo == "full_body":
+        candidatos = EjercicioBiblioteca.objects.filter(
+            grupo__iexact="full_body"
+        ).order_by("nombre", "id")
+
+        elegidos = []
+
+        for ejercicio in candidatos:
+            if ejercicio.id in seleccionados:
+                continue
+
+            principales = _musculos_canonicos(
+                ejercicio.musculos_principales
+            )
+            nombre = _normalizar_valor(ejercicio.nombre)
+
+            excluidos = (
+                "cuello", "neck", "stretch", "alongamento",
+                "retraccion_de_menton", "chin_tuck",
+            )
+
+            if any(p in nombre for p in excluidos):
+                continue
+
+            # No aceptar ejercicios con un único músculo principal.
+            if len(principales) < 2:
+                continue
+
+            elegidos.append(ejercicio)
+            seleccionados.add(ejercicio.id)
+
+            if len(elegidos) >= cantidad:
+                break
+
+        return elegidos
+
+    objetivos = _musculos_canonicos(
+        MUSCULOS_POR_GRUPO.get(grupo_objetivo, set())
+    )
+
+    candidatos = []
+
+    ejercicios = EjercicioBiblioteca.objects.all().order_by("id")
+
+    for ejercicio in ejercicios:
+        if ejercicio.id in seleccionados:
             continue
 
-        candidatos.append((prioridad[nombre], ejercicio.id, ejercicio))
+        principales = _musculos_canonicos(
+            ejercicio.musculos_principales
+        )
+        secundarios = _musculos_canonicos(
+            ejercicio.musculos_secundarios
+        )
+        grupo_ejercicio = _normalizar_valor(ejercicio.grupo)
+
+        coincide_principal = bool(objetivos & principales)
+        coincide_secundario = bool(objetivos & secundarios)
+        coincide_grupo = grupo_ejercicio in grupos_validos
+
+        patron = _patron_movimiento(ejercicio, grupo_objetivo)
+
+        # Excluir ejercicios claramente ajenos al movimiento objetivo.
+        if grupo_objetivo in ("chest", "back", "shoulders",
+                              "upper_arms", "upper_legs", "legs",
+                              "glutes", "calves", "abs"):
+            patrones = patrones_validos.get(grupo_objetivo, set())
+
+            # En pantorrillas y abdomen, exigir movimiento específico.
+            if grupo_objetivo in ("calves", "abs"):
+                if patron not in patrones:
+                    continue
+
+            # En los demás grupos, si el nombre identifica un patrón,
+            # debe corresponder al grupo objetivo.
+            elif patron != "otro" and patron not in patrones:
+                continue
+
+        if grupo_objetivo == "glutes":
+            if "glutes" not in principales:
+                continue
+
+            if patron not in {
+                "extension_gluteo",
+                "bisagra_cadera",
+                "sentadilla",
+                "unilateral_pierna",
+            }:
+                continue
+
+        # No permitir ejercicios excesivamente generales en músculos
+        # específicos, como Bear Walk 2.
+        if len(principales) >= 5:
+            continue
+
+
+        if coincide_principal:
+            prioridad = 0 if coincide_grupo else 1
+        elif coincide_secundario and coincide_grupo:
+            prioridad = 2
+        else:
+            continue
+
+        # Para glúteos, priorizar extensión específica antes
+        # de bisagras, sentadillas y ejercicios unilaterales.
+        if grupo_objetivo == "glutes":
+            prioridad_patron = {
+                "extension_gluteo": 0,
+                "bisagra_cadera": 1,
+                "unilateral_pierna": 2,
+                "sentadilla": 3,
+            }.get(patron, 4)
+
+            prioridad = prioridad * 10 + prioridad_patron
+
+        candidatos.append((prioridad, ejercicio.id, ejercicio))
+
+
 
     candidatos.sort(key=lambda item: (item[0], item[1]))
 
+
     elegidos = []
-    nombres_usados = set()
+
+    if grupo_objetivo in {"back", "upper_legs", "legs"}:
+        if grupo_objetivo == "back":
+            orden_patrones = [
+                "traccion_horizontal",
+                "traccion_vertical",
+                "traccion_horizontal",
+                "traccion_vertical",
+                "extension_espalda_cadera",
+            ]
+
+        elif grupo_objetivo == "upper_legs":
+            orden_patrones = [
+                "curl_femoral",
+                "bisagra_cadera",
+                "extension_cuadriceps",
+                "sentadilla",
+                "unilateral_pierna",
+            ]
+        else:  # legs
+            orden_patrones = [
+                "sentadilla",
+                "unilateral_pierna",
+                "curl_femoral",
+                "bisagra_cadera",
+                "extension_cuadriceps",
+            ]
+
+
+        pendientes = candidatos.copy()
+
+
+
+        while len(elegidos) < cantidad and pendientes:
+            progreso = False
+
+            for patron_objetivo in orden_patrones:
+                if len(elegidos) >= cantidad:
+                    break
+
+                for candidato in pendientes:
+                    _, ejercicio_id, ejercicio = candidato
+
+                    if _patron_movimiento(ejercicio, grupo_objetivo) == patron_objetivo:
+                        elegidos.append(ejercicio)
+                        seleccionados.add(ejercicio_id)
+                        pendientes.remove(candidato)
+                        progreso = True
+                        break
+
+            if not progreso:
+                break
+
+        # Completar con los candidatos restantes si faltan puestos.
+        for _, ejercicio_id, ejercicio in pendientes:
+            if len(elegidos) >= cantidad:
+                break
+
+            elegidos.append(ejercicio)
+            seleccionados.add(ejercicio_id)
+
+        return elegidos
+
+    # Selección general para los grupos que no usan balance por patrones.
+    nombres_usados = {
+        (ejercicio.nombre or "").strip().casefold()
+        for ejercicio in elegidos
+    }
 
     for _, ejercicio_id, ejercicio in candidatos:
+        if len(elegidos) >= cantidad:
+            break
+
         nombre = (ejercicio.nombre or "").strip().casefold()
 
         if nombre in nombres_usados:
@@ -832,10 +1299,11 @@ def _seleccionar_ejercicios(grupo, cantidad, seleccionados):
         seleccionados.add(ejercicio_id)
         nombres_usados.add(nombre)
 
-        if len(elegidos) >= cantidad:
-            break
-
     return elegidos
+
+
+
+
 
 
 class GenerarCatalogoRutinasView(APIView):
