@@ -18,7 +18,15 @@ from .serializers import (
     normalizar_username,
     validar_username,
 )
-from .emails import datos_envio, enviar_correo_verificacion, token_vigente
+import secrets
+
+from .emails import (
+    MAX_INTENTOS_CODIGO,
+    datos_envio,
+    enviar_correo_verificacion,
+    segundos_para_reenviar,
+    token_vigente,
+)
 
 
 # CREATE - Registro
@@ -619,25 +627,87 @@ class VerificarEmailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        auth.verificado = True
-        auth.token = None
-        auth.token_expira = None
-        auth.codigo_verificacion = None
-        auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion'])
-
-        refresh = RefreshToken.for_user(auth)
-
-        return Response({
-            'mensaje': 'Cuenta verificada correctamente. Ya puedes iniciar sesión.',
-            'token': str(refresh.access_token),
-            'refresh': str(refresh),
-        })
+        return Response(activar_cuenta(auth))
 
     def get(self, request, token):
         return self._verificar(request, token)
 
     def post(self, request, token):
         return self._verificar(request, token)
+
+
+# VERIFICAR CON EL CÓDIGO DE 6 DÍGITOS DEL CORREO
+class VerificarCodigoView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        codigo = ''.join(c for c in str(request.data.get('codigo') or '') if c.isdigit())
+
+        if not email or len(codigo) != 6:
+            return Response(
+                {'error': 'Escribe el código de 6 dígitos que te llegó al correo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        if auth is None:
+            return Response(
+                {'error': 'El código no es válido.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esta cuenta ya estaba verificada. Inicia sesión.', 'ya_verificada': True})
+
+        if not auth.codigo_verificacion or not token_vigente(auth):
+            return Response(
+                {'error': 'El código venció. Pide uno nuevo.', 'expirado': True},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not secrets.compare_digest(codigo, auth.codigo_verificacion):
+            auth.intentos_codigo += 1
+            restantes = MAX_INTENTOS_CODIGO - auth.intentos_codigo
+
+            if restantes <= 0:
+                # Demasiados intentos: el código deja de servir y hay que pedir otro
+                auth.codigo_verificacion = None
+                auth.save(update_fields=['intentos_codigo', 'codigo_verificacion'])
+                return Response(
+                    {'error': 'Demasiados intentos. Pide un código nuevo.', 'expirado': True},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            auth.save(update_fields=['intentos_codigo'])
+            return Response(
+                {'error': f'Código incorrecto. Te quedan {restantes} intentos.', 'intentos_restantes': restantes},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(activar_cuenta(auth))
+
+
+def activar_cuenta(auth):
+    """Marca la cuenta como verificada y devuelve la sesión iniciada."""
+    auth.verificado = True
+    auth.token = None
+    auth.token_expira = None
+    auth.codigo_verificacion = None
+    auth.intentos_codigo = 0
+    auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion', 'intentos_codigo'])
+
+    refresh = RefreshToken.for_user(auth)
+    usuario = Usuario.objects.filter(auth=auth).first()
+
+    return {
+        'mensaje': 'Cuenta verificada correctamente.',
+        'token': str(refresh.access_token),
+        'refresh': str(refresh),
+        'nombre': usuario.nombre if usuario else '',
+        'username': usuario.username if usuario else '',
+    }
 
 
 # REENVIAR CORREO DE VERIFICACIÓN
@@ -654,7 +724,7 @@ class ReenviarVerificacionView(APIView):
             )
 
         try:
-            auth = AuthUsuario.objects.get(email=email)
+            auth = AuthUsuario.objects.get(email__iexact=email.strip())
         except AuthUsuario.DoesNotExist:
             return Response(
                 {'error': 'No encontramos una cuenta con ese correo.'},
@@ -663,6 +733,13 @@ class ReenviarVerificacionView(APIView):
 
         if auth.verificado:
             return Response({'mensaje': 'Esta cuenta ya está verificada.'})
+
+        espera = segundos_para_reenviar(auth)
+        if espera:
+            return Response(
+                {'error': f'Espera {espera} segundos para pedir otro correo.', 'espera_segundos': espera},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
 
         try:
             usuario = Usuario.objects.get(auth=auth)

@@ -45,6 +45,9 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     intentos_fallidos = models.IntegerField(default=0)
 
+    # Intentos fallidos con el código de verificación actual
+    intentos_codigo = models.PositiveSmallIntegerField(default=0)
+
     bloqueado_hasta = models.DateTimeField(
         null=True,
         blank=True

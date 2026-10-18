@@ -272,6 +272,31 @@ input:focus, select:focus {
   color: #4ade80;
 }
 
+/* Código de verificación de 6 dígitos */
+.codigo-verificacion {
+  text-align: left;
+}
+
+.codigo-texto {
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(235, 235, 245, 0.7);
+}
+
+.codigo-input {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.6em;
+  padding-left: 1.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.codigo-verificacion .btn-secundario {
+  margin-top: 0.6rem;
+}
+
 /* Aviso cuando el backend no tiene correo configurado (solo en desarrollo) */
 .aviso-desarrollo {
   margin: 0.8rem 0 1rem;

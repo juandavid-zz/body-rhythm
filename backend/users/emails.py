@@ -1,5 +1,6 @@
 """Envío del correo de verificación de cuenta (Gmail / SMTP)."""
 import logging
+import math
 import secrets
 from datetime import timedelta
 
@@ -8,8 +9,12 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-# Horas que dura válido el enlace del correo
+# Horas que dura válido el enlace (y el código) del correo
 HORAS_VALIDEZ = 24
+# Intentos con un mismo código antes de tener que pedir uno nuevo
+MAX_INTENTOS_CODIGO = 5
+# Espera mínima entre reenvíos del correo
+SEGUNDOS_ENTRE_REENVIOS = 60
 logger = logging.getLogger(__name__)
 
 
@@ -18,8 +23,18 @@ def generar_token(auth):
     auth.token = secrets.token_urlsafe(32)
     auth.codigo_verificacion = f'{secrets.randbelow(1000000):06d}'
     auth.token_expira = timezone.now() + timedelta(hours=HORAS_VALIDEZ)
-    auth.save(update_fields=['token', 'codigo_verificacion', 'token_expira'])
+    auth.intentos_codigo = 0
+    auth.save(update_fields=['token', 'codigo_verificacion', 'token_expira', 'intentos_codigo'])
     return auth.token
+
+
+def segundos_para_reenviar(auth):
+    """Cuántos segundos faltan para poder pedir otro correo (0 si ya se puede)."""
+    if not auth.token_expira:
+        return 0
+    enviado_en = auth.token_expira - timedelta(hours=HORAS_VALIDEZ)
+    transcurrido = (timezone.now() - enviado_en).total_seconds()
+    return max(0, math.ceil(SEGUNDOS_ENTRE_REENVIOS - transcurrido))
 
 
 def token_vigente(auth):
