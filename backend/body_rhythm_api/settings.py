@@ -183,3 +183,12 @@ else:
 
 # URL del frontend para armar el enlace de verificación (ej: http://localhost:5173)
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+# Solo para pruebas locales sin Gmail: muestra el enlace de verificación en pantalla
+# en lugar de enviarlo por correo. Apagado por defecto y sin efecto si DEBUG=False
+# o si hay correo SMTP configurado.
+MOSTRAR_ENLACE_VERIFICACION = (
+    os.getenv('MOSTRAR_ENLACE_VERIFICACION', 'False').strip() == 'True'
+    and DEBUG
+    and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'
+)

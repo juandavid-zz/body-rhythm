@@ -37,11 +37,11 @@ def enlace_verificacion(auth):
 
 def datos_envio(auth, enviado):
     """
-    Respuesta para el frontend sobre el envío. Sin SMTP configurado y en DEBUG
-    se incluye el enlace, para poder verificar la cuenta en desarrollo.
+    Respuesta para el frontend sobre el envío. Con MOSTRAR_ENLACE_VERIFICACION
+    (solo desarrollo, sin SMTP) se incluye el enlace para verificar sin correo.
     """
     datos = {'correo_enviado': enviado and correo_configurado()}
-    if settings.DEBUG and not correo_configurado():
+    if settings.MOSTRAR_ENLACE_VERIFICACION and not correo_configurado():
         datos['enlace_desarrollo'] = enlace_verificacion(auth)
     return datos
 

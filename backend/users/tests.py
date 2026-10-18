@@ -15,8 +15,8 @@ class CorreoVerificacionTests(APITestCase):
             'nombre': 'Prueba', 'username': 'prueba', 'email': 'prueba@test.com', 'password': 'Clave12345',
         }, format='json')
 
-    @override_settings(EMAIL_BACKEND=CONSOLA, DEBUG=True)
-    def test_sin_smtp_en_desarrollo_devuelve_el_enlace(self):
+    @override_settings(EMAIL_BACKEND=CONSOLA, MOSTRAR_ENLACE_VERIFICACION=True)
+    def test_con_la_opcion_activa_devuelve_el_enlace(self):
         respuesta = self.registrar()
         auth = AuthUsuario.objects.get()
 
@@ -24,14 +24,14 @@ class CorreoVerificacionTests(APITestCase):
         self.assertFalse(respuesta.data['correo_enviado'])
         self.assertTrue(respuesta.data['enlace_desarrollo'].endswith(f'/verificar/{auth.token}'))
 
-    @override_settings(EMAIL_BACKEND=CONSOLA, DEBUG=False)
-    def test_sin_smtp_en_produccion_no_expone_el_enlace(self):
+    @override_settings(EMAIL_BACKEND=CONSOLA, MOSTRAR_ENLACE_VERIFICACION=False)
+    def test_por_defecto_no_expone_el_enlace(self):
         respuesta = self.registrar()
         self.assertFalse(respuesta.data['correo_enviado'])
         self.assertNotIn('enlace_desarrollo', respuesta.data)
 
-    @override_settings(EMAIL_BACKEND=SMTP, DEBUG=True)
-    def test_con_smtp_envia_el_correo(self):
+    @override_settings(EMAIL_BACKEND=SMTP, MOSTRAR_ENLACE_VERIFICACION=True)
+    def test_con_smtp_envia_el_correo_y_nunca_el_enlace(self):
         # Se simula el envío para no conectarse a Gmail durante las pruebas
         with mock.patch('django.core.mail.EmailMultiAlternatives.send', return_value=1) as enviar:
             respuesta = self.registrar()
@@ -39,7 +39,7 @@ class CorreoVerificacionTests(APITestCase):
         self.assertTrue(respuesta.data['correo_enviado'])
         self.assertNotIn('enlace_desarrollo', respuesta.data)
 
-    @override_settings(EMAIL_BACKEND=CONSOLA, DEBUG=True)
+    @override_settings(EMAIL_BACKEND=CONSOLA, MOSTRAR_ENLACE_VERIFICACION=True)
     def test_enlace_verifica_la_cuenta_y_permite_login(self):
         self.registrar()
         auth = AuthUsuario.objects.get()
