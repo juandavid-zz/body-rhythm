@@ -6,3 +6,4 @@ python-dotenv>=1.0
 mysqlclient>=2.2
 requests
 pymysql
+google-generativeai>=0.8

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import "../css/formularioPago.css";
+import "../css/FormularioPago.css";
 
 function FormularioPago() {
   const location = useLocation();

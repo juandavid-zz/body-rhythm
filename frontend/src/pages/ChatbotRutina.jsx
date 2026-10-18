@@ -6,44 +6,34 @@ import api from '../api/api'
 import '../css/dashboard.css'
 
 // ── Efecto de escritura progresiva (estilo ChatGPT) ──
-function useTypewriter(text, { enabled = true, speed = 16, chunk = 2 } = {}) {
-  const [mostrado, setMostrado] = useState(enabled ? '' : text || '')
-  const [terminado, setTerminado] = useState(!enabled)
-  const onTickRef = useRef(null)
+function useTypewriter(text, { enabled = true, speed = 16, chunk = 2, onTick } = {}) {
+  // Guarda cuántos caracteres se han mostrado del texto actual
+  const [progreso, setProgreso] = useState({ text: null, i: 0 })
+  const onTickRef = useRef(onTick)
 
   useEffect(() => {
-    if (!enabled) {
-      setMostrado(text || '')
-      setTerminado(true)
-      return
-    }
-    if (!text) {
-      setMostrado('')
-      setTerminado(true)
-      return
-    }
-    setMostrado('')
-    setTerminado(false)
+    onTickRef.current = onTick
+  })
+
+  useEffect(() => {
+    if (!enabled || !text) return
     let i = 0
     const id = setInterval(() => {
       i += chunk
-      setMostrado(text.slice(0, i))
+      setProgreso({ text, i })
       onTickRef.current?.()
-      if (i >= text.length) {
-        clearInterval(id)
-        setTerminado(true)
-      }
+      if (i >= text.length) clearInterval(id)
     }, speed)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, enabled])
+  }, [text, enabled, speed, chunk])
 
-  return { mostrado, terminado, onTickRef }
+  if (!enabled || !text) return { mostrado: text || '', terminado: true }
+  const i = progreso.text === text ? progreso.i : 0
+  return { mostrado: text.slice(0, i), terminado: i >= text.length }
 }
 
 function TextoAnimado({ text, enabled, onTick }) {
-  const { mostrado, terminado, onTickRef } = useTypewriter(text, { enabled })
-  onTickRef.current = onTick
+  const { mostrado, terminado } = useTypewriter(text, { enabled, onTick })
   return (
     <>
       {mostrado}
@@ -53,12 +43,12 @@ function TextoAnimado({ text, enabled, onTick }) {
 }
 
 function MarkdownAnimado({ text, enabled, onTick }) {
-  const { mostrado, terminado, onTickRef } = useTypewriter(text, {
+  const { mostrado, terminado } = useTypewriter(text, {
     enabled,
     speed: 12,
     chunk: 3,
+    onTick,
   })
-  onTickRef.current = onTick
   return (
     <div className="markdown-bubble">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{mostrado}</ReactMarkdown>
@@ -153,18 +143,16 @@ export default function ChatbotRutina() {
   const finChat = useRef(null)
   const chatIdAnterior = useRef(chatActualId)
   const esPrimeraCarga = useRef(true)
-  const umbralAnimacion = useRef({}) // { [chatId]: índice desde donde animar mensajes nuevos }
+  // { [chatId]: índice desde donde animar mensajes nuevos }
+  const [umbrales, setUmbrales] = useState({})
 
-  useEffect(() => {
-    // La primera vez que se entra a una conversación (o al cambiar de una
-    // a otra), los mensajes que ya existían no se vuelven a "escribir":
-    // solo animamos los mensajes que se agreguen de aquí en adelante.
-    if (umbralAnimacion.current[chatActualId] === undefined) {
-      const chat = chats.find((c) => c.id === chatActualId)
-      umbralAnimacion.current[chatActualId] = chat ? chat.mensajes.length : 0
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatActualId])
+  // La primera vez que se entra a una conversación (o al cambiar de una
+  // a otra), los mensajes que ya existían no se vuelven a "escribir":
+  // solo animamos los mensajes que se agreguen de aquí en adelante.
+  if (umbrales[chatActualId] === undefined) {
+    setUmbrales((u) => ({ ...u, [chatActualId]: chatActual.mensajes.length }))
+  }
+  const umbralAnimacion = umbrales[chatActualId] ?? Infinity
 
   const nudgeScroll = () => {
     finChat.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
@@ -485,13 +473,13 @@ export default function ChatbotRutina() {
                     {m.markdown ? (
                       <MarkdownAnimado
                         text={m.text}
-                        enabled={m.from === 'bot' && i >= umbralAnimacion.current[chatActualId]}
+                        enabled={m.from === 'bot' && i >= umbralAnimacion}
                         onTick={nudgeScroll}
                       />
                     ) : m.from === 'bot' ? (
                       <TextoAnimado
                         text={m.text}
-                        enabled={i >= umbralAnimacion.current[chatActualId]}
+                        enabled={i >= umbralAnimacion}
                         onTick={nudgeScroll}
                       />
                     ) : (

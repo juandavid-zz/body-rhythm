@@ -74,6 +74,7 @@ export default function RutinasPage() {
 
   useEffect(() => {
     let activo = true;
+    const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
 
     const cargarRutinas = async () => {
       try {

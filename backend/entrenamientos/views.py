@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from . import chatbot_service
-from rutinas.models import Rutina, Ejercicio
+from rutinas.models import Ejercicio
 
 # Ajusta este import al modelo real de tu app chatbot_ia
 from chatbot_ia.models import ConversacionIa
@@ -29,78 +29,66 @@ def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
 
 
 MAPA_GRUPO_MUSCULAR = {
-    "tren superior": ["pecho", "espalda", "hombros", "biceps", "triceps", "brazos"],
-    "superior": ["pecho", "espalda", "hombros", "biceps", "triceps", "brazos"],
-    "tren inferior": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "inferior": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "piernas": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "core": ["abdomen", "core"],
-    "abdomen": ["abdomen", "core"],
+    "tren superior": ["pecho", "espalda", "hombros", "biceps", "triceps"],
+    "superior": ["pecho", "espalda", "hombros", "biceps", "triceps"],
+    "tren inferior": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
+    "inferior": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
+    "piernas": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
+    "core": ["abdomen"],
+    "abdomen": ["abdomen"],
+}
+
+NOMBRES_META = {
+    "perder_peso": "pérdida de peso",
+    "ganar_musculo": "ganancia muscular",
+    "mantenerse": "mantenimiento",
+    "mejorar_resistencia": "mejorar la resistencia",
 }
 
 
-def _rutina_respaldo(meta, rango_imc, grupo_muscular=None):
+def _rutina_respaldo(meta, rango_imc, grupo_muscular=None, max_ejercicios=6):
     """
-    Busca en el catálogo precargado una rutina
-    que coincida con el objetivo y rango de IMC.
+    Arma una rutina de respaldo con el catálogo de ejercicios
+    cuando la IA no está disponible.
     """
 
-    rutina = Rutina.objects.filter(
-        objetivo=meta,
-        rango_imc=rango_imc,
-        usuario__isnull=True
-    ).first()
-
-    if not rutina:
-        rutina = Rutina.objects.filter(
-            rango_imc=rango_imc,
-            usuario__isnull=True
-        ).first()
-
-    if not rutina:
-        return None
-
-    relaciones = list(
-        RutinaEjercicio.objects
-        .filter(rutina=rutina)
-        .select_related('ejercicio')
-        .order_by('orden')
-    )
+    ejercicios = Ejercicio.objects.all()
 
     if grupo_muscular:
         clave = grupo_muscular.strip().lower()
-        palabras_clave = MAPA_GRUPO_MUSCULAR.get(clave)
+        grupos = MAPA_GRUPO_MUSCULAR.get(clave)
+        if grupos is None and clave.replace(" ", "_") in dict(Ejercicio.GRUPOS_MUSCULARES):
+            grupos = [clave.replace(" ", "_")]
 
-        if palabras_clave:
-            filtrados = [
-                relacion
-                for relacion in relaciones
-                if any(
-                    palabra in (relacion.ejercicio.grupo_muscular or "").lower()
-                    for palabra in palabras_clave
-                )
-            ]
+        if grupos:
+            filtrados = ejercicios.filter(grupo_muscular__in=grupos)
+            if filtrados.exists():
+                ejercicios = filtrados
 
-            if filtrados:
-                relaciones = filtrados
+    ejercicios = list(ejercicios.order_by('?')[:max_ejercicios])
+
+    if not ejercicios:
+        return None
+
+    objetivo = NOMBRES_META.get(meta, meta or "general")
 
     return {
-        "nombre": rutina.nombre,
-        "descripcion": rutina.descripcion,
-        "dias_por_semana": rutina.dias_por_semana,
-        "duracion_minutos": rutina.duracion_minutos,
+        "nombre": f"Rutina de respaldo ({grupo_muscular or 'cuerpo completo'})",
+        "descripcion": f"Rutina básica orientada a {objetivo} para IMC {rango_imc}.",
+        "dias_por_semana": 3,
+        "duracion_minutos": 45,
         "ejercicios": [
             {
-                "id": relacion.ejercicio.id,
-                "nombre": relacion.ejercicio.nombre,
-                "descripcion": relacion.ejercicio.descripcion,
-                "grupo_muscular": relacion.ejercicio.grupo_muscular,
-                "series": relacion.series,
-                "repeticiones": relacion.repeticiones,
-                "descanso_segundos": relacion.descanso_segundos,
-                "orden": relacion.orden,
+                "id": ejercicio.id,
+                "nombre": ejercicio.nombre,
+                "descripcion": ejercicio.descripcion,
+                "grupo_muscular": ejercicio.grupo_muscular,
+                "series": 3,
+                "repeticiones": 12,
+                "descanso_segundos": 60,
+                "orden": orden,
             }
-            for relacion in relaciones
+            for orden, ejercicio in enumerate(ejercicios, start=1)
         ],
     }
 

@@ -4,7 +4,7 @@ import "../css/index.css";
 
 export default function AdminPage() {
   const [seccion, setSeccion] = useState("usuarios");
-  const [usuarios, setUsuarios] = useState([]);
+  const [usuarios] = useState([]);
   const [ejercicios, setEjercicios] = useState([]);
   const [nuevoEjercicio, setNuevoEjercicio] = useState({ nombre: "", descripcion: "", grupo_muscular: "pecho" });
   const [mostrarForm, setMostrarForm] = useState(false);

@@ -82,9 +82,9 @@ function Progreso() {
   const imc = pesoActual / (altura * altura);
   const imcRedondeado = imc.toFixed(1);
 
-  let categoriaIMC = "";
-  let descripcionIMC = "";
-  let posicionIMC = 0;
+  let categoriaIMC;
+  let descripcionIMC;
+  let posicionIMC;
 
   if (imc < 18.5) {
     categoriaIMC = "Bajo peso";

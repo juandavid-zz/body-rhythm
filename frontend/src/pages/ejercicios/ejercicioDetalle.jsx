@@ -315,16 +315,14 @@ export default function EjercicioDetalle() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [imagenActiva, setImagenActiva] = useState("inicio");
-  const [historial, setHistorial] = useState([]);
-
-  useEffect(() => {
+  const [historial] = useState(() => {
     try {
-      setHistorial(getHistorial());
+      return getHistorial();
     } catch (error) {
       console.error("No se pudo leer el historial local:", error);
-      setHistorial([]);
+      return [];
     }
-  }, []);
+  });
 
   useEffect(() => {
     let activo = true;
@@ -373,7 +371,6 @@ export default function EjercicioDetalle() {
 
   useEffect(() => {
     if (!ejercicio?.imagen_inicio || !ejercicio?.imagen_final) {
-      setImagenActiva("inicio");
       return undefined;
     }
 
@@ -437,7 +434,7 @@ export default function EjercicioDetalle() {
   const grupoNombre = nombresGrupos[grupo] || grupo || "Ejercicio";
 
   const imagenMostrar =
-    imagenActiva === "final" ? imagen_final : imagen_inicio;
+    imagenActiva === "final" && imagen_final ? imagen_final : imagen_inicio;
 
   const {
     mayorPeso,

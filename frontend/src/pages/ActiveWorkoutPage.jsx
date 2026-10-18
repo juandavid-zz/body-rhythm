@@ -1522,54 +1522,10 @@ const descansoPickerDone = {
   boxShadow: "0 12px 30px rgba(168,85,247,0.24)",
 };
 
-const tipoSerieBar = {
-  display: "flex",
-  alignItems: "center",
-  flexWrap: "wrap",
-  gap: "0.7rem",
-  padding: "0.65rem 0.75rem",
-  marginBottom: "0.7rem",
-  borderRadius: "12px",
-  background: "rgba(0,0,0,0.2)",
-  border: "1px solid rgba(255,255,255,0.08)",
-};
 
-const tipoSerieTitle = {
-  color: "#d1d5db",
-  fontSize: "0.78rem",
-  fontWeight: 800,
-  whiteSpace: "nowrap",
-};
 
-const tipoSerieOptions = {
-  display: "flex",
-  alignItems: "center",
-  flexWrap: "wrap",
-  gap: "0.45rem",
-};
 
-const tipoSerieOption = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "0.35rem",
-  padding: "0.28rem 0.5rem",
-  borderRadius: "9px",
-  background: "rgba(255,255,255,0.035)",
-  color: "#a1a1aa",
-  fontSize: "0.68rem",
-  fontWeight: 700,
-};
 
-const tipoSerieIcon = {
-  width: "27px",
-  height: "27px",
-  display: "grid",
-  placeItems: "center",
-  border: "1px solid",
-  borderRadius: "7px",
-  fontSize: "0.82rem",
-  fontWeight: 900,
-};
 
 const descansoInlineStyle = {
   display: "flex",
@@ -1616,17 +1572,6 @@ const descansoInlineActions = {
   flexWrap: "wrap",
 }
 
-const descansoStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr auto 1fr",
-  alignItems: "center",
-  gap: "1rem",
-  background: "rgba(168,85,247,0.12)",
-  border: "1px solid rgba(168,85,247,0.35)",
-  borderRadius: "12px",
-  padding: "0.8rem 1rem",
-  marginBottom: "1rem",
-};
 
 const botonDescanso = {
   background: "rgba(168,85,247,0.2)",
@@ -1969,15 +1914,6 @@ const selectorItemActiveStyle = { background: "rgba(168,85,247,0.13)", borderCol
 const selectorItemIcon = { width: "36px", height: "36px", minWidth: "36px", display: "grid", placeItems: "center", borderRadius: "10px", background: "rgba(255,255,255,0.06)", fontSize: "1rem" };
 const selectorEmptyStyle = { padding: "1rem", color: "#9ca3af", textAlign: "center", fontSize: "0.85rem" };
 
-const botonPeligro = {
-  background: "linear-gradient(135deg, #ef4444, #dc2626)",
-  color: "#fff",
-  border: "none",
-  padding: "0.65rem 1rem",
-  borderRadius: "10px",
-  cursor: "pointer",
-  fontWeight: 800,
-};
 
 const finalOverlayStyle = {
   position: "fixed",
@@ -2100,24 +2036,3 @@ const modalOverlayStyle = {
   backdropFilter: "blur(12px)",
 };
 
-const modalStyle = {
-  width: "min(100%, 430px)",
-  background: "linear-gradient(145deg, #21122f, #120c1b)",
-  border: "1px solid rgba(168,85,247,0.35)",
-  borderRadius: "20px",
-  padding: "1.4rem",
-  boxShadow: "0 25px 70px rgba(0,0,0,0.55)",
-  boxSizing: "border-box",
-};
-
-const modalIconStyle = {
-  width: "48px",
-  height: "48px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "14px",
-  background: "rgba(239,68,68,0.12)",
-  border: "1px solid rgba(239,68,68,0.25)",
-  fontSize: "1.35rem",
-  marginBottom: "0.8rem",
-};
