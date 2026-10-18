@@ -1,19 +1,21 @@
 # Body Rhythm
 
-Aplicación web full-stack de fitness que ayuda a los usuarios a entrenar y seguir su progreso.
+Body Rhythm es una plataforma web de fitness diseñada para apoyar la gestión del entrenamiento. Permite consultar ejercicios, organizar rutinas, registrar actividades y acceder a funcionalidades de seguimiento del progreso y asistencia mediante inteligencia artificial.
+
 Incluye rutinas personalizadas según objetivo e IMC, y un chatbot con IA para generar rutinas.
 
 ## Qué problema resuelve y para quién
 
 <Una o dos líneas: por ejemplo, personas que quieren empezar a entrenar y no saben qué rutina seguir ni cómo medir su avance.>
 
-## Tecnologías
+## Tecnologías utilizadas
 
-- **Frontend:** React + Vite
-- **Backend:** Django 4.2 + Django REST Framework
-- **Base de datos:** MySQL (XAMPP en local)
-- **IA:** Groq API (chatbot de rutinas)
-- **Control de versiones:** Git y GitHub
+- **Frontend:** React y Vite, responsables de la interfaz de usuario.
+- **Backend:** Django 4.2 y Django REST Framework, encargados de la lógica de negocio y la API.
+- **Base de datos:** MySQL (XAMPP en local), utilizada para almacenar y consultar la información de la aplicación.
+- **Comunicación:** solicitudes y respuestas HTTP entre el frontend y el backend.
+- **Inteligencia artificial:** integración con Google Gemini mediante la configuración de `GEMINI_API_KEY` en el backend.
+- **Control de versiones:** Git y GitHub.
 
 ## Integrantes
 
@@ -23,15 +25,28 @@ Incluye rutinas personalizadas según objetivo e IMC, y un chatbot con IA para g
 | Kevin | <@usuario> | Ejercicios y progreso |
 | José Fernando | <@usuario> | Rutinas y admin |
 
-## Arquitectura
+## Arquitectura del sistema
+
+La aplicación utiliza una arquitectura cliente-servidor. El usuario interactúa con la interfaz desarrollada en React, que envía solicitudes HTTP a la API del backend. Django REST Framework procesa las solicitudes y se comunica con MySQL cuando necesita consultar o guardar información.
+
+Para las funcionalidades que lo requieren, el backend también puede comunicarse con el servicio externo de inteligencia artificial Google Gemini. Finalmente, la API devuelve las respuestas al frontend para presentarlas al usuario.
 
 ```mermaid
-flowchart LR
-    U[Usuario] --> F[Frontend<br>React + Vite]
-    F -->|peticiones HTTP| B[Backend<br>Django REST]
-    B --> D[(Base de datos<br>MySQL)]
-    B --> G[Servicio externo<br>Groq API]
+flowchart TD
+    U[Usuario] <--> F[Frontend: React + Vite]
+    F <-->|Solicitudes y respuestas HTTP| API[Backend: Django REST Framework]
+    API <--> DB[(Base de datos MySQL)]
+    API -.->|Cuando se requiere IA| IA[Servicio externo: Google Gemini]
 ```
+
+## Flujo de las solicitudes
+
+1. El usuario interactúa con la aplicación desde el frontend.
+2. React envía solicitudes HTTP a los endpoints de la API.
+3. Django REST Framework recibe y procesa las solicitudes.
+4. Cuando corresponde, el backend consulta o actualiza la información almacenada en MySQL.
+5. En las funcionalidades que lo requieren, el backend puede solicitar asistencia al servicio de Google Gemini.
+6. La API devuelve una respuesta que el frontend presenta al usuario.
 
 ## Cómo instalar y ejecutar
 
@@ -64,7 +79,7 @@ npm run dev
 - **Django 4.2 y no la última versión:** es compatible con la versión de MariaDB/MySQL de XAMPP.
 - **MySQL:** <por que es la que mas conocemos, ya que hemos trabajado con ella antes>.
 - **React + Vite:** <por qué: arranque rápido y recarga instantánea en desarrollo>.
-- **Groq para el chatbot:** <por qué es la mejor opccion gratuita >.
+- **Google Gemini para el chatbot:** <por qué se eligió>.
 
 ## Pruebas
 
@@ -78,3 +93,7 @@ body-rhythm/
 ├── frontend/    # Aplicación React + Vite
 └── README.md
 ```
+
+## Alcance de la documentación
+
+Este documento presenta una descripción general de la arquitectura y las tecnologías de Body Rhythm. El diagrama representa los componentes principales y sus relaciones de comunicación; no detalla todos los módulos internos ni todos los endpoints de la aplicación.
