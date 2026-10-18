@@ -18,7 +18,7 @@ from .serializers import (
     normalizar_username,
     validar_username,
 )
-from .emails import enviar_correo_verificacion, token_vigente
+from .emails import datos_envio, enviar_correo_verificacion, token_vigente
 
 
 # CREATE - Registro
@@ -66,8 +66,8 @@ class RegistroView(APIView):
             return Response({
                 'mensaje': 'Cuenta creada. Te enviamos un correo para confirmarla.',
                 'email': auth.email,
-                'correo_enviado': enviado,
                 'requiere_verificacion': True,
+                **datos_envio(auth, enviado),
             }, status=status.HTTP_201_CREATED)
 
         return Response(
@@ -674,5 +674,5 @@ class ReenviarVerificacionView(APIView):
 
         return Response({
             'mensaje': 'Te reenviamos el correo de confirmación.',
-            'correo_enviado': enviado,
+            **datos_envio(auth, enviado),
         })

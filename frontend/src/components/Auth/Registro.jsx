@@ -56,6 +56,7 @@ export default function Registro({ onSwitch }) {
   const [toast, setToast] = useState(null)
   const [emailEnviado, setEmailEnviado] = useState('')
   const [reenviando, setReenviando] = useState(false)
+  const [envio, setEnvio] = useState({ correo_enviado: true, enlace_desarrollo: '' })
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -97,6 +98,7 @@ export default function Registro({ onSwitch }) {
         genero: form.genero, meta: form.meta
       })
       setEmailEnviado(res.data.email || form.email)
+      setEnvio(res.data)
       setPaso(3)
     } catch (err) {
       const data = err.response?.data
@@ -111,8 +113,9 @@ export default function Registro({ onSwitch }) {
   const handleReenviar = async () => {
     setReenviando(true)
     try {
-      await api.post('/reenviar-verificacion/', { email: emailEnviado })
-      setToast('Te reenviamos el correo de confirmación 📩')
+      const res = await api.post('/reenviar-verificacion/', { email: emailEnviado })
+      setEnvio(res.data)
+      if (res.data.correo_enviado) setToast('Te reenviamos el correo de confirmación 📩')
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo reenviar el correo')
     } finally {
@@ -276,11 +279,26 @@ export default function Registro({ onSwitch }) {
 
       {paso === 3 && (
         <div className="paso-confirmacion">
-          <h3>Revisa tu correo 📩</h3>
-          <p>
-            Te enviamos un enlace de confirmación a <strong>{emailEnviado}</strong>.
-            Ábrelo para activar tu cuenta.
-          </p>
+          <h3>{envio.correo_enviado ? 'Revisa tu correo 📩' : 'Tu cuenta está creada'}</h3>
+          {envio.correo_enviado ? (
+            <p>
+              Te enviamos un enlace de confirmación a <strong>{emailEnviado}</strong>.
+              Ábrelo para activar tu cuenta. Si no lo ves, revisa la carpeta de spam.
+            </p>
+          ) : envio.enlace_desarrollo ? (
+            <div className="aviso-desarrollo">
+              <p>
+                <strong>Modo desarrollo:</strong> el envío de correos no está configurado
+                en el backend (.env), así que el correo no salió. Usa este enlace para activar la cuenta:
+              </p>
+              <a href={envio.enlace_desarrollo}>Confirmar mi cuenta</a>
+            </div>
+          ) : (
+            <p className="error">
+              No pudimos enviar el correo de confirmación a <strong>{emailEnviado}</strong>.
+              Intenta reenviarlo en unos minutos.
+            </p>
+          )}
           {error && <p className="error">{error}</p>}
           {toast && <p className="exito">{toast}</p>}
           <button type="button" className="btn-primario" onClick={handleReenviar} disabled={reenviando}>

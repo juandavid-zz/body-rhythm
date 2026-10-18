@@ -26,10 +26,36 @@ def token_vigente(auth):
     return bool(auth.token_expira and auth.token_expira > timezone.now())
 
 
+def correo_configurado():
+    """False si no hay credenciales SMTP en el .env y los correos solo se imprimen en consola."""
+    return settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend'
+
+
+def enlace_verificacion(auth):
+    return f"{settings.FRONTEND_URL.rstrip('/')}/verificar/{auth.token}"
+
+
+def datos_envio(auth, enviado):
+    """
+    Respuesta para el frontend sobre el envío. Sin SMTP configurado y en DEBUG
+    se incluye el enlace, para poder verificar la cuenta en desarrollo.
+    """
+    datos = {'correo_enviado': enviado and correo_configurado()}
+    if settings.DEBUG and not correo_configurado():
+        datos['enlace_desarrollo'] = enlace_verificacion(auth)
+    return datos
+
+
 def enviar_correo_verificacion(auth, nombre=''):
     """Genera el token y manda el correo. Devuelve True si salió."""
-    token = generar_token(auth)
-    enlace = f"{settings.FRONTEND_URL.rstrip('/')}/verificar/{token}"
+    generar_token(auth)
+    enlace = enlace_verificacion(auth)
+
+    if not correo_configurado():
+        logger.warning(
+            'Correo SMTP sin configurar (faltan EMAIL_HOST_USER/EMAIL_HOST_PASSWORD en .env): '
+            'el correo de verificación solo se imprime en esta consola.'
+        )
 
     contexto = {
         'nombre': nombre or auth.email.split('@')[0],

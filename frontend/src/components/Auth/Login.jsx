@@ -91,7 +91,15 @@ export default function Login({ onSwitch }) {
   const reenviarVerificacion = async () => {
     setReenviando(true)
     try {
-      await api.post('/reenviar-verificacion/', { email: emailPendiente || form.email })
+      const res = await api.post('/reenviar-verificacion/', { email: emailPendiente || form.email })
+      if (res.data.enlace_desarrollo) {
+        window.location.href = res.data.enlace_desarrollo
+        return
+      }
+      if (!res.data.correo_enviado) {
+        setError('No pudimos enviar el correo. Intenta de nuevo en unos minutos.')
+        return
+      }
       setToast('Te reenviamos el correo de confirmación 📩')
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo reenviar el correo')

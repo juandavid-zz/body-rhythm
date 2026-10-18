@@ -272,6 +272,25 @@ input:focus, select:focus {
   color: #4ade80;
 }
 
+/* Aviso cuando el backend no tiene correo configurado (solo en desarrollo) */
+.aviso-desarrollo {
+  margin: 0.8rem 0 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 14px;
+  background: rgba(250, 204, 21, 0.08);
+  color: #fde68a;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.aviso-desarrollo a {
+  display: inline-block;
+  margin-top: 0.6rem;
+  color: #fff;
+  font-weight: 700;
+}
+
 .error {
   font-size: 0.78rem;
   color: #f87171;
