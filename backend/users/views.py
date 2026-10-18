@@ -3,15 +3,20 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.conf import settings
 import requests
 
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
+from rest_framework.exceptions import ValidationError
+
 from .serializers import (
     RegistroSerializer,
     LoginSerializer,
-    EjercicioSerializer
+    EjercicioSerializer,
+    normalizar_username,
+    validar_username,
 )
 from .emails import enviar_correo_verificacion, token_vigente
 
@@ -32,20 +37,29 @@ class RegistroView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            auth = AuthUsuario.objects.create_user(
-                email=data['email'],
-                password=data['password']
-            )
-           
-            Usuario.objects.create(
-                auth=auth,
-                nombre=data['nombre'],
-                peso=data.get('peso'),
-                altura=data.get('altura'),
-                fecha_nacimiento=data.get('fecha_nacimiento'),
-                genero=data.get('genero'),
-                meta=data.get('meta')
-            )
+            try:
+                with transaction.atomic():
+                    auth = AuthUsuario.objects.create_user(
+                        email=data['email'],
+                        password=data['password']
+                    )
+
+                    Usuario.objects.create(
+                        auth=auth,
+                        nombre=data['nombre'],
+                        username=data['username'],
+                        peso=data.get('peso'),
+                        altura=data.get('altura'),
+                        fecha_nacimiento=data.get('fecha_nacimiento'),
+                        genero=data.get('genero'),
+                        meta=data.get('meta')
+                    )
+            except IntegrityError:
+                # Otro registro tomó el mismo username al mismo tiempo
+                return Response(
+                    {'username': ['Ese nombre de usuario ya está en uso.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             enviado = enviar_correo_verificacion(auth, nombre=data['nombre'])
 
@@ -72,9 +86,16 @@ class LoginView(APIView):
         if serializer.is_valid():
             data = serializer.validated_data
 
+            identificador = data['email'].strip()
+
             try:
-                auth = AuthUsuario.objects.get(email=data['email'])
-            except AuthUsuario.DoesNotExist:
+                if '@' in identificador.lstrip('@'):
+                    auth = AuthUsuario.objects.get(email__iexact=identificador)
+                else:
+                    auth = Usuario.objects.select_related('auth').get(
+                        username__iexact=normalizar_username(identificador)
+                    ).auth
+            except (AuthUsuario.DoesNotExist, Usuario.DoesNotExist):
                 return Response(
                     {'error': 'Credenciales incorrectas'},
                     status=status.HTTP_401_UNAUTHORIZED
@@ -107,7 +128,8 @@ class LoginView(APIView):
                 'token': str(refresh.access_token),
                 'refresh': str(refresh),
                 'mensaje': 'Login exitoso',
-                'nombre': usuario.nombre
+                'nombre': usuario.nombre,
+                'username': usuario.username
             })
 
         return Response(
@@ -190,6 +212,7 @@ class UsuarioMeView(APIView):
         return Response({
             'id': usuario.id,
             'nombre': usuario.nombre,
+            'username': usuario.username,
             'peso': usuario.peso,
             'altura': usuario.altura,
             'fecha_nacimiento': usuario.fecha_nacimiento,
@@ -267,6 +290,20 @@ class UsuarioMeView(APIView):
         return Response({
             'mensaje': 'Usuario eliminado correctamente'
         })
+
+
+# Comprobar si un @username está libre (se usa en el registro)
+class UsernameDisponibleView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        try:
+            username = validar_username(request.query_params.get('username', ''))
+        except ValidationError as e:
+            return Response({'disponible': False, 'mensaje': str(e.detail[0])})
+
+        return Response({'disponible': True, 'username': username})
 
 
 # READ - Obtener todos los ejercicios

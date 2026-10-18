@@ -35,6 +35,7 @@ export default function Login({ onSwitch }) {
   const [toast, setToast] = useState(null)
   const [pendiente, setPendiente] = useState(false)
   const [reenviando, setReenviando] = useState(false)
+  const [emailPendiente, setEmailPendiente] = useState('')
 
   const handleChange = (e) => {
     setForm({
@@ -59,9 +60,12 @@ export default function Login({ onSwitch }) {
       localStorage.setItem('refresh', res.data.refresh)
 
       localStorage.removeItem('nombre')
-
+      localStorage.removeItem('username')
       if (res.data.nombre) {
         localStorage.setItem('nombre', res.data.nombre)
+      }
+      if (res.data.username) {
+        localStorage.setItem('username', res.data.username)
       }
 
       const nombre = res.data.nombre
@@ -77,6 +81,7 @@ export default function Login({ onSwitch }) {
     } catch (err) {
       const data = err.response?.data || {}
       setPendiente(Boolean(data.requiere_verificacion))
+      setEmailPendiente(data.email || '')
       setError(data.error || 'Credenciales incorrectas')
     } finally {
       setCargando(false)
@@ -86,7 +91,7 @@ export default function Login({ onSwitch }) {
   const reenviarVerificacion = async () => {
     setReenviando(true)
     try {
-      await api.post('/reenviar-verificacion/', { email: form.email })
+      await api.post('/reenviar-verificacion/', { email: emailPendiente || form.email })
       setToast('Te reenviamos el correo de confirmación 📩')
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo reenviar el correo')
@@ -117,14 +122,16 @@ export default function Login({ onSwitch }) {
         )}
 
         <div className="form-group">
-          <label>Correo electrónico</label>
+          <label>Correo o nombre de usuario</label>
           <input
-            type="email"
+            type="text"
             name="email"
-            placeholder="usuario@correo.com"
+            placeholder="usuario@correo.com o @usuario"
             value={form.email}
             onChange={handleChange}
-            autoComplete="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck="false"
             required
           />
         </div>

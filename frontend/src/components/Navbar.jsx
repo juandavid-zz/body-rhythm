@@ -21,6 +21,8 @@ export default function Navbar() {
     if (resultado.isConfirmed) {
       localStorage.removeItem("token");
       localStorage.removeItem("refresh");
+      localStorage.removeItem("nombre");
+      localStorage.removeItem("username");
 
       await Swal.fire({
         title: "Sesión cerrada",
@@ -110,6 +112,18 @@ export default function Navbar() {
             Rutinas
           </a>
         </li>
+        {token && (
+          <li>
+            <a href="/comunidad">Comunidad</a>
+          </li>
+        )}
+
+        {token && (
+          <li>
+            <a href="/perfil">Perfil</a>
+          </li>
+        )}
+
 <li>
   <a
     href="/planes"

@@ -1,9 +1,34 @@
+import re
+
 from rest_framework import serializers
-from .models import AuthUsuario, Usuario, Ejercicio
+from .models import AuthUsuario, Usuario, Ejercicio, USERNAME_REGEX
+
+
+def normalizar_username(value):
+    return (value or "").strip().lstrip("@").lower()
+
+
+def validar_username(value, excluir_id=None):
+    """Valida formato y que el @username no esté en uso. Devuelve el valor normalizado."""
+    username = normalizar_username(value)
+
+    if not re.match(USERNAME_REGEX, username):
+        raise serializers.ValidationError(
+            "Usa de 3 a 30 caracteres: letras minúsculas, números, punto o guion bajo."
+        )
+
+    existentes = Usuario.objects.filter(username__iexact=username)
+    if excluir_id:
+        existentes = existentes.exclude(id=excluir_id)
+    if existentes.exists():
+        raise serializers.ValidationError("Ese nombre de usuario ya está en uso.")
+
+    return username
 
 
 class RegistroSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=100)
+    username = serializers.CharField(max_length=31)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8)
     peso = serializers.FloatField(required=False, allow_null=True)
@@ -27,6 +52,9 @@ class RegistroSerializer(serializers.Serializer):
         allow_blank=True
     )
 
+    def validate_username(self, value):
+        return validar_username(value)
+
     def validate_email(self, value):
         if AuthUsuario.objects.filter(email=value).exists():
             raise serializers.ValidationError(
@@ -49,7 +77,8 @@ class RegistroSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    # Acepta el correo o el @username
+    email = serializers.CharField()
     password = serializers.CharField()
 
 

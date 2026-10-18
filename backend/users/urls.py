@@ -12,6 +12,7 @@ from .views import (
     ReenviarVerificacionView,
     WompiPagoView,
     WompiWebhookView,
+    UsernameDisponibleView,
 )
 
 urlpatterns = [
@@ -20,6 +21,7 @@ urlpatterns = [
     path('usuarios/', UsuarioListView.as_view()),
     path('usuarios/<int:id>/', UsuarioDetailView.as_view()),
     path('usuarios/me/', UsuarioMeView.as_view()),
+    path('usuarios/username-disponible/', UsernameDisponibleView.as_view()),
     path('pagos/', PagoView.as_view()),
     path('ejercicios/', EjercicioListView.as_view()),
     path('verificar/<str:token>/', VerificarEmailView.as_view()),

@@ -17,6 +17,9 @@ import Planes from "./pages/Planes";
 import FormularioPago from "./pages/FormularioPago";
 import PagoExitoso from "./pages/PagoExitoso";
 import EsperandoVerificacion from './pages/EsperandoVerificacion'
+import ComunidadPage from "./pages/ComunidadPage";
+import PerfilPage from "./pages/PerfilPage";
+import MiPerfil from "./pages/MiPerfil";
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -99,6 +102,33 @@ export default function App() {
           element={
             <RutaProtegida>
               <EjercicioDetalle />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/comunidad"
+          element={
+            <RutaProtegida>
+              <ComunidadPage />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/perfil"
+          element={
+            <RutaProtegida>
+              <MiPerfil />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/perfil/:username"
+          element={
+            <RutaProtegida>
+              <PerfilPage />
             </RutaProtegida>
           }
         />

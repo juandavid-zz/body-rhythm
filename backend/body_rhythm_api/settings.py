@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'nutricion',
     'progreso',
     'chatbot_ia',
+    'social',
 ]
 
 MIDDLEWARE = [

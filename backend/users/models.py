@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -74,6 +75,9 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+USERNAME_REGEX = r"^[a-z0-9._]{3,30}$"
+
+
 class Usuario(models.Model):
     auth = models.OneToOneField(
         AuthUsuario,
@@ -81,6 +85,18 @@ class Usuario(models.Model):
     )
 
     nombre = models.CharField(max_length=100)
+
+    # Nombre de usuario público (@username): único y en minúsculas
+    username = models.CharField(
+        max_length=30,
+        unique=True,
+        validators=[
+            RegexValidator(
+                USERNAME_REGEX,
+                "Usa de 3 a 30 caracteres: letras minúsculas, números, punto o guion bajo."
+            )
+        ]
+    )
 
     peso = models.FloatField(null=True, blank=True)
 

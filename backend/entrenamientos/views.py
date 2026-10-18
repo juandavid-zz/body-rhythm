@@ -3,9 +3,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
 from rutinas.models import Ejercicio
+from users.models import Usuario
+from .models import RegistroEntrenamiento
+from .serializers import RegistroEntrenamientoSerializer
 
 # Ajusta este import al modelo real de tu app chatbot_ia
 from chatbot_ia.models import ConversacionIa
@@ -191,3 +195,42 @@ class ChatbotMensajeView(APIView):
         _guardar_conversacion(usuario, mensaje, respuesta, fuente)
 
         return Response({"respuesta": respuesta, "fuente": fuente}, status=status.HTTP_200_OK)
+
+class RegistroEntrenamientoListView(APIView):
+    """Entrenamientos terminados del usuario: listar y guardar uno nuevo."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        registros = usuario.registros_entrenamiento.all()[:100]
+        return Response(RegistroEntrenamientoSerializer(registros, many=True).data)
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        serializer = RegistroEntrenamientoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(usuario=usuario)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class RegistroEntrenamientoDetailView(APIView):
+    """Cambiar si se comparte (compartido) o borrar un entrenamiento propio."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _registro(self, request, id):
+        return get_object_or_404(RegistroEntrenamiento, id=id, usuario__auth=request.user)
+
+    def patch(self, request, id):
+        registro = self._registro(request, id)
+        serializer = RegistroEntrenamientoSerializer(registro, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, id):
+        self._registro(request, id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

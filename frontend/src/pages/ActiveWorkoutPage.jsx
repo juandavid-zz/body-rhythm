@@ -660,6 +660,17 @@ export default function ActiveWorkoutPage() {
     };
 
     guardarEntrenamiento(resumen);
+
+    // También se guarda en el backend para el perfil y el feed de seguidores.
+    // Si falla, el entrenamiento queda igual en el historial local.
+    api
+      .post("/entrenamientos/registros/", {
+        nombre: resumen.nombre || "Entrenamiento",
+        fecha: resumen.fecha,
+        duracion_segundos: resumen.duracionSeg,
+        ejercicios: resumen.ejercicios,
+      })
+      .catch((error) => console.error("No se pudo publicar el entrenamiento:", error));
     if (rutina?.id) {
       guardarProgresoRutina(rutina.id, {
         nombre,

@@ -4,6 +4,7 @@ import Toast from './Toast'
 import PasswordChecklist from './PasswordChecklist'
 import { cumpleMinimoBackend } from './passwordUtils'
 import CustomSelect from './CustomSelect'
+import { normalizarUsername, useDisponibilidadUsername } from './usernameUtils'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -43,7 +44,7 @@ export default function Registro({ onSwitch }) {
   const [paso, setPaso] = useState(1)
 
   const [form, setForm] = useState({
-    nombre: '', email: '', peso: '', altura: '',
+    nombre: '', username: '', email: '', peso: '', altura: '',
     fecha_nacimiento: '', password: '', confirmPassword: '',
     genero: '', meta: ''
   })
@@ -60,14 +61,22 @@ export default function Registro({ onSwitch }) {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  const handleUsername = (e) => {
+    setForm({ ...form, username: normalizarUsername(e.target.value) })
+  }
+
+  const disponibilidad = useDisponibilidadUsername(form.username)
+  const usernameValido = ['libre', 'desconocido'].includes(disponibilidad.estado)
+
   const emailValido = EMAIL_REGEX.test(form.email)
   const passwordValida = cumpleMinimoBackend(form.password)
   const confirmValida = form.confirmPassword.length > 0 && form.confirmPassword === form.password
-  const paso1Completo = emailValido && passwordValida && confirmValida
+  const paso1Completo = usernameValido && emailValido && passwordValida && confirmValida
 
   const handleContinuar = (e) => {
     e.preventDefault()
     setError('')
+    if (!usernameValido) { setError(disponibilidad.mensaje || 'Elige un nombre de usuario válido'); return }
     if (!emailValido) { setError('Ingresa un correo válido'); return }
     if (!passwordValida) { setError('La contraseña debe tener mínimo 8 caracteres'); return }
     if (!confirmValida) { setError('Las contraseñas no coinciden'); return }
@@ -82,7 +91,7 @@ export default function Registro({ onSwitch }) {
     setCargando(true)
     try {
       const res = await api.post('/registro/', {
-        nombre: form.nombre, email: form.email, password: form.password,
+        nombre: form.nombre, username: form.username, email: form.email, password: form.password,
         peso: form.peso, altura: form.altura,
         fecha_nacimiento: form.fecha_nacimiento,
         genero: form.genero, meta: form.meta
@@ -91,9 +100,9 @@ export default function Registro({ onSwitch }) {
       setPaso(3)
     } catch (err) {
       const data = err.response?.data
-      const mensaje = data?.email?.[0] || data?.error || data?.password?.[0] || 'Error al registrarse'
+      const mensaje = data?.username?.[0] || data?.email?.[0] || data?.error || data?.password?.[0] || 'Error al registrarse'
       setError(mensaje)
-      if (data?.email || data?.error?.includes('correo')) setPaso(1)
+      if (data?.username || data?.email || data?.error?.includes('correo')) setPaso(1)
     } finally {
       setCargando(false)
     }
@@ -130,6 +139,26 @@ export default function Registro({ onSwitch }) {
       {paso === 1 && (
         <form onSubmit={handleContinuar}>
           {error && <p className="error">{error}</p>}
+
+          <div className="form-group">
+            <label>Nombre de usuario</label>
+            <div className="input-con-prefijo">
+              <span className="input-prefijo">@</span>
+              <input type="text" name="username" placeholder="tu.usuario"
+                value={form.username} onChange={handleUsername}
+                autoComplete="username" autoCapitalize="none" spellCheck="false"
+                maxLength={30} required />
+            </div>
+            {disponibilidad.estado === 'comprobando' && (
+              <p className="username-estado">Comprobando disponibilidad…</p>
+            )}
+            {disponibilidad.estado === 'libre' && (
+              <p className="username-estado libre">✓ @{disponibilidad.username} está disponible</p>
+            )}
+            {['invalido', 'ocupado'].includes(disponibilidad.estado) && (
+              <p className="error">{disponibilidad.mensaje}</p>
+            )}
+          </div>
 
           <div className="form-group">
             <label>Correo electrónico</label>
