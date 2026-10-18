@@ -20,6 +20,7 @@ import EsperandoVerificacion from './pages/EsperandoVerificacion'
 import ComunidadPage from "./pages/ComunidadPage";
 import PerfilPage from "./pages/PerfilPage";
 import MiPerfil from "./pages/MiPerfil";
+import ConfiguracionPage from "./pages/ConfiguracionPage";
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -129,6 +130,15 @@ export default function App() {
           element={
             <RutaProtegida>
               <PerfilPage />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/configuracion"
+          element={
+            <RutaProtegida>
+              <ConfiguracionPage />
             </RutaProtegida>
           }
         />

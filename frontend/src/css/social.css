@@ -1,97 +1,226 @@
 /* ============================================================
-   COMUNIDAD Y PERFIL — misma línea visual que Nutrición
+   COMUNIDAD Y PERFIL
+   Inspirado en Strava (tres columnas: perfil, feed, descubrir) y
+   en las tarjetas de entrenamiento de Hevy, con el mismo acabado
+   de vidrio que Entrenamientos y el asistente.
    ============================================================ */
 
 .social-page {
-  min-height: 100vh;
-  padding: 6.2rem 1.25rem 3.5rem;
-  color: #f7f4fb;
+  --sc-texto: #f5f3ff;
+  --sc-texto-2: rgba(240, 235, 255, 0.72);
+  --sc-texto-3: rgba(240, 235, 255, 0.5);
+  --sc-separador: rgba(255, 255, 255, 0.09);
+  --sc-acento: #a855f7;
+  --sc-degradado: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+
+  min-height: calc(100vh - 62px);
+  padding: 2rem 1.25rem 4rem;
   background:
-    radial-gradient(circle at 8% 0%, rgba(168, 85, 247, .17), transparent 30%),
-    radial-gradient(circle at 92% 15%, rgba(236, 72, 153, .09), transparent 26%),
-    linear-gradient(135deg, #090810 0%, #130d20 54%, #0a0910 100%);
+    radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.2), transparent 38%),
+    radial-gradient(circle at 95% 20%, rgba(236, 72, 153, 0.11), transparent 35%),
+    radial-gradient(circle at 45% 100%, rgba(59, 130, 246, 0.12), transparent 40%),
+    #07060d;
+  background-attachment: fixed;
+  color: var(--sc-texto);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+.social-page button {
+  font: inherit;
+}
+
+.social-page button:focus-visible,
+.social-page input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+/* ---------- Vidrio ---------- */
+.social-panel,
+.social-tarjeta,
+.social-perfil,
+.social-aviso {
+  position: relative;
+  isolation: isolate;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.035) 45%, rgba(255, 255, 255, 0.06) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 50px -22px rgba(0, 0, 0, 0.6);
+}
+
+/* Borde especular */
+.social-panel::before,
+.social-tarjeta::before,
+.social-perfil::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.06) 28%,
+      rgba(255, 255, 255, 0) 55%,
+      rgba(255, 255, 255, 0.16) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .social-panel,
+  .social-tarjeta,
+  .social-perfil,
+  .social-aviso {
+    background: rgba(30, 22, 48, 0.94);
+  }
+}
+
+.social-panel {
+  padding: 1.1rem;
+}
+
+.social-panel-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.social-titulo {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.social-kicker {
+  display: block;
+  margin: 0 0 0.8rem;
+  color: var(--sc-texto-3);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ---------- Tres columnas (Strava) ---------- */
+.social-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 22px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.social-col {
+  position: sticky;
+  top: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.social-area-feed {
+  min-width: 0;
+}
+
+/* Sin solicitudes ni sugerencias, su contenedor no deja hueco */
+.social-area-solicitudes:empty,
+.social-area-sugerencias:empty {
+  display: none;
+}
+
+/* Contenedor de una sola columna (perfil de usuario) */
 .social-contenedor {
   width: min(720px, 100%);
   margin: 0 auto;
 }
 
-.social-kicker {
-  display: block;
-  margin: 0 0 .9rem;
-  color: #a78bfa;
-  font-size: .68rem;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: .16em;
-  text-transform: uppercase;
+/* ---------- Mi tarjeta ---------- */
+.social-mi-tarjeta {
+  padding: 1.4rem 1.1rem 1.1rem;
+  text-align: center;
 }
 
-/* ---------- Cabecera de la página ---------- */
-.social-hero {
-  margin-bottom: 1.25rem;
-  padding: 1.45rem 1.55rem;
-  border: 1px solid rgba(192, 132, 252, .16);
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, .13), rgba(236, 72, 153, .055));
+.social-mi-tarjeta.social-cargando {
+  height: 230px;
 }
 
-.social-hero h1 {
-  margin: 0 0 .35rem;
-  font-size: clamp(1.5rem, 4vw, 2rem);
-}
-
-.social-hero p {
-  margin: 0;
-  color: #a1a1aa;
-}
-
-/* ---------- Pestañas ---------- */
-.social-pestanas {
+.social-mi-identidad {
   display: flex;
-  gap: .4rem;
-  margin-bottom: 1.25rem;
-  padding: .35rem;
-  border: 1px solid rgba(192, 132, 252, .14);
-  border-radius: 16px;
-  background: rgba(24, 18, 35, .8);
-}
-
-.social-pestanas button {
-  flex: 1;
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: .45rem;
-  padding: .65rem .5rem;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0;
   border: none;
-  border-radius: 12px;
-  background: transparent;
-  color: #a1a1aa;
-  font: inherit;
-  font-weight: 700;
+  background: none;
+  color: inherit;
   cursor: pointer;
-  transition: background .2s, color .2s;
 }
 
-.social-pestanas button:hover {
-  color: #fff;
+.social-mi-identidad .social-avatar {
+  margin-bottom: 0.6rem;
 }
 
-.social-pestanas button.activa {
-  background: rgba(168, 85, 247, .2);
-  color: #fff;
+.social-mi-identidad span {
+  color: var(--sc-texto-3);
+  font-size: 0.86rem;
 }
 
-.social-badge {
-  min-width: 1.3rem;
-  padding: .1rem .4rem;
-  border-radius: 999px;
-  background: #a855f7;
-  color: #fff;
-  font-size: .7rem;
-  line-height: 1.2;
+.social-mi-config {
+  margin-top: 0.7rem;
+  font-size: 0.78rem;
+}
+
+.social-mis-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 1.1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--sc-separador);
+}
+
+.social-mis-numeros dt {
+  color: var(--sc-texto-3);
+  font-size: 0.68rem;
+}
+
+.social-mis-numeros dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+/* ---------- Solicitudes ---------- */
+.social-solicitudes ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.social-solicitudes li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.social-solicitudes .social-acciones button {
+  flex: 1;
 }
 
 /* ---------- Botones ---------- */
@@ -99,45 +228,45 @@
 .social-btn-secundario,
 .social-btn-seguir {
   flex-shrink: 0;
-  padding: .55rem 1rem;
-  border-radius: 10px;
-  font: inherit;
-  font-size: .85rem;
-  font-weight: 800;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform .15s, background .2s, border-color .2s;
+  transition: background 0.2s;
 }
 
 .social-btn-primario,
 .social-btn-seguir.ninguna {
-  border: none;
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--sc-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
   color: #fff;
-  box-shadow: 0 8px 22px rgba(168, 85, 247, .25);
 }
 
 .social-btn-secundario,
 .social-btn-seguir.pendiente,
 .social-btn-seguir.siguiendo {
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: rgba(255, 255, 255, .05);
-  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: var(--sc-texto);
+}
+
+.social-btn-secundario:hover,
+.social-btn-seguir.pendiente:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .social-btn-seguir.siguiendo:hover {
-  border-color: rgba(239, 68, 68, .45);
+  border-color: rgba(239, 68, 68, 0.45);
   color: #fca5a5;
-}
-
-.social-btn-primario:hover,
-.social-btn-seguir.ninguna:hover {
-  transform: translateY(-1px);
 }
 
 .social-btn-primario:disabled,
 .social-btn-secundario:disabled,
 .social-btn-seguir:disabled {
-  opacity: .6;
+  opacity: 0.6;
   cursor: wait;
 }
 
@@ -145,35 +274,47 @@
   padding: 0;
   border: none;
   background: none;
-  color: #c4b5fd;
-  font: inherit;
-  font-size: .85rem;
-  font-weight: 700;
+  color: var(--sc-texto-2);
+  font-size: 0.84rem;
+  font-weight: 500;
   cursor: pointer;
+}
+
+.social-link:hover {
+  color: #fff;
 }
 
 .social-acciones {
   display: flex;
-  gap: .45rem;
+  gap: 0.45rem;
+}
+
+.social-badge {
+  min-width: 1.3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--sc-acento);
+  color: #fff;
+  font-size: 0.7rem;
+  text-align: center;
 }
 
 .social-ver-mas {
   align-self: center;
 }
 
-/* ---------- Mensajes vacíos ---------- */
+/* ---------- Estados vacíos ---------- */
 .social-vacio {
-  margin: 1rem 0;
-  color: #a1a1aa;
+  margin: 0.8rem 0;
+  color: var(--sc-texto-3);
+  font-size: 0.88rem;
   text-align: center;
 }
 
 .social-vacio-grande {
-  padding: 2.2rem 1.25rem;
-  border: 1px dashed rgba(192, 132, 252, .25);
-  border-radius: 20px;
+  padding: 2.4rem 1.5rem;
   text-align: center;
-  color: #a1a1aa;
+  color: var(--sc-texto-2);
 }
 
 .social-vacio-grande span {
@@ -181,13 +322,15 @@
 }
 
 .social-vacio-grande h3 {
-  margin: .6rem 0 .35rem;
-  color: #fff;
+  margin: 0 0 0.4rem;
+  color: var(--sc-texto);
+  font-size: 1.1rem;
 }
 
 .social-vacio-grande p {
-  margin: 0 auto 1.1rem;
   max-width: 380px;
+  margin: 0 auto 1.2rem;
+  line-height: 1.5;
 }
 
 /* ---------- Avatar ---------- */
@@ -195,54 +338,66 @@
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, #a855f7, #ec4899);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: #fff;
-  font-size: .9rem;
-  font-weight: 900;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .social-avatar.grande {
-  width: 92px;
-  height: 92px;
-  font-size: 1.9rem;
+  width: 76px;
+  height: 76px;
+  font-size: 1.6rem;
 }
 
-/* ---------- Buscador ---------- */
+/* ---------- Buscador (anula los estilos globales de input) ---------- */
 .social-buscador {
   display: flex;
   align-items: center;
-  gap: .6rem;
-  margin-bottom: .75rem;
-  padding: 0 .95rem;
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .045);
+  gap: 0.55rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--sc-texto-3);
 }
 
 .social-buscador:focus-within {
-  border-color: rgba(168, 85, 247, .7);
-  box-shadow: 0 0 0 4px rgba(168, 85, 247, .14);
+  border-color: rgba(168, 85, 247, 0.6);
 }
 
 .social-buscador input {
   flex: 1;
+  width: auto;
   min-width: 0;
-  padding: .85rem 0;
+  padding: 0.7rem 0;
   border: none;
+  border-radius: 0;
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
   color: #fff;
   font: inherit;
   outline: none;
+}
+
+.social-buscador input::placeholder {
+  color: var(--sc-texto-3);
+}
+
+.social-buscar .social-lista-usuarios {
+  margin-top: 0.7rem;
 }
 
 /* ---------- Lista de usuarios ---------- */
 .social-lista-usuarios {
   display: flex;
   flex-direction: column;
-  gap: .5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -252,23 +407,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .75rem;
-  padding: .7rem .8rem;
-  border: 1px solid rgba(192, 132, 252, .12);
-  border-radius: 16px;
-  background: rgba(24, 18, 35, .9);
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+}
+
+.social-usuario-fila + .social-usuario-fila {
+  border-top: 1px solid var(--sc-separador);
 }
 
 .social-usuario-info {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: 0.65rem;
   min-width: 0;
   padding: 0;
   border: none;
   background: none;
   color: inherit;
-  font: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -286,60 +441,53 @@
   white-space: nowrap;
 }
 
+.social-usuario-textos strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .social-usuario-textos span {
-  color: #a1a1aa;
-  font-size: .85rem;
+  color: var(--sc-texto-3);
+  font-size: 0.8rem;
 }
 
 .social-te-sigue {
-  margin-left: .5rem;
-  padding: .1rem .45rem;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, .08);
-  color: #d4d4d8;
-  font-size: .7rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sc-texto-2);
+  font-size: 0.68rem;
   font-style: normal;
 }
 
-/* ---------- Tarjeta de entrenamiento ---------- */
+/* ---------- Tarjeta de entrenamiento (Hevy) ---------- */
 .social-feed {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .social-tarjeta {
-  padding: 1.15rem 1.2rem;
-  border: 1px solid rgba(192, 132, 252, .16);
-  border-radius: 20px;
-  background: rgba(24, 18, 35, .92);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .18);
+  padding: 1.2rem 1.3rem 0.9rem;
 }
 
 .social-tarjeta-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .75rem;
-}
-
-.social-tarjeta-cabecera time {
-  margin-left: auto;
-  color: #71717a;
-  font-size: .8rem;
-  white-space: nowrap;
+  gap: 0.75rem;
 }
 
 .social-tarjeta-autor {
   display: flex;
   align-items: center;
-  gap: .65rem;
+  gap: 0.7rem;
   min-width: 0;
   padding: 0;
   border: none;
   background: none;
   color: inherit;
-  font: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -350,75 +498,129 @@
   min-width: 0;
 }
 
-.social-tarjeta-autor > span span {
-  color: #a1a1aa;
-  font-size: .82rem;
+.social-tarjeta-autor strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.social-tarjeta-autor > span > span,
+.social-tarjeta-fecha {
+  color: var(--sc-texto-3);
+  font-size: 0.8rem;
 }
 
 .social-tarjeta h3 {
-  margin: .8rem 0 .7rem;
-  font-size: 1.15rem;
+  margin: 0.9rem 0 0.8rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .social-tarjeta-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: .5rem;
-  margin: 0 0 1rem;
-  padding: 0;
-  list-style: none;
-}
-
-.social-tarjeta-stats li {
   display: flex;
-  flex-direction: column;
-  padding: .55rem .7rem;
-  border-radius: 12px;
-  background: rgba(168, 85, 247, .09);
+  gap: 2.2rem;
+  margin: 0 0 1rem;
 }
 
-.social-tarjeta-stats span {
-  color: #a1a1aa;
-  font-size: .7rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
+.social-tarjeta-stats dt {
+  color: var(--sc-texto-3);
+  font-size: 0.74rem;
 }
 
-.social-tarjeta-stats strong {
-  font-size: .98rem;
+.social-tarjeta-stats dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .social-ejercicios {
-  display: flex;
-  flex-direction: column;
-  gap: .8rem;
   margin: 0;
-  padding: 0;
+  padding: 0.2rem 0.9rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
   list-style: none;
 }
 
-.social-ejercicios h4 {
-  margin: 0 0 .35rem;
-  font-size: .92rem;
-  color: #e9d5ff;
+.social-ejercicios > li {
+  padding: 0.65rem 0;
+}
+
+.social-ejercicios > li + li {
+  border-top: 1px solid var(--sc-separador);
+}
+
+.social-ejercicio-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.social-ejercicio-nombre {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.social-ejercicio-nombre strong {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.social-ejercicio-nombre span {
+  color: var(--sc-texto-3);
+  font-size: 0.78rem;
+}
+
+.social-ejercicio-marca {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* Récord personal (como el trofeo de Hevy) */
+.social-record {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  background: rgba(250, 204, 21, 0.12);
+  color: #fde68a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.social-stat-record dd {
+  color: #fde68a;
+}
+
+.social-mejor {
+  flex-shrink: 0;
+  color: var(--sc-texto-2);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .social-series {
   display: flex;
   flex-direction: column;
-  gap: .25rem;
-  margin: 0;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
   padding: 0;
   list-style: none;
-  color: #d4d4d8;
-  font-size: .88rem;
+  color: var(--sc-texto-2);
+  font-size: 0.86rem;
   font-variant-numeric: tabular-nums;
 }
 
 .social-series li {
   display: flex;
   align-items: center;
-  gap: .6rem;
+  gap: 0.6rem;
 }
 
 .social-serie-numero {
@@ -426,60 +628,206 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, .06);
-  color: #a1a1aa;
-  font-size: .72rem;
-  font-weight: 800;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sc-texto-3);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
-.social-sin-series {
-  margin: 0;
-  color: #71717a;
-  font-size: .85rem;
-}
-
-.social-tarjeta-pie {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  margin-top: .9rem;
-}
-
-.social-tarjeta-pie:empty {
-  display: none;
+.social-tarjeta > .social-link {
+  margin-top: 0.7rem;
 }
 
 .social-privacidad {
-  margin-left: auto;
-  padding: .35rem .7rem;
-  border: 1px solid rgba(74, 222, 128, .3);
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
   border-radius: 999px;
-  background: rgba(74, 222, 128, .08);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.08);
   color: #86efac;
-  font: inherit;
-  font-size: .78rem;
-  font-weight: 700;
+  font-size: 0.74rem;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .social-privacidad.privado {
-  border-color: rgba(255, 255, 255, .14);
-  background: rgba(255, 255, 255, .05);
-  color: #d4d4d8;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--sc-texto-2);
 }
 
-/* ---------- Perfil ---------- */
+/* Dar fuerza / Comentar */
+.social-tarjeta-acciones {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--sc-separador);
+}
+
+.social-accion {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--sc-texto-2);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.social-accion:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.social-accion.activa {
+  color: #e9d5ff;
+}
+
+.social-accion.activa svg {
+  color: var(--sc-acento);
+}
+
+.social-contador {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+/* ---------- Comentarios ---------- */
+.social-comentarios {
+  margin-top: 0.6rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--sc-separador);
+}
+
+.social-comentarios ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0 0 0.8rem;
+  padding: 0;
+  list-style: none;
+}
+
+.social-comentarios li {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.social-comentario-avatar {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.social-comentario-avatar .social-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.72rem;
+}
+
+.social-comentario-cuerpo p {
+  margin: 0;
+  color: var(--sc-texto-2);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+.social-comentario-cuerpo strong {
+  color: var(--sc-texto);
+  font-weight: 600;
+}
+
+.social-comentario-cuerpo > span {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.15rem;
+  color: var(--sc-texto-3);
+  font-size: 0.74rem;
+}
+
+.social-comentario-cuerpo .social-link {
+  font-size: 0.74rem;
+}
+
+/* Campo de comentario (anula los estilos globales de form, input y submit) */
+.social-comentar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.social-comentar:focus-within {
+  border-color: rgba(168, 85, 247, 0.6);
+}
+
+.social-comentar input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding: 0.45rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.social-comentar input:focus-visible {
+  outline: none;
+}
+
+.social-comentar button {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--sc-degradado);
+  box-shadow: none;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.social-comentar button:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sc-texto-3);
+  cursor: default;
+}
+
+/* ---------- Perfil de usuario ---------- */
 .social-perfil {
   display: flex;
   align-items: flex-start;
   gap: 1.4rem;
-  margin-bottom: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid rgba(192, 132, 252, .16);
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, .13), rgba(236, 72, 153, .055));
+  margin-bottom: 1.2rem;
+  padding: 1.6rem;
 }
 
 .social-perfil-datos {
@@ -496,27 +844,30 @@
 
 .social-perfil-titulo h1 {
   margin: 0;
-  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-size: clamp(1.35rem, 4vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 
 .social-perfil-titulo p {
-  margin: .2rem 0 0;
-  color: #a1a1aa;
+  margin: 0.2rem 0 0;
+  color: var(--sc-texto-3);
 }
 
 .social-perfil-contadores {
   display: flex;
   flex-wrap: wrap;
-  gap: .4rem 1.3rem;
+  gap: 0.4rem 1.4rem;
   margin: 1rem 0 0;
   padding: 0;
   list-style: none;
-  color: #a1a1aa;
+  color: var(--sc-texto-3);
+  font-size: 0.9rem;
 }
 
 .social-perfil-contadores strong {
-  color: #fff;
+  color: var(--sc-texto);
 }
 
 .social-perfil-contadores button {
@@ -524,7 +875,6 @@
   border: none;
   background: none;
   color: inherit;
-  font: inherit;
   cursor: pointer;
 }
 
@@ -537,24 +887,21 @@
 }
 
 .social-perfil-meta {
-  margin: .8rem 0 0;
-  color: #d4d4d8;
+  margin: 0.8rem 0 0;
+  color: var(--sc-texto-2);
 }
 
 .social-aviso {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .75rem;
-  margin-bottom: 1.25rem;
-  padding: .85rem 1rem;
-  border: 1px solid rgba(168, 85, 247, .35);
-  border-radius: 16px;
-  background: rgba(168, 85, 247, .1);
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+  padding: 0.85rem 1rem;
 }
 
 .social-seccion {
-  margin-top: .5rem;
+  margin-top: 0.5rem;
 }
 
 /* ---------- Modal de seguidores / seguidos ---------- */
@@ -565,8 +912,9 @@
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(5, 4, 10, .72);
-  backdrop-filter: blur(8px);
+  background: rgba(5, 4, 10, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .social-modal {
@@ -574,37 +922,91 @@
   max-height: min(80vh, 620px);
   overflow-y: auto;
   padding: 1.2rem;
-  border: 1px solid rgba(168, 85, 247, .35);
-  border-radius: 20px;
-  background: linear-gradient(145deg, #21122f, #120c1b);
-  box-shadow: 0 25px 70px rgba(0, 0, 0, .55);
-  color: #f7f4fb;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(155deg, rgba(40, 30, 62, 0.96), rgba(18, 14, 28, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 25px 70px rgba(0, 0, 0, 0.55);
+  color: #f5f3ff;
 }
 
 .social-modal header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: .9rem;
+  margin-bottom: 0.6rem;
 }
 
 .social-modal h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .social-modal-cerrar {
   border: none;
   background: none;
-  color: #a1a1aa;
+  color: rgba(240, 235, 255, 0.6);
   font-size: 1rem;
   cursor: pointer;
 }
 
-/* ---------- Móvil ---------- */
-@media (max-width: 560px) {
+/* ---------- Pantallas medianas: dos columnas ----------
+   Las columnas laterales se "disuelven" (display: contents) para poder
+   reordenar sus bloques con grid-template-areas. */
+@media (max-width: 1100px) {
+  .social-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas:
+      "buscar       feed"
+      "perfil       feed"
+      "solicitudes  feed"
+      "sugerencias  feed";
+  }
+
+  .social-col {
+    display: contents;
+  }
+
+  .social-area-perfil { grid-area: perfil; }
+  .social-area-solicitudes { grid-area: solicitudes; }
+  .social-area-feed { grid-area: feed; }
+  .social-area-buscar { grid-area: buscar; }
+  .social-area-sugerencias { grid-area: sugerencias; }
+}
+
+/* ---------- Móvil: una columna ---------- */
+@media (max-width: 760px) {
   .social-page {
-    padding: 5.5rem 1rem 2.5rem;
+    padding: 1.2rem 0.9rem 3rem;
+  }
+
+  .social-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "buscar"
+      "solicitudes"
+      "feed"
+      "sugerencias";
+    gap: 12px;
+  }
+
+  .social-area-perfil {
+    display: none;
+  }
+
+  /* En móvil el título quedaría entre las solicitudes y el feed; la Navbar ya indica la sección */
+  .social-titulo {
+    display: none;
+  }
+
+  .social-tarjeta {
+    padding: 1.05rem 1rem 0.8rem;
+  }
+
+  .social-tarjeta-stats {
+    gap: 1.4rem;
   }
 
   .social-perfil {
@@ -625,9 +1027,5 @@
   .social-aviso,
   .social-usuario-fila {
     flex-wrap: wrap;
-  }
-
-  .social-tarjeta-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

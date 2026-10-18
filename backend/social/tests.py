@@ -34,7 +34,10 @@ ENTRENAMIENTO = {
 class BaseSocialTest(APITestCase):
     def setUp(self):
         self.ana = crear_usuario('ana', 'Ana Gómez')
+        # Beto tiene la cuenta privada: las pruebas de solicitudes y visibilidad lo usan a él
         self.beto = crear_usuario('beto', 'Beto Ruiz')
+        self.beto.cuenta_privada = True
+        self.beto.save()
         self.caro = crear_usuario('caro', 'Carolina Paz')
 
     def entrar_como(self, usuario):
@@ -193,3 +196,160 @@ class BusquedaTests(BaseSocialTest):
         self.entrar_como(self.ana)
         self.assertEqual(self.client.get('/api/social/buscar/', {'q': 'ana'}).data, [])
         self.assertEqual(self.client.get('/api/social/buscar/', {'q': ''}).data, [])
+
+
+class InteraccionesTests(BaseSocialTest):
+    def setUp(self):
+        super().setUp()
+        # beto publica; ana lo sigue (aceptado); caro no lo sigue
+        self.entrar_como(self.beto)
+        self.registro_id = self.client.post('/api/entrenamientos/registros/', ENTRENAMIENTO, format='json').data['id']
+        Seguimiento.objects.create(seguidor=self.ana, seguido=self.beto, estado=Seguimiento.ACEPTADO)
+
+    def url(self, ruta):
+        return f'/api/social/registros/{self.registro_id}/{ruta}/'
+
+    def test_dar_y_quitar_fuerza(self):
+        self.entrar_como(self.ana)
+        respuesta = self.client.post(self.url('fuerza'))
+        self.assertEqual((respuesta.data['fuerzas'], respuesta.data['di_fuerza']), (1, True))
+        # Dos veces no suma dos
+        self.assertEqual(self.client.post(self.url('fuerza')).data['fuerzas'], 1)
+
+        feed = self.client.get('/api/social/feed/').data['resultados'][0]
+        self.assertEqual((feed['fuerzas'], feed['di_fuerza']), (1, True))
+
+        self.assertEqual(self.client.delete(self.url('fuerza')).data['fuerzas'], 0)
+
+    def test_comentar_listar_y_borrar(self):
+        self.entrar_como(self.ana)
+        creado = self.client.post(self.url('comentarios'), {'texto': '  ¡Buen volumen!  '}, format='json')
+        self.assertEqual(creado.status_code, 201)
+        self.assertEqual(creado.data['texto'], '¡Buen volumen!')
+        self.assertEqual(creado.data['usuario']['username'], 'ana')
+
+        self.assertEqual(self.client.get('/api/social/feed/').data['resultados'][0]['comentarios'], 1)
+        self.assertEqual(len(self.client.get(self.url('comentarios')).data), 1)
+
+        # El dueño del entrenamiento puede borrar comentarios ajenos; un tercero no
+        self.entrar_como(self.caro)
+        self.assertEqual(self.client.delete(f"/api/social/comentarios/{creado.data['id']}/").status_code, 404)
+        self.entrar_como(self.beto)
+        self.assertEqual(self.client.delete(f"/api/social/comentarios/{creado.data['id']}/").status_code, 204)
+
+    def test_comentario_vacio(self):
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.post(self.url('comentarios'), {'texto': '   '}, format='json').status_code, 400)
+
+    def test_sin_seguir_no_se_puede_interactuar(self):
+        self.entrar_como(self.caro)
+        self.assertEqual(self.client.post(self.url('fuerza')).status_code, 404)
+        self.assertEqual(self.client.get(self.url('comentarios')).status_code, 404)
+        self.assertEqual(self.client.post(self.url('comentarios'), {'texto': 'hola'}, format='json').status_code, 404)
+
+    def test_entrenamiento_oculto_no_admite_interacciones(self):
+        self.entrar_como(self.beto)
+        self.client.patch(f'/api/entrenamientos/registros/{self.registro_id}/', {'compartido': False}, format='json')
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.post(self.url('fuerza')).status_code, 404)
+
+
+class SugerenciasTests(BaseSocialTest):
+    def test_sugiere_amigos_de_amigos_primero_y_excluye_relacionados(self):
+        dani = crear_usuario('dani')
+        # ana sigue a beto; beto sigue a caro → caro es "amiga de amigo" de ana
+        Seguimiento.objects.create(seguidor=self.ana, seguido=self.beto, estado=Seguimiento.ACEPTADO)
+        Seguimiento.objects.create(seguidor=self.beto, seguido=self.caro, estado=Seguimiento.ACEPTADO)
+
+        self.entrar_como(self.ana)
+        nombres = [u['username'] for u in self.client.get('/api/social/sugerencias/').data]
+
+        self.assertEqual(nombres[0], 'caro')
+        self.assertIn(dani.username, nombres)
+        self.assertNotIn('beto', nombres)  # ya la sigue
+        self.assertNotIn('ana', nombres)
+
+
+class CuentaPublicaTests(BaseSocialTest):
+    """Caro tiene la cuenta pública (lo predeterminado)."""
+
+    def setUp(self):
+        super().setUp()
+        self.entrar_como(self.caro)
+        self.registro_id = self.client.post('/api/entrenamientos/registros/', ENTRENAMIENTO, format='json').data['id']
+
+    def test_seguir_una_cuenta_publica_es_inmediato(self):
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.post('/api/social/perfiles/caro/seguir/').data['estado'], 'aceptado')
+        self.assertEqual(self.client.get('/api/social/feed/').data['resultados'][0]['id'], self.registro_id)
+        self.assertEqual(self.client.get('/api/social/perfiles/caro/').data['relacion'], 'siguiendo')
+
+    def test_cuenta_publica_se_ve_sin_seguirla(self):
+        self.entrar_como(self.ana)
+        perfil = self.client.get('/api/social/perfiles/caro/').data
+        self.assertTrue(perfil['puede_ver'])
+        self.assertFalse(perfil['cuenta_privada'])
+        self.assertEqual(len(self.client.get('/api/social/perfiles/caro/entrenamientos/').data['resultados']), 1)
+        # ...y se puede dar fuerza, pero no aparece en el feed porque no la sigue
+        self.assertEqual(self.client.post(f'/api/social/registros/{self.registro_id}/fuerza/').status_code, 200)
+        self.assertEqual(self.client.get('/api/social/feed/').data['resultados'], [])
+
+    def test_entrenamiento_oculto_de_cuenta_publica_no_se_ve(self):
+        self.client.patch(f'/api/entrenamientos/registros/{self.registro_id}/', {'compartido': False}, format='json')
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.get('/api/social/perfiles/caro/entrenamientos/').data['resultados'], [])
+
+
+class ConfiguracionTests(BaseSocialTest):
+    def test_ver_y_editar_perfil(self):
+        self.entrar_como(self.ana)
+        datos = self.client.get('/api/usuarios/me/').data
+        self.assertEqual((datos['username'], datos['email'], datos['cuenta_privada']), ('ana', 'ana@test.com', False))
+
+        respuesta = self.client.patch('/api/usuarios/me/', {
+            'nombre': ' Ana María ', 'username': '@Ana.Fit', 'peso': 62.5, 'altura': 1.68, 'meta': 'mantenerse',
+        }, format='json')
+        self.assertEqual(respuesta.status_code, 200)
+        self.ana.refresh_from_db()
+        self.assertEqual((self.ana.nombre, self.ana.username, self.ana.altura), ('Ana María', 'ana.fit', 1.68))
+
+    def test_no_se_puede_usar_username_ajeno_pero_si_el_propio(self):
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.patch('/api/usuarios/me/', {'username': 'beto'}, format='json').status_code, 400)
+        self.assertEqual(self.client.patch('/api/usuarios/me/', {'username': 'ana'}, format='json').status_code, 200)
+
+    def test_validaciones_de_peso_y_altura(self):
+        self.entrar_como(self.ana)
+        self.assertIn('altura', self.client.patch('/api/usuarios/me/', {'altura': 175}, format='json').data)
+        self.assertIn('peso', self.client.patch('/api/usuarios/me/', {'peso': 5}, format='json').data)
+
+    def test_hacer_publica_la_cuenta_acepta_las_solicitudes(self):
+        self.entrar_como(self.ana)
+        self.client.post('/api/social/perfiles/beto/seguir/')  # beto es privado → pendiente
+        self.entrar_como(self.beto)
+        self.client.patch('/api/usuarios/me/', {'cuenta_privada': False}, format='json')
+        self.assertEqual(Seguimiento.objects.get().estado, Seguimiento.ACEPTADO)
+
+    def test_compartir_por_defecto(self):
+        self.entrar_como(self.ana)
+        self.client.patch('/api/usuarios/me/', {'compartir_por_defecto': False}, format='json')
+        creado = self.client.post('/api/entrenamientos/registros/', ENTRENAMIENTO, format='json').data
+        self.assertFalse(creado['compartido'])
+        # Si el entrenamiento lo indica, manda lo que diga
+        creado = self.client.post('/api/entrenamientos/registros/', {**ENTRENAMIENTO, 'compartido': True}, format='json').data
+        self.assertTrue(creado['compartido'])
+
+    def test_cambiar_password(self):
+        self.entrar_como(self.ana)
+        mala = self.client.post('/api/usuarios/me/password/', {'actual': 'otra', 'nueva': 'Nueva12345'}, format='json')
+        self.assertEqual(mala.status_code, 400)
+        buena = self.client.post('/api/usuarios/me/password/', {'actual': 'Clave12345', 'nueva': 'Nueva12345'}, format='json')
+        self.assertEqual(buena.status_code, 200)
+        self.ana.auth.refresh_from_db()
+        self.assertTrue(self.ana.auth.check_password('Nueva12345'))
+
+    def test_eliminar_cuenta_pide_la_contrasena(self):
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.delete('/api/usuarios/me/', {'password': 'mal'}, format='json').status_code, 400)
+        self.assertEqual(self.client.delete('/api/usuarios/me/', {'password': 'Clave12345'}, format='json').status_code, 204)
+        self.assertFalse(Usuario.objects.filter(username='ana').exists())

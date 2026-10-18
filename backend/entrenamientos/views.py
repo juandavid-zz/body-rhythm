@@ -6,6 +6,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
+from .records import calcular_records
 from .rutina_ia import guardar_rutina, rutina_respaldo
 from users.models import Usuario
 from .models import RegistroEntrenamiento
@@ -172,8 +173,14 @@ class RegistroEntrenamientoListView(APIView):
         usuario = get_object_or_404(Usuario, auth=request.user)
         serializer = RegistroEntrenamientoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(usuario=usuario)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Si el entrenamiento no dice si se comparte, se usa la preferencia de la cuenta
+        extra = {} if 'compartido' in request.data else {'compartido': usuario.compartir_por_defecto}
+        registro = serializer.save(usuario=usuario, **extra)
+
+        registro.records = calcular_records(registro)
+        registro.save(update_fields=['records'])
+
+        return Response(RegistroEntrenamientoSerializer(registro).data, status=status.HTTP_201_CREATED)
 
 
 class RegistroEntrenamientoDetailView(APIView):

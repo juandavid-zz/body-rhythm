@@ -153,6 +153,13 @@ class Usuario(models.Model):
         null=True
     )
 
+    # Privacidad: con la cuenta privada, seguir requiere aprobación y solo los
+    # seguidores aceptados ven los entrenamientos. Pública por defecto.
+    cuenta_privada = models.BooleanField('Cuenta privada', default=False)
+
+    # Valor inicial de "compartido" en cada entrenamiento nuevo
+    compartir_por_defecto = models.BooleanField('Compartir entrenamientos por defecto', default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

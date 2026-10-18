@@ -36,5 +36,6 @@ export function tiempoRelativo(fecha) {
 }
 
 export function formatearNumero(valor) {
-  return new Intl.NumberFormat("es", { maximumFractionDigits: 1 }).format(valor || 0);
+  // useGrouping "always": en español 9480 se escribiría sin punto por defecto
+  return new Intl.NumberFormat("es", { maximumFractionDigits: 1, useGrouping: "always" }).format(valor || 0);
 }

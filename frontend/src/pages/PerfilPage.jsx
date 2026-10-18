@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 import Avatar from "../components/social/Avatar";
@@ -10,6 +10,7 @@ import "../css/social.css";
 
 export default function PerfilPage() {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [version, setVersion] = useState(0);
   const [datos, setDatos] = useState({ clave: null, perfil: null, entrenamientos: [], error: "" });
   const [lista, setLista] = useState(null); // 'seguidores' | 'seguidos' | null
@@ -79,13 +80,24 @@ export default function PerfilPage() {
                 <div className="social-perfil-datos">
                   <div className="social-perfil-titulo">
                     <div>
-                      <h1>{perfil.nombre}</h1>
+                      <h1>
+                        {perfil.nombre}
+                        {perfil.cuenta_privada && (
+                          <span className="social-candado" title="Cuenta privada" aria-label="Cuenta privada"> 🔒</span>
+                        )}
+                      </h1>
                       <p>
                         @{perfil.username}
                         {perfil.te_sigue && <em className="social-te-sigue">Te sigue</em>}
                       </p>
                     </div>
-                    <BotonSeguir usuario={perfil} onCambio={recargar} />
+                    {perfil.relacion === "yo" ? (
+                      <button type="button" className="social-btn-secundario" onClick={() => navigate("/configuracion")}>
+                        Editar perfil
+                      </button>
+                    ) : (
+                      <BotonSeguir usuario={perfil} onCambio={recargar} />
+                    )}
                   </div>
 
                   <ul className="social-perfil-contadores">

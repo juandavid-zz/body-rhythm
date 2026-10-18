@@ -6,9 +6,8 @@ from users.models import Usuario
 
 class Seguimiento(models.Model):
     """
-    Relación "A sigue a B" con aprobación (como una cuenta privada):
-    nace como pendiente y B la acepta o la rechaza.
-    Solo los seguidores aceptados ven los entrenamientos de B.
+    Relación "A sigue a B". Si la cuenta de B es pública, nace aceptada;
+    si es privada, nace pendiente y B la acepta o la rechaza.
     """
 
     PENDIENTE = 'pendiente'
@@ -49,3 +48,58 @@ class Seguimiento(models.Model):
 
     def __str__(self):
         return f"@{self.seguidor.username} → @{self.seguido.username} ({self.estado})"
+
+
+class Fuerza(models.Model):
+    """Dar «fuerza» a un entrenamiento (como los kudos de Strava). Una por usuario."""
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='fuerzas_dadas',
+        verbose_name='Usuario'
+    )
+    registro = models.ForeignKey(
+        'entrenamientos.RegistroEntrenamiento',
+        on_delete=models.CASCADE,
+        related_name='fuerzas',
+        verbose_name='Entrenamiento'
+    )
+    created_at = models.DateTimeField('Fecha', auto_now_add=True)
+
+    class Meta:
+        db_table = 'social_fuerzas'
+        verbose_name = 'Fuerza'
+        verbose_name_plural = 'Fuerzas'
+        constraints = [
+            models.UniqueConstraint(fields=['usuario', 'registro'], name='fuerza_unica'),
+        ]
+
+    def __str__(self):
+        return f"@{self.usuario.username} 💪 {self.registro}"
+
+
+class Comentario(models.Model):
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='comentarios',
+        verbose_name='Usuario'
+    )
+    registro = models.ForeignKey(
+        'entrenamientos.RegistroEntrenamiento',
+        on_delete=models.CASCADE,
+        related_name='comentarios',
+        verbose_name='Entrenamiento'
+    )
+    texto = models.CharField('Comentario', max_length=500)
+    created_at = models.DateTimeField('Fecha', auto_now_add=True)
+
+    class Meta:
+        db_table = 'social_comentarios'
+        ordering = ['created_at']
+        verbose_name = 'Comentario'
+        verbose_name_plural = 'Comentarios'
+
+    def __str__(self):
+        return f"@{self.usuario.username}: {self.texto[:40]}"

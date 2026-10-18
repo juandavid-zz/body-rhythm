@@ -4,14 +4,19 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import IntegrityError, transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.conf import settings
 import requests
+
+from social.models import Seguimiento
 
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
 from rest_framework.exceptions import ValidationError
 
 from .serializers import (
+    CambiarPasswordSerializer,
+    ConfiguracionSerializer,
     RegistroSerializer,
     LoginSerializer,
     EjercicioSerializer,
@@ -204,100 +209,71 @@ class UsuarioDetailView(APIView):
         })
 
 
-# OBTENER USUARIO AUTENTICADO
+# CUENTA DEL USUARIO AUTENTICADO: ver, configurar y eliminar
 class UsuarioMeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def _usuario(self, request):
+        return get_object_or_404(Usuario.objects.select_related('auth'), auth=request.user)
+
     def get(self, request):
+        return Response(ConfiguracionSerializer(self._usuario(request)).data)
+
+    def patch(self, request):
+        usuario = self._usuario(request)
+        era_privada = usuario.cuenta_privada
+
+        serializer = ConfiguracionSerializer(usuario, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
         try:
-            usuario = Usuario.objects.get(auth=request.user)
-        except Usuario.DoesNotExist:
+            with transaction.atomic():
+                usuario = serializer.save()
+
+                # Como en Instagram: al hacer pública la cuenta se aceptan las solicitudes pendientes
+                if era_privada and not usuario.cuenta_privada:
+                    Seguimiento.objects.filter(
+                        seguido=usuario, estado=Seguimiento.PENDIENTE,
+                    ).update(estado=Seguimiento.ACEPTADO, aceptado_at=timezone.now())
+        except IntegrityError:
             return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
+                {'username': ['Ese nombre de usuario ya está en uso.']},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response({
-            'id': usuario.id,
-            'nombre': usuario.nombre,
-            'username': usuario.username,
-            'peso': usuario.peso,
-            'altura': usuario.altura,
-            'fecha_nacimiento': usuario.fecha_nacimiento,
-            'genero': usuario.genero,
-            'meta': usuario.meta,
-            'plan': usuario.plan,
-            'fecha_inicio_plan': usuario.fecha_inicio_plan,
-            'fecha_fin_plan': usuario.fecha_fin_plan,
-            'created_at': usuario.created_at
-        })
+        return Response(ConfiguracionSerializer(usuario).data)
 
-    def put(self, request, id):
-        try:
-            usuario = Usuario.objects.get(id=id)
-        except Usuario.DoesNotExist:
+    def delete(self, request):
+        """Elimina la cuenta y todos sus datos. Pide la contraseña para confirmar."""
+        usuario = self._usuario(request)
+
+        if not usuario.auth.check_password(request.data.get('password') or ''):
             return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if usuario.auth_id != request.user.id:
-            return Response(
-                {'error': 'No tienes permiso sobre este recurso'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        usuario.nombre = request.data.get(
-            'nombre',
-            usuario.nombre
-        )
-        usuario.peso = request.data.get(
-            'peso',
-            usuario.peso
-        )
-        usuario.altura = request.data.get(
-            'altura',
-            usuario.altura
-        )
-        usuario.fecha_nacimiento = request.data.get(
-            'fecha_nacimiento',
-            usuario.fecha_nacimiento
-        )
-        usuario.genero = request.data.get(
-            'genero',
-            usuario.genero
-        )
-        usuario.meta = request.data.get(
-            'meta',
-            usuario.meta
-        )
-
-        usuario.save()
-
-        return Response({
-            'mensaje': 'Usuario actualizado correctamente'
-        })
-
-    def delete(self, request, id):
-        try:
-            usuario = Usuario.objects.get(id=id)
-        except Usuario.DoesNotExist:
-            return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if usuario.auth_id != request.user.id:
-            return Response(
-                {'error': 'No tienes permiso sobre este recurso'},
-                status=status.HTTP_403_FORBIDDEN
+                {'error': 'La contraseña no es correcta.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         usuario.auth.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return Response({
-            'mensaje': 'Usuario eliminado correctamente'
-        })
+
+class CambiarPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = CambiarPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        auth = request.user
+
+        if not auth.check_password(serializer.validated_data['actual']):
+            return Response(
+                {'actual': ['La contraseña actual no es correcta.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth.set_password(serializer.validated_data['nueva'])
+        auth.save(update_fields=['password'])
+        return Response({'mensaje': 'Contraseña actualizada.'})
 
 
 # Comprobar si un @username está libre (se usa en el registro)

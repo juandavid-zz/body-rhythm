@@ -1,5 +1,5 @@
 from django.db import IntegrityError
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -8,12 +8,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from entrenamientos.models import RegistroEntrenamiento
-from entrenamientos.serializers import RegistroEntrenamientoSerializer
 from users.models import Usuario
 
-from .models import Seguimiento
-from .permisos import ids_visibles_en_feed, puede_ver_contenido
+from .models import Comentario, Fuerza, Seguimiento
+from .permisos import ids_visibles_en_feed, puede_interactuar, puede_ver_contenido
 from .serializers import (
+    ComentarioSerializer,
     PublicacionFeedSerializer,
     SolicitudSerializer,
     cargar_relaciones,
@@ -23,6 +23,7 @@ from .serializers import (
 
 TAMANO_PAGINA = 20
 MAX_RESULTADOS_BUSQUEDA = 20
+MAX_SUGERENCIAS = 5
 
 
 def usuario_actual(request):
@@ -51,6 +52,25 @@ def paginar(request, queryset, serializer_class):
         'resultados': serializer_class(filas[:TAMANO_PAGINA], many=True).data,
         'siguiente_pagina': pagina + 1 if hay_mas else None,
     })
+
+
+def anotar_interacciones(registros, yo):
+    """Agrega a cada entrenamiento sus fuerzas, comentarios y si yo ya le di fuerza."""
+    return registros.select_related('usuario').annotate(
+        num_fuerzas=Count('fuerzas', distinct=True),
+        num_comentarios=Count('comentarios', distinct=True),
+        di_fuerza=Exists(Fuerza.objects.filter(registro=OuterRef('pk'), usuario=yo)),
+    )
+
+
+def registro_con_acceso(request, id):
+    """El entrenamiento si quien consulta puede verlo e interactuar; si no, 404."""
+    yo = usuario_actual(request)
+    registro = get_object_or_404(RegistroEntrenamiento.objects.select_related('usuario'), id=id)
+    if not puede_interactuar(yo, registro):
+        # 404 en vez de 403 para no revelar que existe
+        return yo, None
+    return yo, registro
 
 
 def respuesta_privada():
@@ -111,6 +131,7 @@ class PerfilView(APIView):
             'seguidores': perfil.seguimientos_recibidos.filter(estado=Seguimiento.ACEPTADO).count(),
             'seguidos': perfil.seguimientos_enviados.filter(estado=Seguimiento.ACEPTADO).count(),
             'entrenamientos': entrenamientos.count(),
+            'cuenta_privada': perfil.cuenta_privada,
             'puede_ver': visible,
             **relacion_con(yo, perfil, enviados, recibidos),
         })
@@ -130,7 +151,7 @@ class EntrenamientosPerfilView(APIView):
         if perfil.id != yo.id:
             registros = registros.filter(compartido=True)
 
-        return paginar(request, registros, RegistroEntrenamientoSerializer)
+        return paginar(request, anotar_interacciones(registros, yo).order_by('-fecha', '-id'), PublicacionFeedSerializer)
 
 
 class ListaRelacionesView(APIView):
@@ -164,15 +185,23 @@ class SeguirView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, username):
-        """Envía la solicitud para seguir (queda pendiente hasta que la acepten)."""
+        """Sigue al instante si la cuenta es pública; si es privada, envía una solicitud."""
         yo = usuario_actual(request)
         perfil = usuario_por_username(username)
 
         if perfil.id == yo.id:
             return Response({'error': 'No puedes seguirte a ti mismo.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        publica = not perfil.cuenta_privada
         try:
-            seguimiento, creado = Seguimiento.objects.get_or_create(seguidor=yo, seguido=perfil)
+            seguimiento, creado = Seguimiento.objects.get_or_create(
+                seguidor=yo,
+                seguido=perfil,
+                defaults={
+                    'estado': Seguimiento.ACEPTADO if publica else Seguimiento.PENDIENTE,
+                    'aceptado_at': timezone.now() if publica else None,
+                },
+            )
         except IntegrityError:
             seguimiento, creado = Seguimiento.objects.get(seguidor=yo, seguido=perfil), False
 
@@ -253,7 +282,101 @@ class FeedView(APIView):
             RegistroEntrenamiento.objects
             .filter(usuario_id__in=ids_visibles_en_feed(yo))
             .filter(Q(compartido=True) | Q(usuario=yo))
-            .select_related('usuario')
-            .order_by('-fecha', '-id')
         )
-        return paginar(request, registros, PublicacionFeedSerializer)
+        return paginar(request, anotar_interacciones(registros, yo).order_by('-fecha', '-id'), PublicacionFeedSerializer)
+
+
+class FuerzaView(APIView):
+    """Dar fuerza (POST) o quitarla (DELETE) a un entrenamiento."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _respuesta(self, yo, registro):
+        return Response({
+            'fuerzas': registro.fuerzas.count(),
+            'di_fuerza': registro.fuerzas.filter(usuario=yo).exists(),
+        })
+
+    def post(self, request, id):
+        yo, registro = registro_con_acceso(request, id)
+        if registro is None:
+            return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            Fuerza.objects.get_or_create(usuario=yo, registro=registro)
+        except IntegrityError:
+            pass  # doble clic: ya existía
+        return self._respuesta(yo, registro)
+
+    def delete(self, request, id):
+        yo, registro = registro_con_acceso(request, id)
+        if registro is None:
+            return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        Fuerza.objects.filter(usuario=yo, registro=registro).delete()
+        return self._respuesta(yo, registro)
+
+
+class ComentariosView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        yo, registro = registro_con_acceso(request, id)
+        if registro is None:
+            return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        comentarios = registro.comentarios.select_related('usuario')
+        return Response(ComentarioSerializer(comentarios, many=True).data)
+
+    def post(self, request, id):
+        yo, registro = registro_con_acceso(request, id)
+        if registro is None:
+            return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ComentarioSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(usuario=yo, registro=registro)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ComentarioDetalleView(APIView):
+    """Borra un comentario: su autor o el dueño del entrenamiento."""
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id):
+        yo = usuario_actual(request)
+        comentario = get_object_or_404(
+            Comentario.objects.filter(Q(usuario=yo) | Q(registro__usuario=yo)),
+            id=id,
+        )
+        comentario.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SugerenciasView(APIView):
+    """
+    A quién seguir: primero gente a la que siguen las cuentas que sigo,
+    después las cuentas más nuevas. Nunca yo ni a quien ya sigo o pedí seguir.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        yo = usuario_actual(request)
+        ya_relacionados = Seguimiento.objects.filter(seguidor=yo).values_list('seguido_id', flat=True)
+        mis_seguidos = Seguimiento.objects.filter(
+            seguidor=yo, estado=Seguimiento.ACEPTADO,
+        ).values_list('seguido_id', flat=True)
+
+        candidatos = (
+            Usuario.objects
+            .filter(auth__is_active=True, auth__verificado=True)
+            .exclude(id=yo.id)
+            .exclude(id__in=ya_relacionados)
+            .annotate(en_comun=Count(
+                'seguimientos_recibidos',
+                filter=Q(
+                    seguimientos_recibidos__seguidor_id__in=mis_seguidos,
+                    seguimientos_recibidos__estado=Seguimiento.ACEPTADO,
+                ),
+            ))
+            .order_by('-en_comun', '-created_at')[:MAX_SUGERENCIAS]
+        )
+        return Response(serializar_usuarios(yo, candidatos))

@@ -102,6 +102,9 @@ class RegistroEntrenamiento(models.Model):
     volumen_kg = models.FloatField(default=0)
     ejercicios = models.JSONField(default=list, blank=True)
 
+    # Récords personales logrados en este entrenamiento (ver records.py)
+    records = models.JSONField(default=list, blank=True)
+
     # Si es False solo lo ve su dueño, aunque tenga seguidores
     compartido = models.BooleanField(default=True)
 

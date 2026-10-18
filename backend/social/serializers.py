@@ -3,7 +3,7 @@ from rest_framework import serializers
 from entrenamientos.serializers import RegistroEntrenamientoSerializer
 from users.models import Usuario
 
-from .models import Seguimiento
+from .models import Comentario, Seguimiento
 
 
 def relacion_con(visitante, usuario, enviados, recibidos):
@@ -77,13 +77,42 @@ class SolicitudSerializer(serializers.ModelSerializer):
         return {'id': obj.seguidor.id, 'username': obj.seguidor.username, 'nombre': obj.seguidor.nombre}
 
 
+def resumen_usuario(usuario):
+    return {'id': usuario.id, 'username': usuario.username, 'nombre': usuario.nombre}
+
+
 class PublicacionFeedSerializer(RegistroEntrenamientoSerializer):
-    """Entrenamiento tal como aparece en el feed: incluye quién lo hizo."""
+    """
+    Entrenamiento tal como aparece en el feed y el perfil: quién lo hizo y
+    sus interacciones. Los conteos vienen anotados en la consulta
+    (ver anotar_interacciones) para no hacer una consulta por publicación.
+    """
 
     usuario = serializers.SerializerMethodField()
+    fuerzas = serializers.IntegerField(source='num_fuerzas', read_only=True, default=0)
+    comentarios = serializers.IntegerField(source='num_comentarios', read_only=True, default=0)
+    di_fuerza = serializers.BooleanField(read_only=True, default=False)
 
     class Meta(RegistroEntrenamientoSerializer.Meta):
-        fields = RegistroEntrenamientoSerializer.Meta.fields + ['usuario']
+        fields = RegistroEntrenamientoSerializer.Meta.fields + ['usuario', 'fuerzas', 'comentarios', 'di_fuerza']
 
     def get_usuario(self, obj):
-        return {'id': obj.usuario.id, 'username': obj.usuario.username, 'nombre': obj.usuario.nombre}
+        return resumen_usuario(obj.usuario)
+
+
+class ComentarioSerializer(serializers.ModelSerializer):
+    usuario = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comentario
+        fields = ['id', 'usuario', 'texto', 'created_at']
+        read_only_fields = ['id', 'usuario', 'created_at']
+
+    def get_usuario(self, obj):
+        return resumen_usuario(obj.usuario)
+
+    def validate_texto(self, value):
+        texto = value.strip()
+        if not texto:
+            raise serializers.ValidationError('El comentario no puede estar vacío.')
+        return texto

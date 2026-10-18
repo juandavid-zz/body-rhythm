@@ -159,6 +159,33 @@ nav {
   margin-right: 0.5rem;
 }
 
+/* Engranaje de configuración, junto a "Cerrar sesión" */
+.btn-configuracion {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  margin-right: 0.6rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-configuracion:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-configuracion + .btn-iniciar {
+  margin-left: 0;
+}
+
 /* ── HERO ── */
 
 .hero {

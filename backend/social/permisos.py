@@ -12,8 +12,15 @@ def es_seguidor_aceptado(visitante, dueno):
 
 
 def puede_ver_contenido(visitante, dueno):
-    """El dueño y sus seguidores aceptados ven sus entrenamientos y listas."""
-    return visitante.id == dueno.id or es_seguidor_aceptado(visitante, dueno)
+    """
+    Cuenta pública: cualquiera con sesión ve sus entrenamientos compartidos y sus listas.
+    Cuenta privada: solo el dueño y sus seguidores aceptados.
+    """
+    return (
+        visitante.id == dueno.id
+        or not dueno.cuenta_privada
+        or es_seguidor_aceptado(visitante, dueno)
+    )
 
 
 def ids_visibles_en_feed(usuario):
@@ -23,3 +30,10 @@ def ids_visibles_en_feed(usuario):
         estado=Seguimiento.ACEPTADO,
     ).values_list('seguido_id', flat=True)
     return [usuario.id, *seguidos]
+
+
+def puede_interactuar(visitante, registro):
+    """Dar fuerza y comentar: el dueño, o quien puede ver el entrenamiento si está compartido."""
+    if registro.usuario_id == visitante.id:
+        return True
+    return registro.compartido and puede_ver_contenido(visitante, registro.usuario)

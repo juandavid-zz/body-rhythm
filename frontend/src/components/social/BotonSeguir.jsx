@@ -24,7 +24,7 @@ export default function BotonSeguir({ usuario, onCambio }) {
     if (relacion === "siguiendo") {
       const { isConfirmed } = await Swal.fire({
         title: `¿Dejar de seguir a @${username}?`,
-        text: "Ya no verás sus entrenamientos hasta que te vuelva a aceptar.",
+        text: "Sus entrenamientos dejarán de aparecer en tu feed.",
         icon: "question",
         showCancelButton: true,
         confirmButtonColor: "#50118c",

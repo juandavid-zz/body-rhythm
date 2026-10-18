@@ -2,6 +2,10 @@ from django.urls import path
 
 from .views import (
     BuscarUsuariosView,
+    ComentarioDetalleView,
+    ComentariosView,
+    FuerzaView,
+    SugerenciasView,
     EliminarSeguidorView,
     EntrenamientosPerfilView,
     FeedView,
@@ -15,6 +19,10 @@ from .views import (
 urlpatterns = [
     path('buscar/', BuscarUsuariosView.as_view()),
     path('feed/', FeedView.as_view()),
+    path('sugerencias/', SugerenciasView.as_view()),
+    path('registros/<int:id>/fuerza/', FuerzaView.as_view()),
+    path('registros/<int:id>/comentarios/', ComentariosView.as_view()),
+    path('comentarios/<int:id>/', ComentarioDetalleView.as_view()),
     path('solicitudes/', SolicitudesView.as_view()),
     path('solicitudes/<int:id>/', SolicitudDetalleView.as_view()),
     path('perfiles/<str:username>/', PerfilView.as_view()),

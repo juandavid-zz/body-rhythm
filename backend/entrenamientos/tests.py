@@ -105,3 +105,67 @@ class GenerarRutinaTests(BaseChatbotTest):
         self.assertEqual(respuesta.data['rango_imc'], 'normal')
         ids = {e['ejercicio_id'] for e in respuesta.data['rutina']['ejercicios']}
         self.assertEqual(ids, {self.press.id, self.remo.id})  # solo tren superior
+
+
+def serie(peso, reps, hecho=True):
+    return {'tipo': 'normal', 'reps': reps, 'peso': peso, 'pesoKg': peso, 'hecho': hecho}
+
+
+class RecordsPersonalesTests(BaseChatbotTest):
+    def registrar(self, *ejercicios, fecha=None):
+        datos = {'nombre': 'Sesión', 'duracion_segundos': 1800, 'ejercicios': list(ejercicios)}
+        if fecha:
+            datos['fecha'] = fecha
+        return self.client.post('/api/entrenamientos/registros/', datos, format='json').data
+
+    def test_la_primera_vez_no_es_record(self):
+        datos = self.registrar({'nombre': 'Sentadilla', 'sets': [serie(80, 5)]})
+        self.assertEqual(datos['records'], [])
+
+    def test_mas_peso_que_nunca_es_record(self):
+        self.registrar({'nombre': 'Sentadilla', 'sets': [serie(80, 5), serie(85, 3)]}, fecha='2026-10-01T10:00:00Z')
+        datos = self.registrar({'nombre': 'sentadilla', 'sets': [serie(90, 2)]}, fecha='2026-10-08T10:00:00Z')
+
+        self.assertEqual(len(datos['records']), 1)
+        record = datos['records'][0]
+        self.assertEqual((record['tipo'], record['valor'], record['anterior']), ('peso', 90, 85))
+
+    def test_igualar_o_bajar_no_es_record_y_series_sin_hacer_no_cuentan(self):
+        self.registrar({'nombre': 'Press', 'sets': [serie(60, 8)]}, fecha='2026-10-01T10:00:00Z')
+        datos = self.registrar(
+            {'nombre': 'Press', 'sets': [serie(60, 10), serie(100, 1, hecho=False)]},
+            fecha='2026-10-08T10:00:00Z',
+        )
+        self.assertEqual(datos['records'], [])
+
+    def test_peso_corporal_cuenta_repeticiones(self):
+        self.registrar({'nombre': 'Dominadas', 'sets': [serie(0, 8)]}, fecha='2026-10-01T10:00:00Z')
+        datos = self.registrar({'nombre': 'Dominadas', 'sets': [serie(0, 10)]}, fecha='2026-10-08T10:00:00Z')
+        self.assertEqual(datos['records'][0]['tipo'], 'reps')
+        self.assertEqual(datos['records'][0]['valor'], 10)
+
+    def test_por_tiempo_cuenta_la_serie_mas_larga(self):
+        plancha = lambda segundos: {
+            'nombre': 'Plancha', 'porTiempo': True,
+            'sets': [{'tipo': 'normal', 'duracionSegundos': segundos, 'hecho': True}],
+        }
+        self.registrar(plancha(60), fecha='2026-10-01T10:00:00Z')
+        datos = self.registrar(plancha(90), fecha='2026-10-08T10:00:00Z')
+        self.assertEqual((datos['records'][0]['tipo'], datos['records'][0]['valor']), ('tiempo', 90))
+
+    def test_solo_compara_con_entrenamientos_anteriores(self):
+        # Un entrenamiento registrado con fecha posterior no cuenta como "anterior"
+        self.registrar({'nombre': 'Remo', 'sets': [serie(100, 5)]}, fecha='2026-10-20T10:00:00Z')
+        self.registrar({'nombre': 'Remo', 'sets': [serie(50, 5)]}, fecha='2026-10-01T10:00:00Z')
+        datos = self.registrar({'nombre': 'Remo', 'sets': [serie(60, 5)]}, fecha='2026-10-08T10:00:00Z')
+        self.assertEqual(datos['records'][0]['anterior'], 50)
+
+    def test_records_de_otro_usuario_no_cuentan(self):
+        otro = AuthUsuario.objects.create_user(email='otro@test.com', password='Clave12345')
+        otro_usuario = Usuario.objects.create(auth=otro, nombre='Otro', username='otro')
+        from entrenamientos.models import RegistroEntrenamiento
+        RegistroEntrenamiento.objects.create(
+            usuario=otro_usuario, nombre='X', ejercicios=[{'nombre': 'Curl', 'series': [{'peso_kg': 50, 'reps': 5, 'hecho': True}]}],
+        )
+        datos = self.registrar({'nombre': 'Curl', 'sets': [serie(20, 10)]})
+        self.assertEqual(datos['records'], [])

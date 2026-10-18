@@ -40,9 +40,10 @@ class RegistroEntrenamientoSerializer(serializers.ModelSerializer):
             'series_totales',
             'volumen_kg',
             'ejercicios',
+            'records',
             'compartido',
         ]
-        read_only_fields = ['id', 'series_completadas', 'series_totales', 'volumen_kg']
+        read_only_fields = ['id', 'series_completadas', 'series_totales', 'volumen_kg', 'records']
 
     def validate_ejercicios(self, value):
         """

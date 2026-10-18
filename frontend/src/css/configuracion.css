@@ -1,0 +1,342 @@
+/* ============================================================
+   CONFIGURACIÓN — grupos al estilo de Ajustes de iOS, con el
+   mismo acabado de vidrio del resto de la app.
+   ============================================================ */
+
+.cfg-page {
+  --cfg-texto: #f5f3ff;
+  --cfg-texto-2: rgba(240, 235, 255, 0.72);
+  --cfg-texto-3: rgba(240, 235, 255, 0.5);
+  --cfg-separador: rgba(255, 255, 255, 0.09);
+  --cfg-degradado: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+
+  min-height: calc(100vh - 62px);
+  padding: 2.4rem 1.25rem 4rem;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.2), transparent 38%),
+    radial-gradient(circle at 95% 20%, rgba(236, 72, 153, 0.11), transparent 35%),
+    radial-gradient(circle at 45% 100%, rgba(59, 130, 246, 0.12), transparent 40%),
+    #07060d;
+  background-attachment: fixed;
+  color: var(--cfg-texto);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cfg-contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.cfg-contenedor > h1 {
+  margin: 0 0 0.2rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/* ---------- Panel de vidrio ----------
+   Los form usan display:flex en columna por los estilos globales del login: se mantiene. */
+.cfg-panel {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  padding: 1.4rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.035) 45%, rgba(255, 255, 255, 0.06) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 20px 50px -22px rgba(0, 0, 0, 0.6);
+}
+
+.cfg-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.06) 28%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.16) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+.cfg-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* ---------- Campos ---------- */
+.cfg-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.cfg-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--cfg-texto-2);
+  font-size: 0.8rem;
+}
+
+.cfg-campo.completo {
+  grid-column: 1 / -1;
+}
+
+.cfg-campo span {
+  font-weight: 500;
+}
+
+.cfg-campo input,
+.cfg-campo select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.cfg-campo input:focus,
+.cfg-campo select:focus {
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: none;
+}
+
+.cfg-campo input:disabled {
+  color: var(--cfg-texto-3);
+  cursor: not-allowed;
+}
+
+.cfg-campo select option {
+  background: #16182a;
+}
+
+.cfg-campo small {
+  color: var(--cfg-texto-3);
+  font-size: 0.74rem;
+}
+
+.cfg-campo small.ok { color: #4ade80; }
+.cfg-campo small.mal { color: #fca5a5; }
+
+.cfg-prefijo {
+  position: relative;
+}
+
+.cfg-prefijo em {
+  position: absolute;
+  top: 50%;
+  left: 0.85rem;
+  transform: translateY(-50%);
+  color: var(--cfg-texto-3);
+  font-style: normal;
+  pointer-events: none;
+}
+
+.cfg-prefijo input {
+  padding-left: 1.8rem;
+}
+
+.cfg-nota {
+  margin: 1rem 0 0;
+  color: var(--cfg-texto-3);
+  font-size: 0.8rem;
+}
+
+.cfg-pie {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.cfg-mensaje {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.cfg-mensaje.exito { color: #4ade80; }
+.cfg-mensaje.error { color: #fca5a5; }
+
+/* ---------- Botones (anula el estilo global de button[type=submit]) ---------- */
+.cfg-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.6rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.cfg-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.cfg-btn.primario {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--cfg-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.cfg-btn.peligro {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.cfg-btn.peligro:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.cfg-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cfg-btn:focus-visible,
+.cfg-switch:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+/* ---------- Filas e interruptores (estilo iOS) ---------- */
+.cfg-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.cfg-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 0.85rem 0;
+}
+
+.cfg-fila + .cfg-fila {
+  border-top: 1px solid var(--cfg-separador);
+}
+
+.cfg-fila:first-child {
+  padding-top: 0;
+}
+
+.cfg-fila-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.cfg-fila-texto strong {
+  color: var(--cfg-texto);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.cfg-fila-texto span {
+  color: var(--cfg-texto-3);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cfg-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.cfg-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cfg-switch.activo {
+  background: #a855f7;
+}
+
+.cfg-switch.activo span {
+  transform: translateX(20px);
+}
+
+.cfg-switch:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- Móvil ---------- */
+@media (max-width: 640px) {
+  .cfg-page {
+    padding: 1.4rem 0.9rem 3rem;
+  }
+
+  .cfg-campos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cfg-panel {
+    padding: 1.2rem;
+    border-radius: 20px;
+  }
+
+  .cfg-pie {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .cfg-pie .cfg-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfg-switch,
+  .cfg-switch span {
+    transition: none;
+  }
+}
