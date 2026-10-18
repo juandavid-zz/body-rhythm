@@ -102,6 +102,39 @@ nav {
   }
 }
 
+/* En móvil los enlaces pasan a una segunda fila (desplazable) bajo el logo */
+@media (max-width: 700px) {
+  nav {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.6rem 1rem 0;
+  }
+
+  .logo {
+    margin-right: auto;
+  }
+
+  nav .nav-links {
+    display: flex;
+    order: 3;
+    margin: 0.35rem -1rem 0;
+    padding: 0 0.3rem;
+    width: calc(100% + 2rem);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-links li a {
+    height: 44px;
+    padding: 0 0.7rem;
+  }
+
+  .btn-iniciar,
+  .btn-registro {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+  }
+}
+
 .btn-iniciar,
 .btn-registro {
   background: linear-gradient(135deg, #a855f7, #ec4899);
@@ -365,7 +398,6 @@ h1 {
 }
 /* ── RESPONSIVE ── */
 @media (max-width: 700px) {
-  nav .nav-links { display: none; }
   .hero {
     grid-template-columns: 1fr;
     text-align: center;

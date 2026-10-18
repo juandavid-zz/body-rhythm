@@ -1,233 +1,348 @@
 /* ============================================================
-   ENTRENAMIENTOS (dashboard) — misma línea visual que Nutrición
+   ENTRENAMIENTOS
+   Acabado "Liquid Glass" (vidrio translúcido con borde especular
+   sobre color) en una página sencilla: lo primero es el botón
+   para crear la rutina con IA.
    ============================================================ */
 
-.ent-page {
-  min-height: 100vh;
-  padding: 6.2rem 1.25rem 3.5rem;
-  color: #f7f4fb;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(168, 85, 247, .17), transparent 30%),
-    radial-gradient(circle at 92% 15%, rgba(236, 72, 153, .09), transparent 26%),
-    linear-gradient(135deg, #090810 0%, #130d20 54%, #0a0910 100%);
+.lg-page {
+  --lg-texto: #f5f3ff;
+  --lg-texto-2: rgba(240, 235, 255, 0.72);
+  --lg-texto-3: rgba(240, 235, 255, 0.5);
+  --lg-separador: rgba(255, 255, 255, 0.09);
+  --lg-radio: 28px;
+
+  position: relative;
+  min-height: calc(100vh - 62px);
+  padding: 3.5rem 1.5rem 4rem;
+  overflow: hidden;
+  isolation: isolate;
+  background: #07060d;
+  color: var(--lg-texto);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.ent-contenedor {
-  width: min(1100px, 100%);
+/* ---------- Color de fondo (lo que el vidrio deja ver) ---------- */
+.lg-fondo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lg-orbe {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+}
+
+.lg-orbe.uno {
+  width: 48vw;
+  height: 48vw;
+  top: -14vw;
+  left: -10vw;
+  background: radial-gradient(circle, #7c3aed 0%, rgba(124, 58, 237, 0) 70%);
+  opacity: 0.7;
+  animation: lg-deriva-1 40s ease-in-out infinite alternate;
+}
+
+.lg-orbe.dos {
+  width: 40vw;
+  height: 40vw;
+  top: 10vw;
+  right: -12vw;
+  background: radial-gradient(circle, #ec4899 0%, rgba(236, 72, 153, 0) 70%);
+  opacity: 0.45;
+  animation: lg-deriva-2 46s ease-in-out infinite alternate;
+}
+
+.lg-orbe.tres {
+  width: 40vw;
+  height: 40vw;
+  bottom: -14vw;
+  left: 25vw;
+  background: radial-gradient(circle, #3b82f6 0%, rgba(59, 130, 246, 0) 70%);
+  opacity: 0.4;
+  animation: lg-deriva-1 52s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes lg-deriva-1 {
+  to { transform: translate(5vw, 4vw); }
+}
+
+@keyframes lg-deriva-2 {
+  to { transform: translate(-6vw, 5vw); }
+}
+
+/* ---------- Estructura ---------- */
+.lg-contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(820px, 100%);
   margin: 0 auto;
 }
 
-.ent-kicker {
-  display: block;
-  margin-bottom: .7rem;
-  color: #a78bfa;
-  font-size: .68rem;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-}
-
-/* ---------- Cabecera ---------- */
-.ent-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 1.25rem;
-  padding: 1.6rem 1.7rem;
-  border: 1px solid rgba(192, 132, 252, .16);
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, .14), rgba(236, 72, 153, .06));
-}
-
-.ent-hero h1 {
-  margin: 0 0 .4rem;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-}
-
-.ent-hero p {
-  margin: 0;
-  color: #a1a1aa;
-}
-
-.ent-btn-primario {
-  flex-shrink: 0;
-  padding: .8rem 1.3rem;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(168, 85, 247, .28);
-  transition: transform .15s;
-}
-
-.ent-btn-primario:hover {
-  transform: translateY(-1px);
-}
-
-/* ---------- Tarjetas de secciones ---------- */
-.ent-grid {
+.lg-fila {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 18px;
 }
 
-.ent-card {
+/* ---------- El vidrio ---------- */
+.lg-glass {
+  position: relative;
+  isolation: isolate;
+  padding: 1.6rem;
+  border-radius: var(--lg-radio);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.07) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px -20px rgba(0, 0, 0, 0.55);
+}
+
+/* Borde especular: brillo arriba a la izquierda y un reflejo abajo a la derecha */
+.lg-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.08) 28%,
+      rgba(255, 255, 255, 0) 55%,
+      rgba(255, 255, 255, 0.2) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* Sin backdrop-filter el vidrio sería ilegible: se vuelve más opaco */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-glass {
+    background: rgba(30, 22, 48, 0.92);
+  }
+}
+
+.lg-cta:focus-visible,
+.lg-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 3px;
+}
+
+.lg-etiqueta {
+  margin: 0;
+  color: var(--lg-texto-3);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ---------- Principal: crear rutina con IA ---------- */
+.lg-hero {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: .45rem;
-  padding: 1.35rem;
-  border: 1px solid rgba(192, 132, 252, .14);
-  border-radius: 20px;
-  background: rgba(24, 18, 35, .9);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform .2s, border-color .2s, box-shadow .2s;
+  align-items: center;
+  padding: 3rem 2rem 2.4rem;
+  text-align: center;
 }
 
-.ent-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(168, 85, 247, .45);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+.lg-hero h1 {
+  margin: 0.6rem 0 0.7rem;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
 }
 
-.ent-card.destacada {
-  border-color: rgba(168, 85, 247, .4);
-  background: linear-gradient(145deg, rgba(88, 28, 135, .45), rgba(24, 18, 35, .95));
-}
-
-.ent-card-icono {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-bottom: .35rem;
-  border-radius: 14px;
-  background: rgba(168, 85, 247, .14);
-  font-size: 1.4rem;
-}
-
-.ent-card h2 {
-  margin: 0;
-  font-size: 1.08rem;
-}
-
-.ent-card p {
-  flex: 1;
-  margin: 0;
-  color: #a1a1aa;
-  font-size: .9rem;
+.lg-hero-texto {
+  max-width: 460px;
+  margin: 0 0 2rem;
+  color: var(--lg-texto-2);
   line-height: 1.5;
 }
 
-.ent-card-accion {
-  margin-top: .5rem;
-  color: #c4b5fd;
-  font-size: .85rem;
-  font-weight: 800;
+.lg-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-width: min(340px, 100%);
+  padding: 1.05rem 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 16px 40px -14px rgba(168, 85, 247, 0.8);
+  color: #fff;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-/* ---------- Últimos entrenamientos ---------- */
-.ent-recientes {
-  padding: 1.35rem 1.4rem;
-  border: 1px solid rgba(192, 132, 252, .14);
-  border-radius: 20px;
-  background: rgba(24, 18, 35, .9);
+.lg-cta:hover {
+  background: linear-gradient(135deg, rgba(180, 105, 250, 0.98), rgba(230, 60, 140, 0.88));
 }
 
-.ent-recientes-cabecera {
+.lg-link {
+  margin-top: 1rem;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--lg-texto-2);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.lg-link:hover {
+  color: #fff;
+}
+
+/* ---------- Semana ---------- */
+.lg-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+}
+
+.lg-stats div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 1rem;
 }
 
-.ent-link {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #c4b5fd;
-  font: inherit;
-  font-size: .85rem;
-  font-weight: 700;
-  cursor: pointer;
+.lg-stats div + div {
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--lg-separador);
 }
 
-.ent-vacio {
-  margin: .3rem 0 0;
-  color: #a1a1aa;
+.lg-stats dt {
+  color: var(--lg-texto-2);
+  font-size: 0.9rem;
 }
 
-.ent-lista {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
+.lg-stats dd {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
-.ent-lista li {
+/* ---------- Últimos entrenamientos ---------- */
+.lg-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: .75rem .9rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .035);
 }
 
-.ent-lista li > div:first-child {
+.lg-cabecera .lg-link {
+  margin: 0;
+}
+
+.lg-lista {
   display: flex;
+  flex-direction: column;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lg-lista li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+}
+
+.lg-lista li + li {
+  border-top: 1px solid var(--lg-separador);
+}
+
+.lg-lista-texto {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
-.ent-lista li > div:first-child span {
-  color: #71717a;
-  font-size: .8rem;
+.lg-lista-texto strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
-.ent-lista-datos {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: .4rem;
+.lg-lista-texto span {
+  color: var(--lg-texto-3);
+  font-size: 0.8rem;
 }
 
-.ent-lista-datos span {
-  padding: .25rem .55rem;
-  border-radius: 8px;
-  background: rgba(168, 85, 247, .1);
-  color: #e9d5ff;
-  font-size: .78rem;
-  font-weight: 700;
+.lg-lista-dato {
+  color: var(--lg-texto-2);
+  font-size: 0.88rem;
   white-space: nowrap;
 }
 
+.lg-vacio {
+  margin: 1rem 0 0;
+  color: var(--lg-texto-2);
+  line-height: 1.5;
+}
+
+/* ---------- Móvil ---------- */
 @media (max-width: 640px) {
-  .ent-page {
-    padding: 5.5rem 1rem 2.5rem;
+  .lg-page {
+    padding: 1.5rem 1rem 3rem;
   }
 
-  .ent-hero {
-    flex-direction: column;
-    align-items: flex-start;
+  .lg-contenedor,
+  .lg-fila {
+    gap: 12px;
   }
 
-  .ent-lista li {
-    flex-direction: column;
-    align-items: flex-start;
+  .lg-fila {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .ent-lista-datos {
-    justify-content: flex-start;
+  .lg-glass {
+    --lg-radio: 24px;
+    padding: 1.3rem;
+  }
+
+  .lg-hero {
+    padding: 2.2rem 1.3rem 1.8rem;
+  }
+
+  .lg-cta {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-orbe {
+    animation: none;
   }
 }

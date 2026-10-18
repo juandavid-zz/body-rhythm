@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../api/api'
 import Navbar from '../components/Navbar'
-import '../css/dashboard.css'
+import '../css/chatbot.css'
 
 // ── Efecto de escritura progresiva (estilo ChatGPT) ──
 function useTypewriter(text, { enabled = true, speed = 16, chunk = 2, onTick } = {}) {
@@ -390,6 +390,8 @@ export default function ChatbotRutina() {
           + Nueva rutina
         </button>
 
+        <p className="sidebar-titulo">Conversaciones</p>
+
         <div className="sidebar-lista">
           {chats
             .slice()
@@ -410,7 +412,6 @@ export default function ChatbotRutina() {
       {/* ── CHAT PRINCIPAL ── */}
       <div className="chatbot-main">
         <div className="chatbot-card">
-          <h2>Asistente de rutinas</h2>
 
           <div className="chat-messages">
             {chatActual.mensajes.map((m, i) => (
@@ -425,22 +426,24 @@ export default function ChatbotRutina() {
                   <div className="msg-bubble rutina-bubble">
                     <div className="rutina-resultado">
                       {m.rutina.fuente === 'respaldo' && (
-                        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+                        <p className="rutina-aviso">
                           El generador de IA no estuvo disponible, así que te asigné una
-                          rutina de nuestro catálogo según tu perfil. Igual te va a servir 💪
+                          rutina de nuestro catálogo según tu perfil.
                         </p>
                       )}
 
-                      <span className="rutina-imc">
-                        IMC {m.rutina.imc} · {m.rutina.rango_imc}
-                      </span>
-                      {m.rutina.rutina.nivel && (
-                        <span className="rutina-nivel">{m.rutina.rutina.nivel}</span>
-                      )}
+                      <div className="rutina-chips">
+                        <span className="rutina-imc">
+                          IMC {m.rutina.imc} · {m.rutina.rango_imc}
+                        </span>
+                        {m.rutina.rutina.nivel && (
+                          <span className="rutina-nivel">{m.rutina.rutina.nivel}</span>
+                        )}
+                      </div>
 
                       <h3>{m.rutina.rutina.nombre}</h3>
                       {m.rutina.rutina.objetivo && (
-                        <p className="rutina-objetivo">🎯 {m.rutina.rutina.objetivo}</p>
+                        <p className="rutina-objetivo">{m.rutina.rutina.objetivo}</p>
                       )}
                       <p className="rutina-desc">{m.rutina.rutina.descripcion}</p>
                       <p className="rutina-meta">
@@ -450,7 +453,7 @@ export default function ChatbotRutina() {
 
                       {m.rutina.rutina.calentamiento && (
                         <div className="rutina-nota rutina-nota-calentamiento">
-                          <strong>🔥 Calentamiento:</strong> {m.rutina.rutina.calentamiento}
+                          <strong>Calentamiento</strong> {m.rutina.rutina.calentamiento}
                         </div>
                       )}
 
@@ -461,18 +464,18 @@ export default function ChatbotRutina() {
                             <ul>
                               {ejercicios.map((ej) => (
                                 <li key={ej.id || ej.nombre}>
-                                  <strong>{ej.nombre}</strong>
-                                  {ej.ejercicio_id === null && (
-                                    <span className="ejercicio-fuera" title="No se agregará al guardar">
-                                      {' '}(no está en la biblioteca)
+                                  <div className="ejercicio-fila">
+                                    <strong>{ej.nombre}</strong>
+                                    <span className="ejercicio-datos">
+                                      {ej.series && ej.repeticiones && `${ej.series} × ${ej.repeticiones}`}
+                                      {ej.duracion_segundos && `${ej.duracion_segundos} s`}
+                                      {ej.descanso_segundos && ` · ${ej.descanso_segundos} s`}
                                     </span>
+                                  </div>
+                                  {ej.ejercicio_id === null && (
+                                    <span className="ejercicio-fuera">No está en la biblioteca: no se guardará</span>
                                   )}
-                                  {ej.series && ej.repeticiones && ` — ${ej.series}x${ej.repeticiones}`}
-                                  {ej.duracion_segundos && ` — ${ej.duracion_segundos}s`}
-                                  {ej.descanso_segundos && ` · descanso ${ej.descanso_segundos}s`}
-                                  {ej.consejo && (
-                                    <div className="ejercicio-consejo">💡 {ej.consejo}</div>
-                                  )}
+                                  {ej.consejo && <p className="ejercicio-consejo">{ej.consejo}</p>}
                                 </li>
                               ))}
                             </ul>
@@ -482,14 +485,14 @@ export default function ChatbotRutina() {
 
                       {m.rutina.rutina.enfriamiento && (
                         <div className="rutina-nota rutina-nota-enfriamiento">
-                          <strong>🧘 Enfriamiento:</strong> {m.rutina.rutina.enfriamiento}
+                          <strong>Enfriamiento</strong> {m.rutina.rutina.enfriamiento}
                         </div>
                       )}
 
                       {Array.isArray(m.rutina.rutina.consejos_generales) &&
                         m.rutina.rutina.consejos_generales.length > 0 && (
                           <div className="rutina-consejos">
-                            <h4>💡 Consejos para esta rutina</h4>
+                            <h4>Consejos para esta rutina</h4>
                             <ul>
                               {m.rutina.rutina.consejos_generales.map((c, idx) => (
                                 <li key={idx}>{c}</li>
@@ -502,7 +505,7 @@ export default function ChatbotRutina() {
                         {m.guardado ? (
                           <>
                             <p className="rutina-guardada">
-                              ✅ Guardada en tus rutinas
+                              ✓ Guardada en tus rutinas
                               {m.guardado.rutinas.length > 1 && ` (${m.guardado.rutinas.length} días)`}
                             </p>
                             {m.guardado.omitidos?.length > 0 && (
@@ -522,7 +525,7 @@ export default function ChatbotRutina() {
                               onClick={() => guardarRutina(i)}
                               disabled={guardando.indice === i && !guardando.error}
                             >
-                              {guardando.indice === i && !guardando.error ? 'Guardando…' : '💾 Guardar en mis rutinas'}
+                              {guardando.indice === i && !guardando.error ? 'Guardando…' : 'Guardar en mis rutinas'}
                             </button>
                             {guardando.indice === i && guardando.error && (
                               <p className="rutina-omitidos">{guardando.error}</p>
@@ -614,13 +617,6 @@ export default function ChatbotRutina() {
             </div>
           )}
 
-          {chatActual.paso === PASOS.RESULTADO && (
-            <div className="chat-actions">
-              <button className="btn-secondary" onClick={reiniciar}>
-                Generar otra rutina
-              </button>
-            </div>
-          )}
 
           {chatActivo && (
             <form className="chat-input-row" onSubmit={enviarPreguntaLibre}>
