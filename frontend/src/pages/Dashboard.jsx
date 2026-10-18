@@ -1,63 +1,137 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import '../css/dashboard.css'
+import api from '../api/api'
+import Navbar from '../components/Navbar'
+import { formatearDuracion, formatearNumero, tiempoRelativo } from '../utils/formato'
+import '../css/entrenamientos.css'
+
+const SECCIONES = [
+  {
+    icono: '🤖',
+    titulo: 'Generar rutina con IA',
+    texto: 'El asistente arma una rutina según tu IMC, tu meta y el equipo que tienes. Guárdala y entrénala.',
+    accion: 'Abrir asistente',
+    ruta: '/chatbot',
+    destacada: true,
+  },
+  {
+    icono: '🏋️',
+    titulo: 'Mis rutinas',
+    texto: 'Elige una rutina, registra peso y repeticiones de cada serie y lleva el control del descanso.',
+    accion: 'Registrar entrenamiento',
+    ruta: '/rutinas',
+  },
+  {
+    icono: '📚',
+    titulo: 'Biblioteca de ejercicios',
+    texto: 'Más de 370 ejercicios con imágenes, músculos trabajados y tu historial en cada uno.',
+    accion: 'Ver ejercicios',
+    ruta: '/ejercicios',
+  },
+  {
+    icono: '📈',
+    titulo: 'Progreso',
+    texto: 'Revisa tu IMC y cómo evolucionan tus marcas con el tiempo.',
+    accion: 'Ver progreso',
+    ruta: '/progreso',
+  },
+  {
+    icono: '🥗',
+    titulo: 'Nutrición',
+    texto: 'Tu plan de comidas y el registro de lo que comes cada día.',
+    accion: 'Ir a nutrición',
+    ruta: '/nutricion',
+  },
+  {
+    icono: '👥',
+    titulo: 'Comunidad',
+    texto: 'Sigue a otras personas y mira sus entrenamientos en el feed.',
+    accion: 'Ir a comunidad',
+    ruta: '/comunidad',
+  },
+]
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const nombre = (localStorage.getItem('nombre') || '').split(' ')[0]
+  const [recientes, setRecientes] = useState({ cargando: true, registros: [] })
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    navigate('/auth')
-  }
+  useEffect(() => {
+    let activo = true
+    api
+      .get('/entrenamientos/registros/')
+      .then((res) => activo && setRecientes({ cargando: false, registros: res.data.slice(0, 3) }))
+      .catch(() => activo && setRecientes({ cargando: false, registros: [] }))
+    return () => {
+      activo = false
+    }
+  }, [])
 
   return (
-    <div className="app-shell">
-      <div className="app-topbar">
-        <a href="/" className="logo">
-          Body <span>Rhythm</span>
-        </a>
-        <button className="btn-logout" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
-      </div>
-
-      <div className="dashboard-wrap">
-        <h1>Bienvenido a Body Rhythm</h1>
-        <p>Tu panel principal. Aquí iremos agregando tus estadísticas y progreso.</p>
-
-        <div className="section-label">Secciones</div>
-        <div className="section-grid">
-
-          {/* ── ENTRENAMIENTOS ── */}
-          <div className="section-card activa">
-            <div className="icono">💪</div>
-            <h3>Entrenamientos</h3>
-            <p>
-              Generá una rutina personalizada con IA según tu IMC y tu meta,
-              adaptada al lugar y equipo que tengas disponible.
-            </p>
-            <button className="btn-primary" onClick={() => navigate('/chatbot')}>
-              Generar mi rutina con IA
+    <>
+      <Navbar />
+      <main className="ent-page">
+        <div className="ent-contenedor">
+          <header className="ent-hero">
+            <div>
+              <span className="ent-kicker">Entrenamientos</span>
+              <h1>{nombre ? `¡Vamos, ${nombre}!` : 'Tu centro de entrenamiento'}</h1>
+              <p>Genera rutinas, regístralas serie por serie y sigue tu progreso.</p>
+            </div>
+            <button type="button" className="ent-btn-primario" onClick={() => navigate('/rutinas')}>
+              Empezar a entrenar
             </button>
-          </div>
+          </header>
 
-          {/* ── NUTRICIÓN (próximamente) ── */}
-          <div className="section-card proximamente">
-            <span className="badge-proximamente">Próximamente</span>
-            <div className="icono">🥗</div>
-            <h3>Nutrición</h3>
-            <p>Planes de comidas y seguimiento de tu registro nutricional.</p>
-          </div>
+          <section className="ent-grid" aria-label="Secciones">
+            {SECCIONES.map((seccion) => (
+              <button
+                key={seccion.ruta}
+                type="button"
+                className={`ent-card ${seccion.destacada ? 'destacada' : ''}`}
+                onClick={() => navigate(seccion.ruta)}
+              >
+                <span className="ent-card-icono" aria-hidden="true">{seccion.icono}</span>
+                <h2>{seccion.titulo}</h2>
+                <p>{seccion.texto}</p>
+                <span className="ent-card-accion">{seccion.accion} →</span>
+              </button>
+            ))}
+          </section>
 
-          {/* ── PROGRESO (próximamente) ── */}
-          <div className="section-card proximamente">
-            <span className="badge-proximamente">Próximamente</span>
-            <div className="icono">📈</div>
-            <h3>Progreso</h3>
-            <p>Historial de IMC y medidas corporales a lo largo del tiempo.</p>
-          </div>
+          <section className="ent-recientes">
+            <div className="ent-recientes-cabecera">
+              <span className="ent-kicker">Últimos entrenamientos</span>
+              <button type="button" className="ent-link" onClick={() => navigate('/perfil')}>
+                Ver todos
+              </button>
+            </div>
 
+            {recientes.cargando && <p className="ent-vacio">Cargando…</p>}
+            {!recientes.cargando && recientes.registros.length === 0 && (
+              <p className="ent-vacio">
+                Todavía no has terminado ningún entrenamiento. Elige una rutina y registra tu primera sesión.
+              </p>
+            )}
+
+            <ul className="ent-lista">
+              {recientes.registros.map((registro) => (
+                <li key={registro.id}>
+                  <div>
+                    <strong>{registro.nombre}</strong>
+                    <span>{tiempoRelativo(registro.fecha)}</span>
+                  </div>
+                  <div className="ent-lista-datos">
+                    <span>{formatearDuracion(registro.duracion_segundos)}</span>
+                    <span>{registro.series_completadas} series</span>
+                    <span>{formatearNumero(registro.volumen_kg)} kg</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
-      </div>
-    </div>
+      </main>
+    </>
   )
 }

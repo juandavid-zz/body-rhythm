@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../api/api'
+import Navbar from '../components/Navbar'
 import '../css/dashboard.css'
 
 // ── Efecto de escritura progresiva (estilo ChatGPT) ──
@@ -140,6 +141,7 @@ export default function ChatbotRutina() {
 
   const [textoLibre, setTextoLibre] = useState('')
   const [enviandoLibre, setEnviandoLibre] = useState(false)
+  const [guardando, setGuardando] = useState({ indice: null, error: '' })
   const finChat = useRef(null)
   const chatIdAnterior = useRef(chatActualId)
   const esPrimeraCarga = useRef(true)
@@ -264,6 +266,28 @@ export default function ChatbotRutina() {
     }
   }
 
+  // Guarda la rutina del mensaje como rutinas del usuario (una por día)
+  const guardarRutina = async (indice) => {
+    const mensaje = chatActual.mensajes[indice]
+    setGuardando({ indice, error: '' })
+    try {
+      const res = await api.post('/entrenamientos/chatbot/guardar/', { rutina: mensaje.rutina.rutina })
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id !== chatActualId
+            ? c
+            : { ...c, mensajes: c.mensajes.map((m, j) => (j === indice ? { ...m, guardado: res.data } : m)) }
+        )
+      )
+      setGuardando({ indice: null, error: '' })
+    } catch (err) {
+      setGuardando({
+        indice,
+        error: err.response?.data?.error || 'No se pudo guardar la rutina, intenta de nuevo.',
+      })
+    }
+  }
+
   const elegirGrupoMuscular = (opcion) => {
     agregarMensaje({ from: 'user', text: opcion.label })
     generarRutina(opcion.valor)
@@ -353,6 +377,8 @@ export default function ChatbotRutina() {
   }
 
   return (
+    <>
+    <Navbar />
     <div className="chatbot-page">
       {/* ── SIDEBAR ── */}
       <aside className="chat-sidebar">
@@ -436,6 +462,11 @@ export default function ChatbotRutina() {
                               {ejercicios.map((ej) => (
                                 <li key={ej.id || ej.nombre}>
                                   <strong>{ej.nombre}</strong>
+                                  {ej.ejercicio_id === null && (
+                                    <span className="ejercicio-fuera" title="No se agregará al guardar">
+                                      {' '}(no está en la biblioteca)
+                                    </span>
+                                  )}
                                   {ej.series && ej.repeticiones && ` — ${ej.series}x${ej.repeticiones}`}
                                   {ej.duracion_segundos && ` — ${ej.duracion_segundos}s`}
                                   {ej.descanso_segundos && ` · descanso ${ej.descanso_segundos}s`}
@@ -466,6 +497,39 @@ export default function ChatbotRutina() {
                             </ul>
                           </div>
                         )}
+
+                      <div className="rutina-guardar">
+                        {m.guardado ? (
+                          <>
+                            <p className="rutina-guardada">
+                              ✅ Guardada en tus rutinas
+                              {m.guardado.rutinas.length > 1 && ` (${m.guardado.rutinas.length} días)`}
+                            </p>
+                            {m.guardado.omitidos?.length > 0 && (
+                              <p className="rutina-omitidos">
+                                No se agregaron porque no están en la biblioteca: {m.guardado.omitidos.join(', ')}.
+                              </p>
+                            )}
+                            <button type="button" className="btn-guardar-rutina" onClick={() => navigate('/rutinas')}>
+                              Ir a mis rutinas →
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-guardar-rutina"
+                              onClick={() => guardarRutina(i)}
+                              disabled={guardando.indice === i && !guardando.error}
+                            >
+                              {guardando.indice === i && !guardando.error ? 'Guardando…' : '💾 Guardar en mis rutinas'}
+                            </button>
+                            {guardando.indice === i && guardando.error && (
+                              <p className="rutina-omitidos">{guardando.error}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -575,5 +639,6 @@ export default function ChatbotRutina() {
         </div>
       </div>
     </div>
+    </>
   )
 }

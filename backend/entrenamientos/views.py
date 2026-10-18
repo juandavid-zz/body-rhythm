@@ -6,7 +6,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
-from rutinas.models import Ejercicio
+from .rutina_ia import guardar_rutina, rutina_respaldo
 from users.models import Usuario
 from .models import RegistroEntrenamiento
 from .serializers import RegistroEntrenamientoSerializer
@@ -30,71 +30,6 @@ def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
         )
     except Exception as e:
         print(f"[conversaciones_ia] No se pudo guardar el registro: {e}")
-
-
-MAPA_GRUPO_MUSCULAR = {
-    "tren superior": ["pecho", "espalda", "hombros", "biceps", "triceps"],
-    "superior": ["pecho", "espalda", "hombros", "biceps", "triceps"],
-    "tren inferior": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
-    "inferior": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
-    "piernas": ["cuadriceps", "gluteos", "femoral", "pantorrillas"],
-    "core": ["abdomen"],
-    "abdomen": ["abdomen"],
-}
-
-NOMBRES_META = {
-    "perder_peso": "pérdida de peso",
-    "ganar_musculo": "ganancia muscular",
-    "mantenerse": "mantenimiento",
-    "mejorar_resistencia": "mejorar la resistencia",
-}
-
-
-def _rutina_respaldo(meta, rango_imc, grupo_muscular=None, max_ejercicios=6):
-    """
-    Arma una rutina de respaldo con el catálogo de ejercicios
-    cuando la IA no está disponible.
-    """
-
-    ejercicios = Ejercicio.objects.all()
-
-    if grupo_muscular:
-        clave = grupo_muscular.strip().lower()
-        grupos = MAPA_GRUPO_MUSCULAR.get(clave)
-        if grupos is None and clave.replace(" ", "_") in dict(Ejercicio.GRUPOS_MUSCULARES):
-            grupos = [clave.replace(" ", "_")]
-
-        if grupos:
-            filtrados = ejercicios.filter(grupo_muscular__in=grupos)
-            if filtrados.exists():
-                ejercicios = filtrados
-
-    ejercicios = list(ejercicios.order_by('?')[:max_ejercicios])
-
-    if not ejercicios:
-        return None
-
-    objetivo = NOMBRES_META.get(meta, meta or "general")
-
-    return {
-        "nombre": f"Rutina de respaldo ({grupo_muscular or 'cuerpo completo'})",
-        "descripcion": f"Rutina básica orientada a {objetivo} para IMC {rango_imc}.",
-        "dias_por_semana": 3,
-        "duracion_minutos": 45,
-        "ejercicios": [
-            {
-                "id": ejercicio.id,
-                "nombre": ejercicio.nombre,
-                "descripcion": ejercicio.descripcion,
-                "grupo_muscular": ejercicio.grupo_muscular,
-                "series": 3,
-                "repeticiones": 12,
-                "descanso_segundos": 60,
-                "orden": orden,
-            }
-            for orden, ejercicio in enumerate(ejercicios, start=1)
-        ],
-    }
 
 
 class ChatbotRutinaView(APIView):
@@ -132,7 +67,7 @@ class ChatbotRutinaView(APIView):
             fuente = "ia"
         except Exception as e:
             print(f"[chatbot] Gemini falló, usando respaldo: {e}")
-            rutina = _rutina_respaldo(meta, rango_imc, grupo_muscular)
+            rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
             fuente = "respaldo"
 
             if rutina is None:
@@ -156,6 +91,32 @@ class ChatbotRutinaView(APIView):
         )
 
         return Response(resultado, status=status.HTTP_200_OK)
+
+
+class GuardarRutinaChatbotView(APIView):
+    """Guarda la rutina generada en el chat como rutinas del usuario (una por día)."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        rutina = request.data.get("rutina")
+        if not isinstance(rutina, dict) or not isinstance(rutina.get("ejercicios"), list):
+            return Response(
+                {"error": "No llegó una rutina válida para guardar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        creadas, omitidos = guardar_rutina(usuario, rutina)
+
+        if not creadas:
+            return Response(
+                {"error": "Ningún ejercicio de esta rutina está en la biblioteca, así que no se pudo guardar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"rutinas": creadas, "omitidos": omitidos}, status=status.HTTP_201_CREATED)
 
 
 class ChatbotMensajeView(APIView):

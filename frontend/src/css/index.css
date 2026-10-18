@@ -59,6 +59,49 @@ nav {
   color: #fff;
 }
 
+/* La barra no debe ensanchar la página: textos en una línea y menos aire en pantallas medianas */
+.nav-links li a,
+.btn-iniciar,
+.btn-registro {
+  white-space: nowrap;
+}
+
+.btn-iniciar,
+.btn-registro {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1150px) {
+  nav {
+    padding: 0 1.25rem;
+  }
+
+  .logo {
+    margin-right: 1.25rem;
+  }
+
+  .nav-links li a {
+    padding: 0 0.7rem;
+  }
+}
+
+/* En pantallas pequeñas los enlaces se desplazan dentro de la barra */
+@media (max-width: 860px) {
+  .logo {
+    flex-shrink: 0;
+  }
+
+  .nav-links {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .btn-iniciar,
 .btn-registro {
   background: linear-gradient(135deg, #a855f7, #ec4899);
