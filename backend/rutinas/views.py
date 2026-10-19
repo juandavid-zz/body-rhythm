@@ -4,6 +4,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import SAFE_METHODS, BasePermission
+from django.db.models import Count, Max
 from django.db.models.functions import Lower
 from .models import Rutina, RutinaEjercicio
 from users.models import Usuario, Ejercicio as EjercicioBiblioteca
@@ -13,11 +16,36 @@ from .serializers import (
     RutinaEjercicioSerializer,
 )
 
+class RutinasPropiasView(APIView):
+    """
+    Base de las vistas /usuarios/<usuario_id>/rutinas/...: solo el dueño puede
+    usarlas. Sin esto, cambiando el número de la URL se podían ver, editar o
+    borrar las rutinas de otra persona. Responde 404 para no revelar si existen.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        usuario_id = kwargs.get('usuario_id')
+        if usuario_id is not None and not Usuario.objects.filter(pk=usuario_id, auth=request.user).exists():
+            raise NotFound('Usuario no encontrado')
+
+
+class SoloAdminParaEscribir(BasePermission):
+    """La biblioteca de ejercicios la lee cualquiera con sesión; solo un administrador la modifica."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return bool(request.user and request.user.is_authenticated)
+        return bool(request.user and request.user.is_staff)
+
+
 # ============================================================
 # EJERCICIOS
 # ============================================================
 
 class EjercicioListView(APIView):
+    permission_classes = [SoloAdminParaEscribir]
+
     def get(self, request):
         grupo = request.query_params.get("grupo")
         ejercicios = EjercicioBiblioteca.objects.all().order_by("nombre")
@@ -38,6 +66,8 @@ class EjercicioListView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EjercicioDetailView(APIView):
+    permission_classes = [SoloAdminParaEscribir]
+
 
     def get_object(self, pk):
         try:
@@ -104,7 +134,7 @@ class EjercicioDetailView(APIView):
 # RUTINAS
 # ============================================================
 
-class RutinaListView(APIView):
+class RutinaListView(RutinasPropiasView):
 
     def get(self, request, usuario_id):
 
@@ -125,6 +155,22 @@ class RutinaListView(APIView):
 
         datos = RutinaSerializer(rutinas, many=True).data
         _marcar_recomendadas(datos, usuario)
+
+        # Como en Hevy: cuántas veces hiciste cada rutina y cuándo fue la última
+        uso = {
+            fila['rutina_id']: fila
+            for fila in usuario.registros_entrenamiento
+            .filter(rutina__isnull=False)
+            .values('rutina_id')
+            .annotate(veces=Count('id'), ultima_vez=Max('fecha'))
+        }
+        nombres_plantilla = {configuracion['nombre'] for configuracion in RUTINAS_BASE}
+        for rutina in datos:
+            fila = uso.get(rutina['id'], {})
+            # Las rutinas base que se generan solas, para separarlas de las del usuario
+            rutina['es_plantilla'] = rutina['nombre'] in nombres_plantilla
+            rutina['veces'] = fila.get('veces', 0)
+            rutina['ultima_vez'] = fila.get('ultima_vez')
 
         return Response(datos)
 
@@ -159,12 +205,13 @@ class RutinaListView(APIView):
         )
 
 
-class RutinaDetailView(APIView):
+class RutinaDetailView(RutinasPropiasView):
 
     def get_object(self, pk):
 
         try:
-            return Rutina.objects.get(pk=pk)
+            # Solo rutinas del usuario de la URL (RutinasPropiasView ya comprobó que es el de la sesión)
+            return Rutina.objects.get(pk=pk, usuario_id=self.kwargs["usuario_id"])
         except Rutina.DoesNotExist:
             return None
 
@@ -232,7 +279,7 @@ class RutinaDetailView(APIView):
 # RUTINA FAVORITA
 # ============================================================
 
-class RutinaFavoritaView(APIView):
+class RutinaFavoritaView(RutinasPropiasView):
 
     def patch(self, request, usuario_id, pk):
 
@@ -263,7 +310,7 @@ class RutinaFavoritaView(APIView):
 # AGREGAR EJERCICIO A UNA RUTINA
 # ============================================================
 
-class AgregarEjercicioRutinaView(APIView):
+class AgregarEjercicioRutinaView(RutinasPropiasView):
 
     def post(self, request, usuario_id, pk):
 
@@ -310,7 +357,7 @@ class AgregarEjercicioRutinaView(APIView):
 # EDITAR / ELIMINAR EJERCICIO DE RUTINA
 # ============================================================
 
-class RutinaEjercicioDetailView(APIView):
+class RutinaEjercicioDetailView(RutinasPropiasView):
 
     def get_object(
         self,
@@ -585,148 +632,6 @@ def _normalizar_musculos(musculos):
 
 
 
-
-
-def _patron_movimiento(ejercicio, grupo):
-    nombre = (ejercicio.nombre or '').casefold()
-    grupo = grupo.casefold()
-
-    # ESPALDA
-    if grupo == 'back':
-        if any(p in nombre for p in (
-            'pull down', 'pulldown', 'pull-up', 'pull up',
-            'chin up', 'front pull', 'dominada', 'jal',
-        )):
-            return 'traccion_vertical'
-
-        if any(p in nombre for p in ('remo', 'row', 'rowing')):
-            return 'traccion_horizontal'
-
-        if any(p in nombre for p in (
-            'deadlift', 'peso muerto', 'levantamento terra',
-            'back extension', 'hip extension',
-        )):
-            return 'extension_espalda_cadera'
-
-    # PECHO
-    if grupo == 'chest':
-        if any(p in nombre for p in (
-            'fly', 'butterfly', 'crossover', 'apertura',
-            'pec deck',
-        )):
-            return 'apertura'
-
-        if any(p in nombre for p in (
-            'press', 'bench', 'supino', 'push-up',
-            'push up', 'pushup', 'flexion', 'flexão',
-        )):
-            return 'empuje'
-
-    # PIERNAS Y GLÚTEOS
-    if grupo in ('legs', 'upper_legs', 'glutes'):
-        if any(p in nombre for p in (
-            'hip thrust', 'glute bridge', 'puente de gluteos',
-            'glute kickback', 'kickback', 'patada de gluteo',
-        )):
-            return 'extension_gluteo'
-
-        if any(p in nombre for p in (
-            'deadlift', 'peso muerto', 'romanian deadlift',
-            'good morning', 'pull through',
-        )):
-            return 'bisagra_cadera'
-
-        if any(p in nombre for p in (
-            'squat', 'sentadilla', 'leg press',
-            'prensa de piernas', 'hack squat',
-        )):
-            return 'sentadilla'
-
-        if any(p in nombre for p in (
-            'lunge', 'zancada', 'split squat',
-            'bulgarian split', 'step-up', 'step up',
-        )):
-            return 'unilateral_pierna'
-
-        if any(p in nombre for p in (
-            'leg extension', 'extension de cuadriceps',
-        )):
-            return 'extension_cuadriceps'
-
-        if any(p in nombre for p in (
-            'leg curl', 'hamstring curl',
-            'curl femoral', 'seated leg curl',
-        )):
-            return 'curl_femoral'
-
-        if any(p in nombre for p in (
-            'calf raise', 'calf press', 'pantorrilla',
-            'gemelo',
-        )):
-            return 'pantorrilla'
-
-        if any(p in nombre for p in (
-            'hip abduction', 'abduccion de cadera',
-            'hip adduction', 'adduccion de cadera',
-        )):
-            return 'abduccion_adduccion_cadera'
-
-    # HOMBROS
-    if grupo == 'shoulders':
-        if any(p in nombre for p in (
-            'lateral raise', 'elevacion lateral',
-            'elevación lateral', 'side raise',
-        )):
-            return 'elevacion_lateral'
-
-        if any(p in nombre for p in (
-            'rear delt', 'reverse fly', 'face pull',
-            'posterior deltoid', 'pajaro', 'pájaro',
-        )):
-            return 'deltoide_posterior'
-
-        if any(p in nombre for p in (
-            'overhead press', 'shoulder press',
-            'military press', 'press militar',
-            'elevacion frontal', 'front raise',
-        )):
-            return 'empuje_hombro'
-
-    # BRAZOS
-    if grupo == 'upper_arms':
-        if any(p in nombre for p in (
-            'curl', 'biceps', 'bíceps', 'bicep',
-        )):
-            return 'flexion_codo'
-
-        if any(p in nombre for p in (
-            'triceps', 'tríceps', 'tricep',
-            'pushdown', 'push down', 'pressdown',
-            'skull crusher', 'extension de triceps',
-        )):
-            return 'extension_codo'
-
-    # ABDOMEN
-    if grupo == 'abs':
-        if any(p in nombre for p in (
-            'plank', 'plancha', 'stabilization',
-            'stabilisation',
-        )):
-            return 'estabilidad_core'
-
-        if any(p in nombre for p in (
-            'crunch', 'sit-up', 'sit up', 'situp',
-            'abdominal', 'leg raise',
-        )):
-            return 'flexion_abdominal'
-
-        if any(p in nombre for p in (
-            'woodchop', 'wood chop', 'russian twist',
-            'oblique', 'rotacion de tronco',
-        )):
-            return 'rotacion_core'
-
-    return 'otro'
 
 
 def _patron_movimiento(ejercicio, grupo):
@@ -1310,15 +1215,10 @@ class GenerarCatalogoRutinasView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        usuario_id = request.data.get('usuario_id')
-
-        if not usuario_id:
-            return Response(
-                {'error': 'Debes enviar usuario_id.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        usuario = get_object_or_404(Usuario, pk=usuario_id)
+        # Siempre para el usuario con sesión (antes se aceptaba cualquier usuario_id del cuerpo)
+        # select_for_update: si llegan dos peticiones a la vez (doble clic, dos pestañas o el
+        # doble render de React en desarrollo), la segunda espera y ya no duplica las rutinas
+        usuario = get_object_or_404(Usuario.objects.select_for_update(), auth=request.user)
 
         for configuracion in RUTINAS_BASE:
             nombre = configuracion['nombre']

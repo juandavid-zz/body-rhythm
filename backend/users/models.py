@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -60,7 +63,8 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     # NUEVO
     is_active = models.BooleanField(default=True, verbose_name='Activo')
-    is_staff = models.BooleanField(default=True, verbose_name='Administrador')
+    # Solo los administradores (superusuarios) deben serlo; antes era True para todos
+    is_staff = models.BooleanField(default=False, verbose_name='Administrador')
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
 
@@ -79,6 +83,9 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
 
 USERNAME_REGEX = r"^[a-z0-9._]{3,30}$"
+
+# Días que dura un plan pagado
+DIAS_PLAN = 30
 
 
 class Usuario(models.Model):
@@ -169,6 +176,27 @@ class Usuario(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def activar_plan(self, plan):
+        """
+        Activa un plan pagado por DIAS_PLAN días. Si ya tenía ese mismo plan
+        vigente, los días se suman a los que le quedan (renovación anticipada).
+        """
+        ahora = timezone.now()
+        renovacion = self.plan == plan and self.fecha_fin_plan and self.fecha_fin_plan > ahora
+        inicio = self.fecha_fin_plan if renovacion else ahora
+
+        self.plan = plan
+        if not renovacion:
+            self.fecha_inicio_plan = ahora
+        self.fecha_fin_plan = inicio + timedelta(days=DIAS_PLAN)
+        self.save(update_fields=['plan', 'fecha_inicio_plan', 'fecha_fin_plan'])
+
+    def revisar_vencimiento(self):
+        """Si el plan pagado ya venció, vuelve al plan gratuito."""
+        if self.plan != 'free' and self.fecha_fin_plan and self.fecha_fin_plan <= timezone.now():
+            self.plan = 'free'
+            self.save(update_fields=['plan'])
 
 
 class Pago(models.Model):

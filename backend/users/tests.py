@@ -122,3 +122,102 @@ class CodigoVerificacionTests(APITestCase):
         self.assertNotEqual(self.auth.token_expira, None)
         self.assertEqual(len(self.auth.codigo_verificacion), 6)
         self.assertTrue(anterior)
+
+
+class LoginSeguridadTests(APITestCase):
+    def setUp(self):
+        self.auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.auth.verificado = True
+        self.auth.save()
+        from .models import Usuario
+        Usuario.objects.create(auth=self.auth, nombre='Ana', username='ana')
+
+    def login(self, password):
+        return self.client.post('/api/login/', {'email': 'ana', 'password': password}, format='json')
+
+    def test_bloqueo_tras_cinco_intentos_fallidos(self):
+        for _ in range(5):
+            self.assertEqual(self.login('mala').status_code, 401)
+        # Bloqueada: ni con la contraseña correcta entra
+        bloqueado = self.login('Clave12345')
+        self.assertEqual(bloqueado.status_code, 429)
+        self.assertIn('minutos', bloqueado.data['error'])
+
+    def test_al_vencer_el_bloqueo_puede_entrar_y_se_reinicia(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.auth.bloqueado_hasta = timezone.now() - timedelta(minutes=1)
+        self.auth.save()
+        self.assertEqual(self.login('Clave12345').status_code, 200)
+        self.auth.refresh_from_db()
+        self.assertIsNone(self.auth.bloqueado_hasta)
+
+    def test_cuenta_desactivada_no_entra(self):
+        self.auth.is_active = False
+        self.auth.save()
+        self.assertEqual(self.login('Clave12345').status_code, 403)
+
+
+@override_settings(WOMPI_EVENTS_SECRET='secreto_de_prueba')
+class PlanPagadoTests(APITestCase):
+    def setUp(self):
+        from .models import Pago, Usuario
+        auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Ana', username='ana')
+        self.pago = Pago.objects.create(usuario=self.usuario, plan='pro', precio=19900, referencia='BR-1', metodo='tarjeta')
+
+    def evento(self, estado='APPROVED', referencia='BR-1', monto=1990000):
+        import hashlib
+        timestamp = 1700000000
+        transaccion = {'id': 'tx1', 'status': estado, 'amount_in_cents': monto, 'reference': referencia, 'currency': 'COP'}
+        propiedades = ['transaction.id', 'transaction.status', 'transaction.amount_in_cents']
+        cadena = f"tx1{estado}{monto}{timestamp}secreto_de_prueba"
+        return {
+            'event': 'transaction.updated',
+            'data': {'transaction': transaccion},
+            'timestamp': timestamp,
+            'signature': {'properties': propiedades, 'checksum': hashlib.sha256(cadena.encode()).hexdigest()},
+        }
+
+    def test_pago_aprobado_activa_el_plan_30_dias(self):
+        respuesta = self.client.post('/api/pagos/webhook/', self.evento(), format='json')
+        self.assertEqual(respuesta.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.plan, 'pro')
+        self.assertEqual((self.usuario.fecha_fin_plan - self.usuario.fecha_inicio_plan).days, 30)
+
+    def test_firma_invalida_no_activa_nada(self):
+        evento = self.evento()
+        evento['signature']['checksum'] = '0' * 64
+        self.assertEqual(self.client.post('/api/pagos/webhook/', evento, format='json').status_code, 401)
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.plan, 'free')
+
+    def test_pago_rechazado_no_activa(self):
+        self.client.post('/api/pagos/webhook/', self.evento(estado='DECLINED'), format='json')
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.plan, 'free')
+
+    def test_renovar_el_mismo_plan_suma_dias(self):
+        self.usuario.activar_plan('pro')
+        fin_anterior = self.usuario.fecha_fin_plan
+        self.usuario.activar_plan('pro')
+        self.assertEqual((self.usuario.fecha_fin_plan - fin_anterior).days, 30)
+
+    def test_plan_vencido_vuelve_a_free(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from rest_framework_simplejwt.tokens import RefreshToken
+        self.usuario.activar_plan('premium')
+        self.usuario.fecha_fin_plan = timezone.now() - timedelta(days=1)
+        self.usuario.save()
+        token = RefreshToken.for_user(self.usuario.auth).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.assertEqual(self.client.get('/api/usuarios/me/').data['plan'], 'free')
+
+    @override_settings(WOMPI_EVENTS_SECRET=None)
+    def test_sin_secreto_configurado_no_revienta(self):
+        # assertLogs captura el aviso de Django por el 503 (con Python 3.14, Django 4.2 falla al registrarlo)
+        with self.assertLogs('django.request', level='ERROR'):
+            respuesta = self.client.post('/api/pagos/webhook/', self.evento(), format='json')
+        self.assertEqual(respuesta.status_code, 503)

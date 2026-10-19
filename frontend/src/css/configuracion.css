@@ -199,6 +199,11 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* El enlace al panel de Django se ve como botón */
+a.cfg-btn {
+  text-decoration: none;
+}
+
 .cfg-btn.primario {
   border-color: rgba(255, 255, 255, 0.3);
   background: var(--cfg-degradado);

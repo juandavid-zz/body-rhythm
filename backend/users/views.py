@@ -4,11 +4,13 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import IntegrityError, transaction
+from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
-import requests
 
+from progreso.views import registrar_peso
 from social.models import Seguimiento
 
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
@@ -89,6 +91,11 @@ class RegistroView(APIView):
         )
 
 
+# Bloqueo por fuerza bruta: tras MAX_INTENTOS_LOGIN contraseñas incorrectas seguidas
+MAX_INTENTOS_LOGIN = 5
+MINUTOS_BLOQUEO_LOGIN = 15
+
+
 # LOGIN
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -114,13 +121,30 @@ class LoginView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
 
+            ahora = timezone.now()
+            if auth.bloqueado_hasta and auth.bloqueado_hasta > ahora:
+                minutos = max(1, int((auth.bloqueado_hasta - ahora).total_seconds() // 60) + 1)
+                return Response(
+                    {'error': f'Demasiados intentos fallidos. Intenta de nuevo en {minutos} minutos.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
             if not auth.check_password(data['password']):
                 auth.intentos_fallidos += 1
-                auth.save()
+                if auth.intentos_fallidos >= MAX_INTENTOS_LOGIN:
+                    auth.bloqueado_hasta = ahora + timedelta(minutes=MINUTOS_BLOQUEO_LOGIN)
+                    auth.intentos_fallidos = 0
+                auth.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
 
                 return Response(
                     {'error': 'Credenciales incorrectas'},
                     status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            if not auth.is_active:
+                return Response(
+                    {'error': 'Esta cuenta está desactivada.'},
+                    status=status.HTTP_403_FORBIDDEN
                 )
 
             if not auth.verificado:
@@ -131,8 +155,9 @@ class LoginView(APIView):
                 }, status=status.HTTP_403_FORBIDDEN)
 
             auth.intentos_fallidos = 0
-            auth.ultimo_login = timezone.now()
-            auth.save()
+            auth.bloqueado_hasta = None
+            auth.ultimo_login = ahora
+            auth.save(update_fields=['intentos_fallidos', 'bloqueado_hasta', 'ultimo_login'])
 
             refresh = RefreshToken.for_user(auth)
             usuario = Usuario.objects.get(auth=auth)
@@ -217,11 +242,14 @@ class UsuarioMeView(APIView):
         return get_object_or_404(Usuario.objects.select_related('auth'), auth=request.user)
 
     def get(self, request):
-        return Response(ConfiguracionSerializer(self._usuario(request)).data)
+        usuario = self._usuario(request)
+        usuario.revisar_vencimiento()
+        return Response(ConfiguracionSerializer(usuario).data)
 
     def patch(self, request):
         usuario = self._usuario(request)
         era_privada = usuario.cuenta_privada
+        peso_antes, altura_antes = usuario.peso, usuario.altura
 
         serializer = ConfiguracionSerializer(usuario, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -229,6 +257,12 @@ class UsuarioMeView(APIView):
         try:
             with transaction.atomic():
                 usuario = serializer.save()
+
+                # Si cambió el peso o la altura, queda en el historial de Progreso
+                if {'peso', 'altura'} & set(serializer.validated_data) and (
+                    usuario.peso != peso_antes or usuario.altura != altura_antes
+                ):
+                    registrar_peso(usuario)
 
                 # Como en Instagram: al hacer pública la cuenta se aceptan las solicitudes pendientes
                 if era_privada and not usuario.cuenta_privada:
@@ -441,6 +475,13 @@ class WompiWebhookView(APIView):
 
         data = request.data
 
+        if not settings.WOMPI_EVENTS_SECRET:
+            # Sin el secreto no se puede verificar la firma del evento
+            return Response(
+                {'error': 'Wompi no está configurado en el servidor.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
         print("=== WEBHOOK WOMPI RECIBIDO ===")
         print(data)
 
@@ -556,8 +597,12 @@ class WompiWebhookView(APIView):
                     status=status.HTTP_200_OK
                 )
 
-            pago.estado = 'aprobado'
-            pago.save(update_fields=['estado'])
+            # atomic se importa aparte: aquí "transaction" es la transacción de Wompi
+            with atomic():
+                pago.estado = 'aprobado'
+                pago.save(update_fields=['estado'])
+                # Antes el pago quedaba aprobado pero el plan del usuario nunca cambiaba
+                pago.usuario.activar_plan(pago.plan)
 
             print("Pago aprobado:", pago.id)
 

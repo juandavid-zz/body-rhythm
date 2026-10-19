@@ -59,8 +59,22 @@ export default function App() {
           }
         />
 
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/nutricion" element={<NutricionPage />} />
+        <Route
+          path="/admin"
+          element={
+            <RutaProtegida>
+              <AdminPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/nutricion"
+          element={
+            <RutaProtegida>
+              <NutricionPage />
+            </RutaProtegida>
+          }
+        />
 
         <Route
           path="/dashboard"

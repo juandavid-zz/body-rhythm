@@ -11,7 +11,29 @@ import {
   YAxis,
 } from "recharts";
 
+import api from "../../api/api";
 import { getHistorial } from "../../utils/rutinasStorage";
+
+// Convierte las sesiones del backend al formato que usa construirEstadisticas
+// (el mismo del historial local), para no cambiar el cálculo.
+function sesionesAHistorial(sesiones, nombre) {
+  return sesiones.map((sesion) => ({
+    fecha: sesion.fecha,
+    ejercicios: [
+      {
+        nombre,
+        porTiempo: sesion.por_tiempo,
+        unidadPeso: sesion.unidad_peso,
+        sets: sesion.series.map((serie) => ({
+          reps: serie.reps,
+          peso: serie.peso ?? serie.peso_kg,
+          pesoKg: serie.peso_kg,
+          hecho: true,
+        })),
+      },
+    ],
+  }));
+}
 import "../../css/ejercicioDetalle.css";
 
 const nombresGrupos = {
@@ -315,7 +337,9 @@ export default function EjercicioDetalle() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [imagenActiva, setImagenActiva] = useState("inicio");
-  const [historial] = useState(() => {
+  // Historial real desde el backend (todas tus sesiones, en cualquier dispositivo).
+  // Mientras carga, o si falla, se usa el historial guardado en este navegador.
+  const [historial, setHistorial] = useState(() => {
     try {
       return getHistorial();
     } catch (error) {
@@ -323,6 +347,20 @@ export default function EjercicioDetalle() {
       return [];
     }
   });
+
+  useEffect(() => {
+    if (!ejercicio?.nombre) return undefined;
+    let activo = true;
+    api
+      .get("/entrenamientos/ejercicio-historial/", { params: { nombre: ejercicio.nombre } })
+      .then((res) => {
+        if (activo) setHistorial(sesionesAHistorial(res.data.sesiones, ejercicio.nombre));
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [ejercicio?.nombre]);
 
   useEffect(() => {
     let activo = true;
@@ -554,8 +592,8 @@ export default function EjercicioDetalle() {
                 <span className="ej-detalle-overline">TU RENDIMIENTO</span>
                 <h2>Récords personales</h2>
                 <p>
-                  Datos calculados a partir de tus series completadas guardadas
-                  en este dispositivo.
+                  Datos calculados a partir de las series completadas de todos
+                  tus entrenamientos.
                 </p>
               </div>
               <span className="ej-detalle-count">

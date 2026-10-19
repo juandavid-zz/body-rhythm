@@ -124,6 +124,8 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'es-co'
 
 USE_I18N = True
+# Hora de Colombia (sin esto Django usa America/Chicago)
+TIME_ZONE = 'America/Bogota'
 USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)

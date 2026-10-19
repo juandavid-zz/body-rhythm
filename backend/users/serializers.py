@@ -103,6 +103,7 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
     """Datos que el usuario puede cambiar desde Configuración."""
 
     email = serializers.EmailField(source='auth.email', read_only=True)
+    es_admin = serializers.BooleanField(source='auth.is_staff', read_only=True)
     username = serializers.CharField(max_length=31)
 
     class Meta:
@@ -110,6 +111,7 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'email',
+            'es_admin',
             'nombre',
             'username',
             'peso',

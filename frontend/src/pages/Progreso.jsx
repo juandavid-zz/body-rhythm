@@ -1,973 +1,318 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import api from "../api/api";
 import Navbar from "../components/Navbar";
+import { formatearDuracion, formatearNumero } from "../utils/formato";
 import "../css/Progreso.css";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+const ACENTO = "#a855f7";
 
-const datosPeso = [
-  { mes: "Ene", peso: 50 },
-  { mes: "Feb", peso: 52 },
-  { mes: "Mar", peso: 55 },
-  { mes: "Abr", peso: 58 },
-  { mes: "May", peso: 60 },
-  { mes: "Jun", peso: 63 },
-  { mes: "Jul", peso: 65 },
-  { mes: "Ago", peso: 68 },
-  { mes: "Sep", peso: 70 },
-  { mes: "Oct", peso: 73 },
-  { mes: "Nov", peso: 76 },
-  { mes: "Dic", peso: 78 },
+const RANGOS_IMC = [
+  { hasta: 18.5, nombre: "Bajo peso" },
+  { hasta: 25, nombre: "Rango saludable" },
+  { hasta: 30, nombre: "Sobrepeso" },
+  { hasta: Infinity, nombre: "Obesidad" },
 ];
 
-const resumenSemanal = [
-  { dia: "Lun", entrenado: true },
-  { dia: "Mar", entrenado: true },
-  { dia: "Mié", entrenado: false },
-  { dia: "Jue", entrenado: true },
-  { dia: "Vie", entrenado: true },
-  { dia: "Sáb", entrenado: false },
-  { dia: "Dom", entrenado: true },
-];
+const rangoImc = (imc) => RANGOS_IMC.find((r) => imc < r.hasta)?.nombre;
 
-const logros = [
-  {
-    icono: "🔥",
-    titulo: "Racha de 7 días",
-    descripcion: "Entrenaste durante una semana seguida",
-  },
-  {
-    icono: "💪",
-    titulo: "Primer entrenamiento",
-    descripcion: "Completaste tu primera rutina",
-  },
-  {
-    icono: "🏆",
-    titulo: "50 ejercicios",
-    descripcion: "Superaste 50 ejercicios realizados",
-  },
-];
+const fechaCorta = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
+const diaSemana = new Intl.DateTimeFormat("es", { weekday: "short" });
 
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload || !payload.length) {
-    return null;
-  }
+// Las fechas del backend vienen sin zona ("2026-10-18"): se leen como fecha local
+const aFecha = (texto) => new Date(texto.length === 10 ? `${texto}T00:00:00` : texto);
 
+function TooltipGrafica({ active, payload, unidad }) {
+  if (!active || !payload?.length) return null;
+  const punto = payload[0].payload;
   return (
-    <div className="chart-tooltip">
-      <span>{label}</span>
-      <strong>{payload[0].value} kg</strong>
+    <div className="pg-tooltip">
+      <span>{fechaCorta.format(aFecha(punto.fecha))}</span>
+      <strong>
+        {formatearNumero(payload[0].value)} {unidad}
+      </strong>
     </div>
   );
-};
+}
 
-function Progreso() {
-  const [activeMetric, setActiveMetric] = useState("peso");
-
-  const progreso = 72;
-
-  // Datos temporales del usuario.
-  // Más adelante estos valores pueden venir directamente del perfil/API.
-  const pesoActual = 78;
-  const altura = 1.8;
-
-  // Cálculo del IMC
-  const imc = pesoActual / (altura * altura);
-  const imcRedondeado = imc.toFixed(1);
-
-  let categoriaIMC;
-  let descripcionIMC;
-  let posicionIMC;
-
-  if (imc < 18.5) {
-    categoriaIMC = "Bajo peso";
-    descripcionIMC =
-      "Tu IMC se encuentra por debajo del rango de referencia general.";
-    posicionIMC = 15;
-  } else if (imc < 25) {
-    categoriaIMC = "Rango saludable";
-    descripcionIMC =
-      "Tu IMC se encuentra dentro del rango de referencia considerado saludable para adultos.";
-    posicionIMC = 40;
-  } else if (imc < 30) {
-    categoriaIMC = "Sobrepeso";
-    descripcionIMC =
-      "Tu IMC se encuentra por encima del rango de referencia general.";
-    posicionIMC = 62;
-  } else {
-    categoriaIMC = "Obesidad";
-    descripcionIMC =
-      "Tu IMC se encuentra por encima del rango de referencia general.";
-    posicionIMC = 85;
+function Grafica({ historial, metrica }) {
+  if (historial.length < 2) {
+    return (
+      <div className="pg-grafica-vacia">
+        <p>Registra tu peso al menos dos días para ver tu evolución aquí.</p>
+      </div>
+    );
   }
+
+  const datos = historial.map((h) => ({ ...h, etiqueta: fechaCorta.format(aFecha(h.fecha)) }));
+  const unidad = metrica === "peso" ? "kg" : "";
+
+  return (
+    <div className="pg-grafica" role="img" aria-label={`Evolución de tu ${metrica === "peso" ? "peso" : "IMC"}`}>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={datos} margin={{ top: 16, right: 16, left: -12, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.07)" />
+          <XAxis dataKey="etiqueta" axisLine={false} tickLine={false} tick={{ fill: "rgba(240,235,255,0.5)", fontSize: 12 }} minTickGap={24} />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "rgba(240,235,255,0.5)", fontSize: 12 }}
+            // Límites redondos un poco por fuera de los datos
+            domain={[(min) => Math.floor(min - 1), (max) => Math.ceil(max + 1)]}
+            allowDecimals={false}
+            tickFormatter={(v) => formatearNumero(v)}
+            width={48}
+          />
+          <Tooltip content={<TooltipGrafica unidad={unidad} />} cursor={{ stroke: "rgba(255,255,255,0.2)" }} />
+          <Line
+            type="monotone"
+            dataKey={metrica}
+            stroke={ACENTO}
+            strokeWidth={2}
+            dot={{ r: 4, fill: ACENTO, stroke: "#14101f", strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: ACENTO, stroke: "#14101f", strokeWidth: 2 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RegistrarPeso({ pesoActual, onRegistrado }) {
+  const [peso, setPeso] = useState(pesoActual ?? "");
+  const [estado, setEstado] = useState({ enviando: false, error: "" });
+
+  const enviar = async (evento) => {
+    evento.preventDefault();
+    setEstado({ enviando: true, error: "" });
+    try {
+      await api.post("/progreso/peso/", { peso: Number(peso) });
+      setEstado({ enviando: false, error: "" });
+      onRegistrado();
+    } catch (error) {
+      const data = error.response?.data;
+      setEstado({ enviando: false, error: data?.error || data?.peso?.[0] || "No se pudo registrar." });
+    }
+  };
+
+  return (
+    <form className="pg-registrar" onSubmit={enviar}>
+      <label htmlFor="pg-peso">Peso de hoy</label>
+      <div className="pg-registrar-fila">
+        <input
+          id="pg-peso"
+          type="number"
+          step="0.1"
+          min="20"
+          max="400"
+          value={peso}
+          onChange={(e) => setPeso(e.target.value)}
+          required
+        />
+        <span>kg</span>
+        <button type="submit" disabled={estado.enviando || !peso}>
+          {estado.enviando ? "Guardando…" : "Registrar"}
+        </button>
+      </div>
+      {estado.error && <p className="pg-error">{estado.error}</p>}
+    </form>
+  );
+}
+
+export default function Progreso() {
+  const navigate = useNavigate();
+  const [version, setVersion] = useState(0);
+  const [datos, setDatos] = useState({ cargando: true, valor: null, error: "" });
+  const [metrica, setMetrica] = useState("peso");
+
+  useEffect(() => {
+    let activo = true;
+    api
+      .get("/progreso/")
+      .then((res) => activo && setDatos({ cargando: false, valor: res.data, error: "" }))
+      .catch(() => activo && setDatos({ cargando: false, valor: null, error: "No se pudo cargar tu progreso." }));
+    return () => {
+      activo = false;
+    };
+  }, [version]);
+
+  const d = datos.valor;
+  const historial = d?.historial_peso || [];
+  const primero = historial[0];
+  const cambio = d?.perfil.peso != null && primero ? Math.round((d.perfil.peso - primero.peso) * 10) / 10 : null;
 
   return (
     <>
       <Navbar />
+      <main className="pg-page">
+        <div className="pg-contenedor">
+          <header className="pg-cabecera">
+            <h1>Mi progreso</h1>
+            <p>Tu evolución con los datos de tus entrenamientos y tus registros de peso.</p>
+          </header>
 
-      <main className="progreso-page">
+          {datos.cargando && <p className="pg-nota">Cargando…</p>}
+          {datos.error && <p className="pg-error">{datos.error}</p>}
 
-        {/* =====================================================
-            HEADER
-        ===================================================== */}
-
-        <header className="progreso-header">
-          <div>
-            <span className="eyebrow">
-              TU EVOLUCIÓN
-            </span>
-
-            <h1 className="progreso-title">
-              Mi Progreso
-            </h1>
-
-            <p className="progreso-subtitle">
-              Aquí puedes ver tu evolución y los resultados de tu esfuerzo.
-            </p>
-          </div>
-        </header>
-
-
-        {/* =====================================================
-            ESTADÍSTICAS PRINCIPALES
-        ===================================================== */}
-
-        <section className="stats-grid">
-
-          <article className="stat-card stat-card--purple">
-
-            <div className="stat-top">
-              <span className="stat-icon">⚖</span>
-              <span className="stat-trend">↗ +28 kg</span>
-            </div>
-
-            <div className="stat-value">
-              78
-              <span>kg</span>
-            </div>
-
-            <p className="stat-label">
-              Peso actual
-            </p>
-
-            <small>
-              desde el inicio
-            </small>
-
-          </article>
-
-
-          <article className="stat-card stat-card--blue">
-
-            <div className="stat-top">
-              <span className="stat-icon">◎</span>
-              <span className="stat-mini">OBJETIVO</span>
-            </div>
-
-            <div className="stat-value">
-              85
-              <span>kg</span>
-            </div>
-
-            <p className="stat-label">
-              Meta
-            </p>
-
-            <small>
-              Faltan 7 kg
-            </small>
-
-          </article>
-
-
-          <article className="stat-card stat-card--green">
-
-            <div className="stat-top">
-              <span className="stat-icon">♜</span>
-              <span className="stat-trend">↗ Esta semana</span>
-            </div>
-
-            <div className="stat-value">
-              5
-            </div>
-
-            <p className="stat-label">
-              Días entrenados
-            </p>
-
-            <small>
-              entrenamientos
-            </small>
-
-          </article>
-
-
-          <article className="stat-card stat-card--orange">
-
-            <div className="stat-top">
-              <span className="stat-icon">🔥</span>
-              <span className="stat-mini">ACTIVA</span>
-            </div>
-
-            <div className="stat-value">
-              7
-            </div>
-
-            <p className="stat-label">
-              Racha actual
-            </p>
-
-            <small>
-              días seguidos
-            </small>
-
-          </article>
-
-        </section>
-
-
-        {/* =====================================================
-            GRÁFICA + PROGRESO
-        ===================================================== */}
-
-        <section className="main-progress-grid">
-
-          {/* =================================================
-              EVOLUCIÓN
-          ================================================= */}
-
-          <article className="chart-section">
-
-            <div className="chart-header">
-
-              <div>
-                <div className="section-heading-row">
-
-                  <span className="section-icon">
-                    ⌁
-                  </span>
-
-                  <div>
-                    <h2>
-                      Evolución física
-                    </h2>
-
-                    <p>
-                      Consulta tu peso o una referencia de tu IMC
-                    </p>
-                  </div>
-
+          {d && (
+            <>
+              {/* ── Cifras principales ── */}
+              <section className="pg-cifras" aria-label="Resumen">
+                <div className="pg-panel pg-cifra">
+                  <span>Peso actual</span>
+                  <strong>{d.perfil.peso != null ? `${formatearNumero(d.perfil.peso)} kg` : "–"}</strong>
+                  <small>
+                    {cambio === null || historial.length < 2
+                      ? "Sin registros anteriores"
+                      : `${cambio > 0 ? "+" : ""}${formatearNumero(cambio)} kg desde el ${fechaCorta.format(aFecha(primero.fecha))}`}
+                  </small>
                 </div>
-              </div>
+                <div className="pg-panel pg-cifra">
+                  <span>IMC</span>
+                  <strong>{d.perfil.imc ?? "–"}</strong>
+                  <small>{d.perfil.imc ? rangoImc(d.perfil.imc) : "Agrega peso y altura"}</small>
+                </div>
+                <div className="pg-panel pg-cifra">
+                  <span>Esta semana</span>
+                  <strong>{d.totales.dias_semana}/7</strong>
+                  <small>días con entrenamiento</small>
+                </div>
+                <div className="pg-panel pg-cifra">
+                  <span>Racha</span>
+                  <strong>
+                    {d.totales.racha} {d.totales.racha === 1 ? "día" : "días"}
+                  </strong>
+                  <small>Mejor racha: {d.totales.mejor_racha} {d.totales.mejor_racha === 1 ? "día" : "días"}</small>
+                </div>
+              </section>
 
-
-              {/* BOTONES PESO / IMC */}
-
-              <div className="chart-tabs">
-
-                <button
-                  type="button"
-                  className={activeMetric === "peso" ? "active" : ""}
-                  onClick={() => setActiveMetric("peso")}
-                >
-                  Peso
-                </button>
-
-                <button
-                  type="button"
-                  className={activeMetric === "imc" ? "active" : ""}
-                  onClick={() => setActiveMetric("imc")}
-                >
-                  IMC
-                </button>
-
-              </div>
-
-            </div>
-
-
-            {/* =================================================
-                VISTA PESO
-            ================================================= */}
-
-            {activeMetric === "peso" && (
-
-              <div className="chart-container">
-
-                <LineChart
-                  width={1000}
-                  height={360}
-                  data={datosPeso}
-                  margin={{
-                    top: 25,
-                    right: 25,
-                    left: 0,
-                    bottom: 5,
-                  }}
-                >
-
-                  <CartesianGrid
-                    horizontal={true}
-                    vertical={false}
-                    stroke="rgba(255,255,255,0.06)"
-                  />
-
-                  <XAxis
-                    dataKey="mes"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{
-                      fill: "#777b87",
-                      fontSize: 12,
-                    }}
-                  />
-
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    domain={[45, 85]}
-                    tick={{
-                      fill: "#777b87",
-                      fontSize: 12,
-                    }}
-                  />
-
-                  <Tooltip
-                    content={<CustomTooltip />}
-                    cursor={{
-                      stroke: "rgba(139,92,246,0.2)",
-                    }}
-                  />
-
-                  <Line
-                    type="monotone"
-                    dataKey="peso"
-                    stroke="#8b5cf6"
-                    strokeWidth={3}
-                    dot={{
-                      r: 4,
-                      fill: "#8b5cf6",
-                      stroke: "#111319",
-                      strokeWidth: 2,
-                    }}
-                    activeDot={{
-                      r: 7,
-                      fill: "#a78bfa",
-                      stroke: "#ffffff",
-                      strokeWidth: 2,
-                    }}
-                  />
-
-                </LineChart>
-
-              </div>
-
-            )}
-
-
-            {/* =================================================
-                VISTA IMC
-            ================================================= */}
-
-            {activeMetric === "imc" && (
-
-              <div className="imc-panel">
-
-                {/* PARTE PRINCIPAL */}
-
-                <div className="imc-main">
-
-                  <div className="imc-score">
-
-                    <span className="imc-label">
-                      Tu IMC actual
-                    </span>
-
-                    <strong>
-                      {imcRedondeado}
-                    </strong>
-
-                    <span className="imc-category">
-                      {categoriaIMC}
-                    </span>
-
-                  </div>
-
-
-                  <div className="imc-description">
-
-                    <h3>
-                      ¿Dónde estás?
-                    </h3>
-
-                    <p>
-                      {descripcionIMC}
-                    </p>
-
-
-                    {/* BARRA IMC */}
-
-                    <div className="imc-range">
-
-                      <div className="imc-range-bar">
-
-                        <span
-                          className="imc-marker"
-                          style={{
-                            left: `${posicionIMC}%`,
-                          }}
-                        ></span>
-
-                      </div>
-
-
-                      <div className="imc-range-labels">
-                        <span>&lt; 18.5</span>
-                        <span>18.5</span>
-                        <span>25</span>
-                        <span>30</span>
-                        <span>40+</span>
-                      </div>
-
+              <div className="pg-grid">
+                {/* ── Evolución ── */}
+                <section className="pg-panel pg-evolucion">
+                  <div className="pg-panel-cabecera">
+                    <h2>Evolución</h2>
+                    <div className="pg-tabs" role="tablist" aria-label="Métrica">
+                      {[["peso", "Peso"], ["imc", "IMC"]].map(([id, texto]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="tab"
+                          aria-selected={metrica === id}
+                          className={metrica === id ? "activa" : ""}
+                          onClick={() => setMetrica(id)}
+                        >
+                          {texto}
+                        </button>
+                      ))}
                     </div>
-
                   </div>
 
-                </div>
+                  <Grafica historial={historial} metrica={metrica} />
 
-
-                {/* DATOS UTILIZADOS */}
-
-                <div className="imc-data">
-
-                  <div>
-                    <span>Peso utilizado</span>
-                    <strong>
-                      {pesoActual} kg
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Altura registrada</span>
-                    <strong>
-                      {altura.toFixed(2)} m
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Fórmula</span>
-                    <strong>
-                      kg / m²
-                    </strong>
-                  </div>
-
-                </div>
-
-
-                {/* INFORMACIÓN IMPORTANTE */}
-
-                <div className="imc-notice">
-
-                  <span className="imc-notice-icon">
-                    i
-                  </span>
-
-                  <div>
-
-                    <strong>
-                      El IMC es una referencia, no una medida perfecta
-                    </strong>
-
-                    <p>
-                      El IMC puede ayudarte a tener una referencia general
-                      sobre tu relación entre peso y altura, pero no explica
-                      por completo tu composición corporal. No diferencia
-                      entre músculo, grasa, masa ósea, agua u otros factores.
-                      Por eso, especialmente si entrenas fuerza, tu IMC debe
-                      interpretarse junto con otras medidas y tu contexto
-                      personal.
+                  {d.perfil.altura ? (
+                    <RegistrarPeso
+                      key={d.perfil.peso ?? "sin-peso"}
+                      pesoActual={d.perfil.peso}
+                      onRegistrado={() => setVersion((v) => v + 1)}
+                    />
+                  ) : (
+                    <p className="pg-nota">
+                      Agrega tu altura en{" "}
+                      <button type="button" className="pg-link" onClick={() => navigate("/configuracion")}>
+                        Configuración
+                      </button>{" "}
+                      para registrar tu peso y calcular tu IMC.
                     </p>
+                  )}
+                </section>
 
-                  </div>
+                {/* ── Semana y totales ── */}
+                <section className="pg-panel pg-semana">
+                  <h2>Últimos 7 días</h2>
+                  <ol className="pg-dias">
+                    {d.semana.map((dia) => (
+                      <li key={dia.fecha} className={dia.entrenado ? "entrenado" : ""}>
+                        <span className="pg-punto" aria-hidden="true" />
+                        <span>{diaSemana.format(aFecha(dia.fecha)).replace(".", "")}</span>
+                        <span className="pg-oculto">{dia.entrenado ? "entrenaste" : "sin entrenar"}</span>
+                      </li>
+                    ))}
+                  </ol>
 
-                </div>
-
+                  <h2 className="pg-subtitulo">Totales</h2>
+                  <dl className="pg-totales">
+                    <div>
+                      <dt>Entrenamientos</dt>
+                      <dd>{formatearNumero(d.totales.entrenamientos)}</dd>
+                    </div>
+                    <div>
+                      <dt>Tiempo</dt>
+                      <dd>{formatearDuracion(d.totales.minutos * 60)}</dd>
+                    </div>
+                    <div>
+                      <dt>Volumen</dt>
+                      <dd>{formatearNumero(d.totales.volumen)} kg</dd>
+                    </div>
+                    <div>
+                      <dt>Récords</dt>
+                      <dd>{d.totales.records}</dd>
+                    </div>
+                  </dl>
+                </section>
               </div>
 
-            )}
+              {/* ── Logros ── */}
+              <section className="pg-panel">
+                <h2>
+                  Logros <span className="pg-contador">{d.logros.filter((l) => l.obtenido).length}/{d.logros.length}</span>
+                </h2>
+                <ul className="pg-logros">
+                  {d.logros.map((logro) => (
+                    <li key={logro.id} className={logro.obtenido ? "obtenido" : ""}>
+                      <span className="pg-logro-icono" aria-hidden="true">{logro.icono}</span>
+                      <span>
+                        <strong>{logro.titulo}</strong>
+                        <small>{logro.obtenido ? logro.descripcion : `Pendiente: ${logro.descripcion.toLowerCase()}`}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
 
-          </article>
-
-
-          {/* =================================================
-              PROGRESO HACIA LA META
-          ================================================= */}
-
-          <article className="goal-progress-card">
-
-            <div className="goal-card-header">
-
-              <div>
-
-                <span className="section-icon">
-                  ◎
-                </span>
-
-                <div>
-
-                  <h2>
-                    Avance hacia la meta
-                  </h2>
-
-                  <p>
-                    Peso actual vs meta
+              {/* ── Récords ── */}
+              <section className="pg-panel">
+                <h2>Últimos récords personales</h2>
+                {d.records_recientes.length === 0 ? (
+                  <p className="pg-nota">
+                    Cuando superes tu mejor marca en un ejercicio aparecerá aquí.
                   </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <div
-              className="progress-circle"
-              style={{
-                "--progress": `${progreso * 3.6}deg`,
-              }}
-            >
-
-              <div className="progress-circle-inner">
-
-                <strong>
-                  {progreso}%
-                </strong>
-
-                <span>
-                  completado
-                </span>
-
-              </div>
-
-            </div>
-
-
-            <div className="goal-legend">
-
-              <div>
-
-                <span className="legend-dot purple"></span>
-
-                <p>
-                  Actual
-                  <strong>
-                    78 kg
-                  </strong>
-                </p>
-
-                <b>
-                  72%
-                </b>
-
-              </div>
-
-
-              <div>
-
-                <span className="legend-dot gray"></span>
-
-                <p>
-                  Faltante
-                  <strong>
-                    7 kg
-                  </strong>
-                </p>
-
-                <b>
-                  28%
-                </b>
-
-              </div>
-
-            </div>
-
-          </article>
-
-        </section>
-
-
-        {/* =====================================================
-            FILA SECUNDARIA
-        ===================================================== */}
-
-        <section className="secondary-grid">
-
-          {/* RESUMEN SEMANAL */}
-
-          <article className="dashboard-card weekly-card-large">
-
-            <div className="card-heading">
-
-              <div>
-
-                <h2>
-                  Resumen semanal
-                </h2>
-
-                <p>
-                  Tus entrenamientos de la semana
-                </p>
-
-              </div>
-
-              <span className="card-heading-icon">
-                ▣
-              </span>
-
-            </div>
-
-
-            <div className="week-days">
-
-              {resumenSemanal.map((item) => (
-
-                <div
-                  key={item.dia}
-                  className={`week-day ${
-                    item.entrenado ? "active" : ""
-                  }`}
-                >
-
-                  <span className="week-day-name">
-                    {item.dia}
-                  </span>
-
-                  <span className="week-day-circle">
-                    {item.entrenado ? "✓" : "×"}
-                  </span>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </article>
-
-
-          {/* ACTIVIDAD */}
-
-          <article className="dashboard-card activity-card">
-
-            <div className="card-heading">
-
-              <div>
-
-                <h2>
-                  Actividad reciente
-                </h2>
-
-                <p>
-                  Tu actividad acumulada
-                </p>
-
-              </div>
-
-              <span className="card-heading-icon">
-                ⚡
-              </span>
-
-            </div>
-
-
-            <div className="activity-rows">
-
-              <div className="activity-row">
-                <span>◷</span>
-                <p>Horas entrenadas</p>
-                <strong>27 h</strong>
-              </div>
-
-              <div className="activity-row">
-                <span>♜</span>
-                <p>Entrenamientos realizados</p>
-                <strong>42</strong>
-              </div>
-
-              <div className="activity-row">
-                <span>☷</span>
-                <p>Ejercicios completados</p>
-                <strong>120</strong>
-              </div>
-
-              <div className="activity-row">
-                <span>♨</span>
-                <p>Calorías quemadas</p>
-                <strong>15.400</strong>
-              </div>
-
-            </div>
-
-          </article>
-
-
-          {/* FRASE */}
-
-          <article className="motivation-card">
-
-            <div className="motivation-overlay"></div>
-
-            <div className="motivation-content">
-
-              <span className="quote-mark">
-                “
-              </span>
-
-              <h2>
-                El progreso
-                <br />
-                no siempre se ve,
-                <br />
-                <strong>
-                  pero se siente.
-                </strong>
-              </h2>
-
-              <div className="quote-line"></div>
-
-            </div>
-
-          </article>
-
-        </section>
-
-
-        {/* =====================================================
-            ANTES VS AHORA
-        ===================================================== */}
-
-        <section className="bottom-grid">
-
-          {/* ANTES VS AHORA */}
-
-          <article className="dashboard-card compare-card">
-
-            <div className="card-heading">
-
-              <div>
-
-                <h2>
-                  Antes vs Ahora
-                </h2>
-
-                <p>
-                  Tu transformación en números
-                </p>
-
-              </div>
-
-              <span className="card-heading-icon">
-                ↗
-              </span>
-
-            </div>
-
-
-            <div className="compare-content">
-
-              <div>
-
-                <span>
-                  Antes
-                </span>
-
-                <strong>
-                  50 kg
-                </strong>
-
-              </div>
-
-
-              <div className="compare-divider"></div>
-
-
-              <div>
-
-                <span>
-                  Ahora
-                </span>
-
-                <strong>
-                  78 kg
-                </strong>
-
-              </div>
-
-
-              <div className="compare-divider"></div>
-
-
-              <div>
-
-                <span>
-                  Cambio
-                </span>
-
-                <strong className="positive">
-                  +28 kg
-                </strong>
-
-              </div>
-
-            </div>
-
-          </article>
-
-
-          {/* METAS */}
-
-          <article className="dashboard-card smart-goal-card">
-
-            <div className="card-heading">
-
-              <div>
-
-                <h2>
-                  Metas inteligentes
-                </h2>
-
-                <p>
-                  Tu siguiente objetivo
-                </p>
-
-              </div>
-
-              <span className="card-heading-icon">
-                ◎
-              </span>
-
-            </div>
-
-
-            <div className="smart-goal-content">
-
-              <div className="goal-icon">
-                🎯
-              </div>
-
-
-              <div className="goal-text">
-
-                <h3>
-                  Llegar a 85 kg
-                </h3>
-
-                <p>
-                  Faltan 7 kg para alcanzar tu objetivo
-                </p>
-
-
-                <div className="goal-bar">
-
-                  <span
-                    style={{
-                      width: `${progreso}%`,
-                    }}
-                  ></span>
-
-                </div>
-
-
-                <div className="goal-bar-footer">
-
-                  <span>
-                    Progreso
-                  </span>
-
-                  <strong>
-                    {progreso}%
-                  </strong>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </article>
-
-
-          {/* LOGROS */}
-
-          <article className="dashboard-card achievements-card">
-
-            <div className="card-heading">
-
-              <div>
-
-                <h2>
-                  Logros desbloqueados
-                </h2>
-
-                <p>
-                  Todo lo que has conseguido
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                className="view-all"
-              >
-                Ver todos →
-              </button>
-
-            </div>
-
-
-            <div className="achievements-list">
-
-              {logros.map((logro) => (
-
-                <div
-                  className="achievement"
-                  key={logro.titulo}
-                >
-
-                  <div className="achievement-icon">
-                    {logro.icono}
-                  </div>
-
-                  <h3>
-                    {logro.titulo}
-                  </h3>
-
-                  <p>
-                    {logro.descripcion}
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </article>
-
-        </section>
-
+                ) : (
+                  <ul className="pg-records">
+                    {d.records_recientes.map((r, i) => (
+                      <li key={`${r.ejercicio}-${i}`}>
+                        <span>
+                          <strong>🏆 {r.ejercicio}</strong>
+                          <small>{r.entrenamiento} · {fechaCorta.format(aFecha(r.fecha))}</small>
+                        </span>
+                        <span className="pg-record-valor">
+                          {r.tipo === "peso" && `${formatearNumero(r.valor)} kg`}
+                          {r.tipo === "reps" && `${r.valor} reps`}
+                          {r.tipo === "tiempo" && formatearDuracion(r.valor)}
+                          <small>
+                            antes {r.tipo === "peso" ? `${formatearNumero(r.anterior)} kg` : r.tipo === "reps" ? `${r.anterior} reps` : formatearDuracion(r.anterior)}
+                          </small>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </>
+          )}
+        </div>
       </main>
     </>
   );
 }
-
-export default Progreso;
-
-

@@ -6,7 +6,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
-from .records import calcular_records
+from .records import _clave, calcular_records, mejor_marca
 from .rutina_ia import guardar_rutina, rutina_respaldo
 from users.models import Usuario
 from .models import RegistroEntrenamiento
@@ -171,7 +171,7 @@ class RegistroEntrenamientoListView(APIView):
 
     def post(self, request):
         usuario = get_object_or_404(Usuario, auth=request.user)
-        serializer = RegistroEntrenamientoSerializer(data=request.data)
+        serializer = RegistroEntrenamientoSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         # Si el entrenamiento no dice si se comparte, se usa la preferencia de la cuenta
         extra = {} if 'compartido' in request.data else {'compartido': usuario.compartir_por_defecto}
@@ -202,3 +202,77 @@ class RegistroEntrenamientoDetailView(APIView):
     def delete(self, request, id):
         self._registro(request, id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _series_hechas(ejercicio):
+    return [s for s in ejercicio.get('series') or [] if s.get('hecho')]
+
+
+class AnteriorView(APIView):
+    """
+    "Anterior" de Hevy/Strong: lo que hiciste la última vez en cada ejercicio,
+    sin importar en qué rutina. GET ?nombres=Sentadilla|Press de banca
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        pedidos = {_clave(n): n for n in request.query_params.get('nombres', '').split('|') if n.strip()}
+        if not pedidos:
+            return Response({})
+
+        encontrados = {}
+        registros = usuario.registros_entrenamiento.order_by('-fecha', '-id').only('fecha', 'ejercicios')
+        for registro in registros.iterator():
+            for ejercicio in registro.ejercicios or []:
+                clave = _clave(ejercicio.get('nombre'))
+                hechas = _series_hechas(ejercicio)
+                if clave in pedidos and clave not in encontrados and hechas:
+                    encontrados[clave] = {
+                        'fecha': registro.fecha,
+                        'unidad_peso': ejercicio.get('unidad_peso') or 'kg',
+                        'series': hechas,
+                    }
+            if len(encontrados) == len(pedidos):
+                break
+
+        # Se responde con el nombre tal como lo pidió el frontend
+        return Response({pedidos[clave]: datos for clave, datos in encontrados.items()})
+
+
+class HistorialEjercicioView(APIView):
+    """Sesiones en las que hiciste un ejercicio, con la mejor serie de cada una. GET ?nombre=..."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        clave = _clave(request.query_params.get('nombre', ''))
+        if not clave:
+            return Response({'sesiones': [], 'mejor': None, 'veces': 0})
+
+        sesiones = []
+        mejor = None
+        for registro in usuario.registros_entrenamiento.order_by('-fecha', '-id').only('fecha', 'nombre', 'ejercicios'):
+            for ejercicio in registro.ejercicios or []:
+                if _clave(ejercicio.get('nombre')) != clave:
+                    continue
+                hechas = _series_hechas(ejercicio)
+                marca = mejor_marca(ejercicio)
+                if not hechas or marca is None:
+                    continue
+                sesiones.append({
+                    'fecha': registro.fecha,
+                    'entrenamiento': registro.nombre,
+                    'unidad_peso': ejercicio.get('unidad_peso') or 'kg',
+                    'por_tiempo': bool(ejercicio.get('por_tiempo')),
+                    'series': hechas,
+                    'mejor': {'tipo': marca[0], 'valor': marca[1]},
+                })
+                if mejor is None or (marca[0] == mejor['tipo'] and marca[1] > mejor['valor']):
+                    mejor = {'tipo': marca[0], 'valor': marca[1], 'fecha': registro.fecha}
+
+        return Response({'sesiones': sesiones[:30], 'mejor': mejor, 'veces': len(sesiones)})

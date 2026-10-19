@@ -169,3 +169,59 @@ class RecordsPersonalesTests(BaseChatbotTest):
         )
         datos = self.registrar({'nombre': 'Curl', 'sets': [serie(20, 10)]})
         self.assertEqual(datos['records'], [])
+
+
+class RutinasEstiloHevyTests(BaseChatbotTest):
+    def registrar(self, ejercicios, fecha, rutina_id=None):
+        datos = {'nombre': 'Sesión', 'duracion_segundos': 1800, 'fecha': fecha, 'ejercicios': ejercicios}
+        if rutina_id:
+            datos['rutina_id'] = rutina_id
+        return self.client.post('/api/entrenamientos/registros/', datos, format='json')
+
+    def test_anterior_devuelve_la_ultima_vez_de_cada_ejercicio(self):
+        self.registrar([{'nombre': 'Sentadilla', 'sets': [serie(80, 5)]}], '2026-10-01T10:00:00Z')
+        self.registrar([
+            {'nombre': 'sentadilla', 'sets': [serie(85, 5), serie(90, 3, hecho=False)]},
+            {'nombre': 'Press', 'sets': [serie(60, 8, hecho=False)]},  # sin series hechas: no cuenta
+        ], '2026-10-08T10:00:00Z')
+
+        datos = self.client.get('/api/entrenamientos/anterior/', {'nombres': 'Sentadilla|Press|Remo'}).data
+        self.assertEqual(list(datos), ['Sentadilla'])
+        self.assertEqual([s['peso_kg'] for s in datos['Sentadilla']['series']], [85])
+
+    def test_historial_de_un_ejercicio(self):
+        self.registrar([{'nombre': 'Remo', 'sets': [serie(50, 10)]}], '2026-10-01T10:00:00Z')
+        self.registrar([{'nombre': 'Remo', 'sets': [serie(60, 8), serie(55, 10)]}], '2026-10-08T10:00:00Z')
+
+        datos = self.client.get('/api/entrenamientos/ejercicio-historial/', {'nombre': 'remo'}).data
+        self.assertEqual(datos['veces'], 2)
+        self.assertEqual(datos['sesiones'][0]['mejor'], {'tipo': 'peso', 'valor': 60})
+        self.assertEqual(datos['mejor']['valor'], 60)
+
+    def test_rutinas_muestran_veces_y_ultima_vez(self):
+        rutina = Rutina.objects.create(usuario=self.usuario, nombre='Pierna')
+        self.registrar([{'nombre': 'Sentadilla', 'sets': [serie(80, 5)]}], '2026-10-01T10:00:00Z', rutina.id)
+        self.registrar([{'nombre': 'Sentadilla', 'sets': [serie(80, 5)]}], '2026-10-08T10:00:00Z', rutina.id)
+
+        datos = next(r for r in self.client.get(f'/api/usuarios/{self.usuario.id}/rutinas/').data if r['id'] == rutina.id)
+        self.assertEqual(datos['veces'], 2)
+        self.assertTrue(str(datos['ultima_vez']).startswith('2026-10-08'))
+
+    def test_no_se_liga_a_una_rutina_ajena(self):
+        otro = AuthUsuario.objects.create_user(email='otro@test.com', password='Clave12345')
+        ajena = Rutina.objects.create(usuario=Usuario.objects.create(auth=otro, nombre='Otro', username='otro'), nombre='X')
+        respuesta = self.registrar([{'nombre': 'Sentadilla', 'sets': [serie(80, 5)]}], '2026-10-01T10:00:00Z', ajena.id)
+        self.assertEqual(respuesta.status_code, 400)
+
+
+class FechaLocalTests(BaseChatbotTest):
+    def test_fecha_en_utc_se_guarda_en_hora_local(self):
+        from datetime import datetime
+        from entrenamientos.models import RegistroEntrenamiento
+
+        self.client.post('/api/entrenamientos/registros/', {
+            'nombre': 'Sesión', 'fecha': '2026-10-18T23:48:55Z', 'ejercicios': [],
+        }, format='json')
+
+        esperada = datetime.fromisoformat('2026-10-18T23:48:55+00:00').astimezone().replace(tzinfo=None)
+        self.assertEqual(RegistroEntrenamiento.objects.get().fecha, esperada)

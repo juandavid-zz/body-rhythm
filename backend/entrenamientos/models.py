@@ -94,6 +94,14 @@ class RegistroEntrenamiento(models.Model):
         on_delete=models.CASCADE,
         related_name='registros_entrenamiento'
     )
+    # Rutina de la que salió (si se borra la rutina, el entrenamiento se conserva)
+    rutina = models.ForeignKey(
+        Rutina,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registros'
+    )
     nombre = models.CharField(max_length=150)
     fecha = models.DateTimeField(default=timezone.now)
     duracion_segundos = models.PositiveIntegerField(default=0)

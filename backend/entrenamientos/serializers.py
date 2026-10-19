@@ -1,4 +1,7 @@
+from django.utils import timezone
 from rest_framework import serializers
+from rutinas.models import Rutina
+
 from .models import HistorialEntrenamiento, ProgresoEjercicio, RegistroEntrenamiento
 
 
@@ -14,6 +17,19 @@ class ProgresoEjercicioSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 MAX_EJERCICIOS = 50
+
+
+class FechaLocalField(serializers.DateTimeField):
+    """
+    El proyecto usa USE_TZ = False: las fechas se guardan en hora local del servidor.
+    El navegador manda la fecha en UTC ("...Z"); DRF la guardaría como UTC sin zona y
+    quedaría 5 horas en el futuro ("dentro de 5 horas"). Aquí se pasa a hora local.
+    """
+
+    def enforce_timezone(self, value):
+        if timezone.is_aware(value):
+            return value.astimezone().replace(tzinfo=None)
+        return value
 MAX_SERIES = 50
 
 
@@ -29,10 +45,16 @@ def _numero(valor, minimo=0, maximo=100000):
 
 
 class RegistroEntrenamientoSerializer(serializers.ModelSerializer):
+    fecha = FechaLocalField(required=False)
+    rutina_id = serializers.PrimaryKeyRelatedField(
+        source='rutina', queryset=Rutina.objects.all(), required=False, allow_null=True,
+    )
+
     class Meta:
         model = RegistroEntrenamiento
         fields = [
             'id',
+            'rutina_id',
             'nombre',
             'fecha',
             'duracion_segundos',
@@ -44,6 +66,13 @@ class RegistroEntrenamientoSerializer(serializers.ModelSerializer):
             'compartido',
         ]
         read_only_fields = ['id', 'series_completadas', 'series_totales', 'volumen_kg', 'records']
+
+    def validate_rutina_id(self, rutina):
+        # Solo se puede ligar a una rutina propia
+        request = self.context.get('request')
+        if rutina and request and rutina.usuario.auth_id != request.user.id:
+            raise serializers.ValidationError('Rutina no encontrada.')
+        return rutina
 
     def validate_ejercicios(self, value):
         """

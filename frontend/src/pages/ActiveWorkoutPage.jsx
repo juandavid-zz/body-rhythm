@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
 import { guardarEntrenamiento } from "../utils/rutinasStorage";
+import "../css/entrenamiento-activo.css";
 
 const KG_A_LB = 2.20462;
 
@@ -41,46 +43,6 @@ const MENU_SERIE = [
   { tipo: "fallo", etiqueta: "F", nombre: "Serie al Fallo", color: "#ef4444" },
   { tipo: "drop", etiqueta: "D", nombre: "Serie Drop", color: "#38bdf8" },
 ];
-
-const estilos = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0f0f1a 0%, #1a0533 100%)",
-    padding: "6rem 1rem 3rem",
-    color: "#fff",
-    boxSizing: "border-box",
-  },
-  container: { maxWidth: "900px", margin: "0 auto" },
-  card: {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(168,85,247,0.2)",
-    borderRadius: "14px",
-    padding: "1.1rem",
-    marginBottom: "1rem",
-    boxSizing: "border-box",
-  },
-  input: {
-    background: "rgba(0,0,0,0.3)",
-    border: "1px solid rgba(168,85,247,0.3)",
-    borderRadius: "9px",
-    color: "#fff",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  menuItem: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.65rem 0.8rem",
-    background: "transparent",
-    border: "none",
-    color: "#fff",
-    textAlign: "left",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-  },
-};
 
 function esEjercicioPorTiempo(ejercicio = {}) {
   if (
@@ -139,6 +101,38 @@ function formatearTiempo(segundos) {
   const minutos = Math.floor(total / 60);
   const segundosRestantes = total % 60;
   return `${String(minutos).padStart(2, "0")}:${String(segundosRestantes).padStart(2, "0")}`;
+}
+
+// "Anterior" como en Hevy/Strong: la serie N muestra la serie N de la última vez
+// que hiciste ese ejercicio, en cualquier rutina (lo da /entrenamientos/anterior/).
+function aplicarAnterior(ejercicios, anteriores) {
+  return ejercicios.map((ej) => {
+    const anterior = anteriores[ej.nombre];
+    if (!anterior) return ej;
+    return {
+      ...ej,
+      sets: ej.sets.map((serie, i) => {
+        const previa = anterior.series[i];
+        if (!previa) return serie;
+        return {
+          ...serie,
+          anteriorPeso: previa.peso ?? previa.peso_kg ?? "",
+          anteriorPesoKg: previa.peso_kg ?? "",
+          anteriorUnidadPeso: anterior.unidad_peso || "kg",
+          anteriorReps: previa.reps ?? "",
+          anteriorDuracion: previa.duracion_segundos ?? "",
+        };
+      }),
+    };
+  });
+}
+
+function cargarAnterior(nombres, alCargar) {
+  if (!nombres.length) return;
+  api
+    .get("/entrenamientos/anterior/", { params: { nombres: nombres.join("|") } })
+    .then((res) => alCargar(res.data))
+    .catch(() => {}); // sin conexión se queda con lo guardado en este navegador
 }
 
 const RUTINA_PROGRESO_KEY = "bodyRhythm_rutina_progreso_v2";
@@ -241,12 +235,6 @@ export default function ActiveWorkoutPage() {
     (e) => String(e.id) === String(ejercicioSeleccionado)
   );
 
-  const iconoGrupo = (grupo) => ({
-    pecho: "🏋️", espalda: "🧗", hombros: "💪", biceps: "💪", triceps: "💪",
-    abdomen: "🔥", cuadriceps: "🦵", femoral: "🦵", gluteos: "🍑",
-    pantorrillas: "🦵", cardio: "🏃",
-  }[String(grupo || "").toLowerCase()] || "💪");
-
   // ------------------------------------------------------
   // TEMPORIZADOR GENERAL + CATÁLOGO
   // ------------------------------------------------------
@@ -258,6 +246,11 @@ export default function ActiveWorkoutPage() {
     api.get("/ejercicios/", { headers })
       .then((res) => setCatalogo(res.data))
       .catch(() => {});
+
+    cargarAnterior(
+      ejercicios.map((ej) => ej.nombre),
+      (anteriores) => setEjercicios((prev) => aplicarAnterior(prev, anteriores))
+    );
 
     return () => {
       clearInterval(entrenamientoTimerRef.current);
@@ -586,6 +579,8 @@ export default function ActiveWorkoutPage() {
       },
     ]);
 
+    cargarAnterior([info.nombre], (anteriores) => setEjercicios((prev) => aplicarAnterior(prev, anteriores)));
+
     setEjercicioSeleccionado("");
     setSelectorAbierto(false);
     setBusquedaEjercicio("");
@@ -669,7 +664,10 @@ export default function ActiveWorkoutPage() {
         fecha: resumen.fecha,
         duracion_segundos: resumen.duracionSeg,
         ejercicios: resumen.ejercicios,
+        // Solo las rutinas guardadas tienen id numérico (las vacías no)
+        rutina_id: Number.isInteger(rutina?.id) ? rutina.id : null,
       })
+      .then((res) => setFinalizado((actual) => (actual ? { ...actual, records: res.data.records || [] } : actual)))
       .catch((error) => console.error("No se pudo publicar el entrenamiento:", error));
     if (rutina?.id) {
       guardarProgresoRutina(rutina.id, {
@@ -748,120 +746,134 @@ export default function ActiveWorkoutPage() {
     return (
       <>
         <Navbar />
-        <div style={finalOverlayStyle}>
-          <div style={finalCardStyle}>
-            <div style={finalIconStyle}>✓</div>
-            <div style={finalEyebrowStyle}>ENTRENAMIENTO TERMINADO</div>
-            <h1 style={finalTitleStyle}>¡Excelente trabajo!</h1>
-            <p style={finalSubtitleStyle}>{finalizado.nombre}</p>
+        <main className="aw-page aw-final">
+          <section className="aw-glass aw-final-card">
+            <span className="aw-final-check" aria-hidden="true"><IconoCheck size={30} /></span>
+            <p className="aw-sobretitulo">Entrenamiento terminado</p>
+            <h1>Buen trabajo</h1>
+            <p className="aw-final-nombre">{finalizado.nombre}</p>
 
-            <div style={finalStatsStyle}>
-              <div style={finalStatStyle}>
-                <span style={finalStatIconStyle}>⏱</span>
-                <strong>{formatearTiempo(finalizado.duracionSeg)}</strong>
-                <span>Duración</span>
+            <dl className="aw-final-stats">
+              <div>
+                <dt>Duración</dt>
+                <dd>{formatearTiempo(finalizado.duracionSeg)}</dd>
               </div>
-              <div style={finalStatDividerStyle} />
-              <div style={finalStatStyle}>
-                <span style={finalStatIconStyle}>✓</span>
-                <strong>{finalizado.setsCompletados}/{finalizado.setsTotales}</strong>
-                <span>Series completadas</span>
+              <div>
+                <dt>Series</dt>
+                <dd>{finalizado.setsCompletados}/{finalizado.setsTotales}</dd>
               </div>
-            </div>
+            </dl>
 
-            <p style={finalSavedStyle}>💾 Tus pesos, libras, descansos y tiempos quedaron guardados para tu próxima sesión.</p>
+            {finalizado.records?.length > 0 && (
+              <div className="aw-records">
+                <p className="aw-records-titulo">
+                  {finalizado.records.length === 1 ? "Nuevo récord personal" : `${finalizado.records.length} récords personales`}
+                </p>
+                {finalizado.records.map((record) => (
+                  <div key={record.ejercicio} className="aw-record">
+                    <span>{record.ejercicio}</span>
+                    <span>
+                      <strong>
+                        {record.tipo === "peso" && `${redondearPeso(record.valor, 2)} kg`}
+                        {record.tipo === "reps" && `${record.valor} reps`}
+                        {record.tipo === "tiempo" && formatearTiempo(record.valor)}
+                      </strong>
+                      <small>
+                        {" "}antes {record.tipo === "peso" ? `${redondearPeso(record.anterior, 2)} kg` : record.tipo === "reps" ? `${record.anterior} reps` : formatearTiempo(record.anterior)}
+                      </small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <button type="button" onClick={() => navigate("/rutinas")} style={finalPrimaryButtonStyle}>
+            <p className="aw-nota">Tus pesos, descansos y tiempos quedaron guardados para la próxima sesión.</p>
+
+            <button type="button" onClick={() => navigate("/rutinas")} className="aw-btn primario aw-btn-ancho">
               Volver a mis rutinas
             </button>
-          </div>
-        </div>
+          </section>
+        </main>
       </>
     );
   }
+
+  const progreso = totalSets ? Math.round((setsHechos / totalSets) * 100) : 0;
 
   return (
     <>
       <Navbar />
 
-      <div style={estilos.page}>
-        <div style={estilos.container}>
+      <main className="aw-page">
+        <div className="aw-contenedor">
           {/* CABECERA */}
-          <header style={headerStyle}>
-            <div style={{ minWidth: 0 }}>
+          <header className="aw-cabecera">
+            <div className="aw-cabecera-texto">
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                style={{ ...tituloInput, width: "100%" }}
+                className="aw-titulo"
+                aria-label="Nombre del entrenamiento"
               />
-              <div style={{ color: "#9ca3af", fontSize: "0.85rem", marginTop: "0.35rem" }}>
-                ⏱ {formatearTiempo(segundosTranscurridos)} · {setsHechos}/{totalSets} series
-              </div>
+              <p className="aw-resumen">
+                <span className="aw-reloj">{formatearTiempo(segundosTranscurridos)}</span>
+                <span>{setsHechos} de {totalSets} series</span>
+              </p>
             </div>
 
-            <div style={accionesStyle}>
-              <button onClick={descartar} style={botonSecundario}>Descartar</button>
-              <button onClick={finalizar} style={botonPrincipal}>Finalizar</button>
+            <div className="aw-acciones">
+              <button type="button" onClick={descartar} className="aw-btn">Descartar</button>
+              <button type="button" onClick={finalizar} className="aw-btn primario">Finalizar</button>
             </div>
           </header>
 
+          <div className="aw-progreso" role="progressbar" aria-valuenow={progreso} aria-valuemin={0} aria-valuemax={100}>
+            <span style={{ width: `${progreso}%` }} />
+          </div>
+
           {ejercicios.length === 0 && (
-            <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
-              Agrega un ejercicio para empezar.
-            </p>
+            <p className="aw-vacio">Agrega un ejercicio para empezar.</p>
           )}
 
           {/* EJERCICIOS */}
           {ejercicios.map((ej, ejIdx) => (
-            <section key={ej.id} style={estilos.card}>
-              {/* TÍTULO DEL EJERCICIO */}
-              <div style={ejercicioHeaderStyle}>
-                <div style={{ minWidth: 0 }}>
-                  <h3 style={{ margin: 0, color: "#a855f7", fontSize: "1.05rem" }}>{ej.nombre}</h3>
-                  <span style={{ color: "#6b7280", fontSize: "0.78rem" }}>{ej.grupo}</span>
+            <section key={ej.id} className="aw-glass aw-ejercicio">
+              <div className="aw-ejercicio-cabecera">
+                <div className="aw-ejercicio-nombre">
+                  <h3>{ej.nombre}</h3>
+                  {ej.grupo && <span>{ej.grupo}</span>}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div className="aw-ejercicio-controles">
                   {ej.porTiempo ? (
-                    <span style={badgeTiempo}>⏱ Por tiempo</span>
+                    <span className="aw-chip">Por tiempo</span>
                   ) : (
-                    <div style={unidadStyle}>
-                      <button onClick={() => cambiarUnidadPeso(ejIdx, "kg")} style={unidadButton(ej.unidadPeso === "kg")}>Kg</button>
-                      <button onClick={() => cambiarUnidadPeso(ejIdx, "lb")} style={unidadButton(ej.unidadPeso === "lb")}>Lb</button>
+                    <div className="aw-segmentado" role="group" aria-label="Unidad de peso">
+                      <button type="button" onClick={() => cambiarUnidadPeso(ejIdx, "kg")} className={ej.unidadPeso === "kg" ? "activo" : ""}>kg</button>
+                      <button type="button" onClick={() => cambiarUnidadPeso(ejIdx, "lb")} className={ej.unidadPeso === "lb" ? "activo" : ""}>lb</button>
                     </div>
                   )}
 
-                  <div style={{ position: "relative" }}>
+                  <div className="aw-menu-wrap">
                     <button
+                      type="button"
                       onClick={() => setMenuEjercicioAbierto(menuEjercicioAbierto === ejIdx ? null : ejIdx)}
-                      style={menuTrigger}
+                      className="aw-icono-btn"
+                      aria-label="Opciones del ejercicio"
+                      aria-expanded={menuEjercicioAbierto === ejIdx}
                     >
-                      ⋮
+                      <IconoMas />
                     </button>
 
-                                       {menuEjercicioAbierto === ejIdx && (
-                      <div style={menuEjercicioStyle}>
-                        <button
-                          disabled={ejIdx === 0}
-                          onClick={() => moverEjercicio(ejIdx, -1)}
-                          style={menuEjercicioItemStyle(ejIdx === 0)}
-                        >
-                          <span style={menuEjercicioItemIcon}>↑</span>
+                    {menuEjercicioAbierto === ejIdx && (
+                      <div className="aw-menu">
+                        <button type="button" disabled={ejIdx === 0} onClick={() => moverEjercicio(ejIdx, -1)}>
                           Mover arriba
                         </button>
-                        <button
-                          disabled={ejIdx === ejercicios.length - 1}
-                          onClick={() => moverEjercicio(ejIdx, 1)}
-                          style={menuEjercicioItemStyle(ejIdx === ejercicios.length - 1)}
-                        >
-                          <span style={menuEjercicioItemIcon}>↓</span>
+                        <button type="button" disabled={ejIdx === ejercicios.length - 1} onClick={() => moverEjercicio(ejIdx, 1)}>
                           Mover abajo
                         </button>
-                        <button
-                          onClick={() => eliminarEjercicio(ejIdx)}
-                          style={menuEjercicioDeleteStyle}
-                        >
-                          <span style={{ ...menuEjercicioItemIcon, color: "#ef4444", background: "rgba(239,68,68,0.14)" }}>🗑</span>
+                        <button type="button" className="peligro" onClick={() => eliminarEjercicio(ejIdx)}>
                           Quitar ejercicio
                         </button>
                       </div>
@@ -870,1180 +882,448 @@ export default function ActiveWorkoutPage() {
                 </div>
               </div>
 
-              {/* SELECTOR DE DESCANSO: picker tipo rueda, compacto y visual */}
-              <div style={descansoMenuWrap}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const valorActual = Math.min(600, Math.max(15, Math.round(Number(ej.descanso) || 60) / 15) * 15);
-                    setTiempoDescansoPicker(valorActual);
-                    setMenuDescansoAbierto(ejIdx);
-                  }}
-                  style={descansoMenuTrigger}
-                  aria-expanded={menuDescansoAbierto === ejIdx}
-                  aria-label={`Tiempo de descanso: ${formatearTiempo(Number(ej.descanso) || 0)}`}
-                >
-                  <span style={descansoMenuIcon}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-                      <path d="M12 7.5v4.8l3.2 1.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                  <strong style={descansoMenuValue}>{formatearTiempo(Number(ej.descanso) || 0)}</strong>
-                  <span style={descansoMenuChevron}>⌄</span>
-                </button>
+              {/* DESCANSO: abre el selector tipo rueda */}
+              <button
+                type="button"
+                onClick={() => {
+                  const valorActual = Math.min(600, Math.max(15, Math.round((Number(ej.descanso) || 60) / 15) * 15));
+                  setTiempoDescansoPicker(valorActual);
+                  setMenuDescansoAbierto(ejIdx);
+                }}
+                className="aw-descanso-btn"
+                aria-expanded={menuDescansoAbierto === ejIdx}
+              >
+                Descanso <strong>{formatearTiempo(Number(ej.descanso) || 0)}</strong>
+              </button>
 
-                {menuDescansoAbierto === ejIdx && (
-                  <div style={descansoPickerOverlay} role="dialog" aria-modal="true" aria-label="Temporizador de descanso">
-                    <div
-                      style={descansoPickerBackdrop}
-                      onClick={() => setMenuDescansoAbierto(null)}
-                      aria-hidden="true"
-                    />
-                    <div style={descansoPickerSheet}>
-                      <div style={descansoPickerHeader}>
-                        <h3 style={descansoPickerTitle}>Temporizador de Descanso</h3>
-                        <p style={descansoPickerExercise}>{ej.nombre}</p>
-                      </div>
-
-                      <div
-                        ref={descansoPickerRef}
-                        style={descansoWheel}
-                        onScroll={(event) => {
-                          const wheel = event.currentTarget;
-                          if (wheel.__pickerScrollFrame) return;
-                          wheel.__pickerScrollFrame = requestAnimationFrame(() => {
-                            wheel.__pickerScrollFrame = null;
-                            const itemHeight = 56;
-                            const index = Math.round(wheel.scrollTop / itemHeight);
-                            const segundos = Math.min(600, Math.max(15, (index + 1) * 15));
-                            setTiempoDescansoPicker((actual) => actual === segundos ? actual : segundos);
-                          });
-                        }}
-                      >
-                        <div style={descansoWheelSpacer} />
-                        {Array.from({ length: 40 }, (_, index) => (index + 1) * 15).map((segundos) => {
-                          const activa = tiempoDescansoPicker === segundos;
-                          const minutos = Math.floor(segundos / 60);
-                          const segundosRestantes = segundos % 60;
-                          const label = `${String(minutos).padStart(1, "0")}:${String(segundosRestantes).padStart(2, "0")}`;
-                          return (
-                            <button
-                              key={segundos}
-                              type="button"
-                              onClick={() => {
-                                setTiempoDescansoPicker(segundos);
-                                requestAnimationFrame(() => {
-                                  if (descansoPickerRef.current) {
-                                    const index = segundos / 15 - 1;
-                                    descansoPickerRef.current.scrollTo({ top: index * 56, behavior: "smooth" });
-                                  }
-                                });
-                              }}
-                              style={{ ...descansoWheelItem, ...(activa ? descansoWheelItemActive : {}) }}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                        <div style={descansoWheelSpacer} />
-                        <div style={descansoWheelSelection} aria-hidden="true" />
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          actualizarDescanso(ejIdx, tiempoDescansoPicker / 60);
-                          setMenuDescansoAbierto(null);
-                        }}
-                        style={descansoPickerDone}
-                      >
-                        Listo
-                      </button>
+              {menuDescansoAbierto === ejIdx && createPortal(
+                <div className="aw-hoja-overlay" role="dialog" aria-modal="true" aria-label="Temporizador de descanso">
+                  <div className="aw-hoja-fondo" onClick={() => setMenuDescansoAbierto(null)} aria-hidden="true" />
+                  <div className="aw-hoja">
+                    <div className="aw-hoja-cabecera">
+                      <h3>Descanso</h3>
+                      <p>{ej.nombre}</p>
                     </div>
+
+                    <div
+                      ref={descansoPickerRef}
+                      className="aw-rueda"
+                      onScroll={(event) => {
+                        const wheel = event.currentTarget;
+                        if (wheel.__pickerScrollFrame) return;
+                        wheel.__pickerScrollFrame = requestAnimationFrame(() => {
+                          wheel.__pickerScrollFrame = null;
+                          const itemHeight = 56;
+                          const index = Math.round(wheel.scrollTop / itemHeight);
+                          const segundos = Math.min(600, Math.max(15, (index + 1) * 15));
+                          setTiempoDescansoPicker((actual) => actual === segundos ? actual : segundos);
+                        });
+                      }}
+                    >
+                      <div className="aw-rueda-espacio" />
+                      {Array.from({ length: 40 }, (_, index) => (index + 1) * 15).map((segundos) => {
+                        const activa = tiempoDescansoPicker === segundos;
+                        const label = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, "0")}`;
+                        return (
+                          <button
+                            key={segundos}
+                            type="button"
+                            onClick={() => {
+                              setTiempoDescansoPicker(segundos);
+                              requestAnimationFrame(() => {
+                                if (descansoPickerRef.current) {
+                                  const index = segundos / 15 - 1;
+                                  descansoPickerRef.current.scrollTo({ top: index * 56, behavior: "smooth" });
+                                }
+                              });
+                            }}
+                            className={`aw-rueda-item${activa ? " activa" : ""}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                      <div className="aw-rueda-espacio" />
+                      <div className="aw-rueda-seleccion" aria-hidden="true" />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        actualizarDescanso(ejIdx, tiempoDescansoPicker / 60);
+                        setMenuDescansoAbierto(null);
+                      }}
+                      className="aw-btn primario aw-btn-ancho aw-btn-grande"
+                    >
+                      Listo
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>,
+                document.body
+              )}
 
               {/* TABLA DE SERIES */}
-              <div style={{ width: "100%", overflow: "visible" }}>
-                <div style={{ width: "100%", overflow: "visible" }}>
-                  <div style={gridStyle(ej.porTiempo, true)}>
-                    <span>SERIE</span>
-                    <span>ANTERIOR</span>
-                    {ej.porTiempo ? <span>TIEMPO</span> : <><span>{(ej.unidadPeso || "kg").toUpperCase()}</span><span>REPS</span></>}
-                    <span style={{ textAlign: "center" }}>✓</span>
-                  </div>
+              <div className={`aw-fila aw-fila-titulos${ej.porTiempo ? " tiempo" : ""}`}>
+                <span>Serie</span>
+                <span>Anterior</span>
+                {ej.porTiempo ? <span>Tiempo</span> : <><span>{ej.unidadPeso || "kg"}</span><span>Reps</span></>}
+                <span />
+              </div>
 
-                  {ej.sets.map((serie, setIdx) => {
-                    const serieKey = `${ejIdx}-${setIdx}`;
-                    const timerActual = cronometros[serieKey] || { tiempo: Number(serie.duracion) || 0, corriendo: false };
-                    const timerActivo = Boolean(timerActual.corriendo);
-                    const tiempo = Number(timerActual.tiempo) || Number(serie.duracion) || 0;
-                    const tipoConfig = MENU_SERIE.find((item) => item.tipo === serie.tipo) || MENU_SERIE[1];
-                    const etiqueta = serie.tipo === "normal" ? setIdx + 1 : tipoConfig.etiqueta;
+              {ej.sets.map((serie, setIdx) => {
+                const serieKey = `${ejIdx}-${setIdx}`;
+                const timerActual = cronometros[serieKey] || { tiempo: Number(serie.duracion) || 0, corriendo: false };
+                const timerActivo = Boolean(timerActual.corriendo);
+                const tiempo = Number(timerActual.tiempo) || Number(serie.duracion) || 0;
+                const tipoConfig = MENU_SERIE.find((item) => item.tipo === serie.tipo) || MENU_SERIE[1];
+                const etiqueta = serie.tipo === "normal" ? setIdx + 1 : tipoConfig.etiqueta;
+                const descansoActual = descansos[serieKey];
 
-                    const descansoActual = descansos[serieKey];
+                return (
+                  <div key={serieKey} className="aw-serie">
+                    <div className={`aw-fila${ej.porTiempo ? " tiempo" : ""}${serie.hecho ? " hecha" : ""}`}>
+                      {/* TIPO DE SERIE */}
+                      <div className="aw-menu-wrap aw-centro">
+                        <button
+                          type="button"
+                          onClick={() => setMenuSerieAbierto(menuSerieAbierto === serieKey ? null : serieKey)}
+                          className={`aw-numero tipo-${serie.tipo || "normal"}`}
+                          aria-label={`Tipo de serie: ${tipoConfig.nombre}`}
+                        >
+                          {etiqueta}
+                        </button>
 
-                    return (
-                      <div key={serieKey} style={{ marginBottom: descansoActual ? "0.55rem" : "0.2rem" }}>
-                        <div style={gridStyle(ej.porTiempo)}>
-                        {/* TIPO DE SERIE */}
-                        <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
-                          <button
-                            onClick={() => setMenuSerieAbierto(menuSerieAbierto === serieKey ? null : serieKey)}
-                            style={serieBadgeStyle(tipoConfig.color)}
-                          >
-                            {etiqueta}
-                          </button>
-
-                          {menuSerieAbierto === serieKey && (
-                            <div style={menuSerieStyle}>
-                              {MENU_SERIE.map((opcion) => {
-                                const opcionEtiqueta = opcion.tipo === "normal" ? setIdx + 1 : opcion.etiqueta;
-                                const activa = serie.tipo === opcion.tipo;
-
-                                return (
-                                  <button
-                                    key={opcion.tipo}
-                                    type="button"
-                                    onClick={() => cambiarTipoSerie(ejIdx, setIdx, opcion.tipo)}
-                                    style={menuSerieOptionStyle(opcion.color, activa)}
-                                  >
-                                    <span style={{ ...menuSerieOptionIcon, color: opcion.color, borderColor: `${opcion.color}55`, background: `${opcion.color}18` }}>
-                                      {opcionEtiqueta}
-                                    </span>
-                                    <span style={{ flex: 1, whiteSpace: "nowrap" }}>{opcion.nombre.replace("Serie de ", "").replace("Serie al ", "")}</span>
-                                  </button>
-                                );
-                              })}
-
+                        {menuSerieAbierto === serieKey && (
+                          <div className="aw-menu aw-menu-serie">
+                            {MENU_SERIE.map((opcion) => (
                               <button
+                                key={opcion.tipo}
                                 type="button"
-                                disabled={ej.sets.length <= 1}
-                                onClick={() => eliminarSerie(ejIdx, setIdx)}
-                                style={{ ...menuSerieDeleteStyle, opacity: ej.sets.length <= 1 ? 0.35 : 1, cursor: ej.sets.length <= 1 ? "not-allowed" : "pointer" }}
+                                onClick={() => cambiarTipoSerie(ejIdx, setIdx, opcion.tipo)}
+                                className={serie.tipo === opcion.tipo ? "activo" : ""}
                               >
-                                <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>×</span>
-                                <span>Eliminar serie</span>
+                                <span className={`aw-numero mini tipo-${opcion.tipo}`}>
+                                  {opcion.tipo === "normal" ? setIdx + 1 : opcion.etiqueta}
+                                </span>
+                                {opcion.nombre.replace("Serie de ", "").replace("Serie al ", "").replace("Serie ", "")}
                               </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* ANTERIOR */}
-                        <div style={anteriorStyle}>
-                          {ej.porTiempo
-                            ? serie.anteriorDuracion
-                              ? formatearTiempo(serie.anteriorDuracion)
-                              : "-"
-                            : serie.anteriorPeso || serie.anteriorPesoKg || serie.anteriorReps
-                              ? `${convertirPesoParaMostrar(
-                                  serie.anteriorPesoKg !== "" && serie.anteriorPesoKg !== null && serie.anteriorPesoKg !== undefined
-                                    ? serie.anteriorPesoKg
-                                    : convertirPesoAKg(serie.anteriorPeso, serie.anteriorUnidadPeso || ej.unidadPeso || "kg"),
-                                  ej.unidadPeso || "kg"
-                                ) || 0}${ej.unidadPeso || "kg"} × ${serie.anteriorReps || 0}`
-                              : "-"}
-                        </div>
-
-                        {/* TIEMPO / PESO */}
-                        {ej.porTiempo ? (
-                          <div style={cronometroCell}>
+                            ))}
                             <button
-                              onClick={() => {
-                                if (serie.hecho) return;
-                                if (timerActivo) pausarCronometro(ejIdx, setIdx);
-                                else iniciarCronometro(ejIdx, setIdx);
-                              }}
-                              disabled={serie.hecho}
-                              style={playButtonStyle(serie.hecho)}
-                              aria-label={timerActivo ? "Pausar cronómetro" : "Iniciar cronómetro"}
+                              type="button"
+                              className="peligro"
+                              disabled={ej.sets.length <= 1}
+                              onClick={() => eliminarSerie(ejIdx, setIdx)}
                             >
-                              {timerActivo ? "Ⅱ" : "▶"}
+                              Eliminar serie
                             </button>
-
-                            <div style={cronometroDisplay}>
-                              {formatearTiempo(tiempo)}
-                            </div>
-
-                            <button
-                              onClick={() => reiniciarCronometro(ejIdx, setIdx)}
-                              disabled={serie.hecho}
-                              style={reiniciarButtonStyle(serie.hecho)}
-                              aria-label="Reiniciar cronómetro"
-                            >
-                              ↻
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <input
-                              type="number"
-                              min="0"
-                              value={serie.peso}
-                              placeholder="0"
-                              onChange={(e) => actualizarSet(ejIdx, setIdx, "peso", e.target.value)}
-                              style={{ ...estilos.input, width: "100%", height: "42px", padding: "0.5rem", textAlign: "center" }}
-                            />
-                            <input
-                              type="number"
-                              min="1"
-                              value={serie.reps}
-                              onChange={(e) => actualizarSet(ejIdx, setIdx, "reps", e.target.value)}
-                              style={{ ...estilos.input, width: "100%", height: "42px", padding: "0.5rem", textAlign: "center" }}
-                            />
-                          </>
-                        )}
-
-                        {/* CHULEADO */}
-                          <button
-                            onClick={() => toggleSet(ejIdx, setIdx)}
-                            style={checkButtonStyle(serie.hecho)}
-                            aria-label={serie.hecho ? "Desmarcar serie" : "Completar serie"}
-                          >
-                            {serie.hecho ? "✓" : ""}
-                          </button>
-                        </div>
-
-                        {descansoActual && (
-                          <div style={descansoInlineStyle}>
-                            <div style={descansoInlineInfo}>
-                              <span style={descansoInlineIcon}>⏱</span>
-                              <div>
-                                <strong>Descanso de esta serie</strong>
-                                <span>Se está contando aquí mismo</span>
-                              </div>
-                            </div>
-                            <strong style={descansoInlineTime}>
-                              {formatearTiempo(descansoActual.restante)}
-                            </strong>
-                            <div style={descansoInlineActions}>
-                              <button
-                                type="button"
-                                onClick={() => setDescansos((actuales) => ({
-                                  ...actuales,
-                                  [serieKey]: {
-                                    ...actuales[serieKey],
-                                    restante: Math.max(0, Number(actuales[serieKey]?.restante || 0) - 15),
-                                  },
-                                }))}
-                                style={botonDescanso}
-                              >
-                                −15s
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDescansos((actuales) => ({
-                                  ...actuales,
-                                  [serieKey]: {
-                                    ...actuales[serieKey],
-                                    restante: Number(actuales[serieKey]?.restante || 0) + 15,
-                                  },
-                                }))}
-                                style={botonDescanso}
-                              >
-                                +15s
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDescansos((actuales) => {
-                                  const siguiente = { ...actuales };
-                                  delete siguiente[serieKey];
-                                  return siguiente;
-                                })}
-                                style={botonSaltar}
-                              >
-                                Saltar
-                              </button>
-                            </div>
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              <button onClick={() => agregarSerie(ejIdx)} style={agregarSerieStyle}>
-                + Agregar serie
+                      {/* ANTERIOR */}
+                      <span className="aw-anterior">
+                        {ej.porTiempo
+                          ? serie.anteriorDuracion
+                            ? formatearTiempo(serie.anteriorDuracion)
+                            : "–"
+                          : serie.anteriorPeso || serie.anteriorPesoKg || serie.anteriorReps
+                            ? `${convertirPesoParaMostrar(
+                                serie.anteriorPesoKg !== "" && serie.anteriorPesoKg !== null && serie.anteriorPesoKg !== undefined
+                                  ? serie.anteriorPesoKg
+                                  : convertirPesoAKg(serie.anteriorPeso, serie.anteriorUnidadPeso || ej.unidadPeso || "kg"),
+                                ej.unidadPeso || "kg"
+                              ) || 0} × ${serie.anteriorReps || 0}`
+                            : "–"}
+                      </span>
+
+                      {/* TIEMPO / PESO */}
+                      {ej.porTiempo ? (
+                        <div className="aw-cronometro">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (serie.hecho) return;
+                              if (timerActivo) pausarCronometro(ejIdx, setIdx);
+                              else iniciarCronometro(ejIdx, setIdx);
+                            }}
+                            disabled={serie.hecho}
+                            className="aw-icono-btn"
+                            aria-label={timerActivo ? "Pausar cronómetro" : "Iniciar cronómetro"}
+                          >
+                            {timerActivo ? <IconoPausa /> : <IconoPlay />}
+                          </button>
+                          <span className="aw-cronometro-tiempo">{formatearTiempo(tiempo)}</span>
+                          <button
+                            type="button"
+                            onClick={() => reiniciarCronometro(ejIdx, setIdx)}
+                            disabled={serie.hecho}
+                            className="aw-icono-btn"
+                            aria-label="Reiniciar cronómetro"
+                            title="Reiniciar"
+                          >
+                            <IconoReiniciar />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="number"
+                            min="0"
+                            inputMode="decimal"
+                            value={serie.peso}
+                            placeholder="0"
+                            onChange={(e) => actualizarSet(ejIdx, setIdx, "peso", e.target.value)}
+                            className="aw-input"
+                            aria-label={`Peso de la serie ${setIdx + 1}`}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            inputMode="numeric"
+                            value={serie.reps}
+                            onChange={(e) => actualizarSet(ejIdx, setIdx, "reps", e.target.value)}
+                            className="aw-input"
+                            aria-label={`Repeticiones de la serie ${setIdx + 1}`}
+                          />
+                        </>
+                      )}
+
+                      {/* COMPLETAR */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSet(ejIdx, setIdx)}
+                        className={`aw-check${serie.hecho ? " hecho" : ""}`}
+                        aria-label={serie.hecho ? "Desmarcar serie" : "Completar serie"}
+                        aria-pressed={serie.hecho}
+                      >
+                        <IconoCheck />
+                      </button>
+                    </div>
+
+                    {descansoActual && (
+                      <div className="aw-descanso">
+                        <span className="aw-descanso-texto">Descanso</span>
+                        <strong className="aw-descanso-tiempo">{formatearTiempo(descansoActual.restante)}</strong>
+                        <div className="aw-descanso-acciones">
+                          <button
+                            type="button"
+                            onClick={() => setDescansos((actuales) => ({
+                              ...actuales,
+                              [serieKey]: {
+                                ...actuales[serieKey],
+                                restante: Math.max(0, Number(actuales[serieKey]?.restante || 0) - 15),
+                              },
+                            }))}
+                          >
+                            −15
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDescansos((actuales) => ({
+                              ...actuales,
+                              [serieKey]: {
+                                ...actuales[serieKey],
+                                restante: Number(actuales[serieKey]?.restante || 0) + 15,
+                              },
+                            }))}
+                          >
+                            +15
+                          </button>
+                          <button
+                            type="button"
+                            className="saltar"
+                            onClick={() => setDescansos((actuales) => {
+                              const siguiente = { ...actuales };
+                              delete siguiente[serieKey];
+                              return siguiente;
+                            })}
+                          >
+                            Saltar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <button type="button" onClick={() => agregarSerie(ejIdx)} className="aw-agregar-serie">
+                Añadir serie
               </button>
             </section>
           ))}
 
           {/* AGREGAR EJERCICIO */}
           {mostrarAgregar ? (
-            <div style={{ ...estilos.card, background: "linear-gradient(145deg, rgba(168,85,247,0.12), rgba(236,72,153,0.06))" }}>
-              <div style={selectorBoxStyle}>
-                <button
-                  type="button"
-                  onClick={() => setSelectorAbierto((abierto) => !abierto)}
-                  style={selectorTriggerStyle}
-                >
-                  <span style={selectorTriggerIcon}>{ejercicioSeleccionadoInfo ? iconoGrupo(ejercicioSeleccionadoInfo.grupo_muscular) : "🏋️"}</span>
-                  <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    <strong style={{ display: "block", color: "#fff", fontSize: "0.9rem" }}>
-                      {ejercicioSeleccionadoInfo?.nombre || "Seleccionar ejercicio"}
-                    </strong>
-                    <small style={{ color: "#9ca3af" }}>
-                      {ejercicioSeleccionadoInfo ? (ejercicioSeleccionadoInfo.grupo_muscular || "Ejercicio") : "Elige un ejercicio para añadirlo"}
-                    </small>
-                  </span>
-                  <span style={{ color: "#c084fc", fontSize: "1.1rem", transform: selectorAbierto ? "rotate(180deg)" : "none", transition: "transform .2s" }}>⌄</span>
-                </button>
+            <section className="aw-glass aw-agregar">
+              <button
+                type="button"
+                onClick={() => setSelectorAbierto((abierto) => !abierto)}
+                className="aw-selector"
+                aria-expanded={selectorAbierto}
+              >
+                <span>
+                  <strong>{ejercicioSeleccionadoInfo?.nombre || "Seleccionar ejercicio"}</strong>
+                  <small>
+                    {ejercicioSeleccionadoInfo ? (ejercicioSeleccionadoInfo.grupo_muscular || "Ejercicio") : "Elige un ejercicio para añadirlo"}
+                  </small>
+                </span>
+                <span className={`aw-chevron${selectorAbierto ? " abierto" : ""}`} aria-hidden="true">›</span>
+              </button>
 
-                {selectorAbierto && (
-                  <div style={selectorMenuStyle}>
-                    <input
-                      autoFocus
-                      value={busquedaEjercicio}
-                      onChange={(e) => setBusquedaEjercicio(e.target.value)}
-                      placeholder="🔎 Buscar ejercicio..."
-                      style={{ ...estilos.input, width: "100%", padding: "0.65rem 0.75rem", marginBottom: "0.45rem" }}
-                    />
-                    <div style={selectorListStyle}>
-                      {ejerciciosFiltrados.length === 0 ? (
-                        <div style={selectorEmptyStyle}>No encontramos ese ejercicio.</div>
-                      ) : (
-                        ejerciciosFiltrados.map((ejercicio) => {
-                          const seleccionado = String(ejercicio.id) === String(ejercicioSeleccionado);
-                          return (
-                            <button
-                              key={ejercicio.id}
-                              type="button"
-                              onClick={() => {
-                                setEjercicioSeleccionado(String(ejercicio.id));
-                                setSelectorAbierto(false);
-                                setBusquedaEjercicio("");
-                              }}
-                              style={{ ...selectorItemStyle, ...(seleccionado ? selectorItemActiveStyle : {}) }}
-                            >
-                              <span style={selectorItemIcon}>{iconoGrupo(ejercicio.grupo_muscular)}</span>
-                              <span style={{ flex: 1, minWidth: 0 }}>
-                                <strong style={{ display: "block", color: "#f4f4f5" }}>{ejercicio.nombre}</strong>
-                                <small style={{ color: "#9ca3af" }}>{ejercicio.grupo_muscular || "Entrenamiento"}</small>
-                              </span>
-                              {seleccionado && <span style={{ color: "#4ade80", fontWeight: 900 }}>✓</span>}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
+              {selectorAbierto && (
+                <div className="aw-selector-menu">
+                  <input
+                    autoFocus
+                    value={busquedaEjercicio}
+                    onChange={(e) => setBusquedaEjercicio(e.target.value)}
+                    placeholder="Buscar ejercicio"
+                    className="aw-input aw-buscar"
+                  />
+                  <div className="aw-selector-lista">
+                    {ejerciciosFiltrados.length === 0 ? (
+                      <p className="aw-vacio">No encontramos ese ejercicio.</p>
+                    ) : (
+                      ejerciciosFiltrados.map((ejercicio) => {
+                        const seleccionado = String(ejercicio.id) === String(ejercicioSeleccionado);
+                        return (
+                          <button
+                            key={ejercicio.id}
+                            type="button"
+                            onClick={() => {
+                              setEjercicioSeleccionado(String(ejercicio.id));
+                              setSelectorAbierto(false);
+                              setBusquedaEjercicio("");
+                            }}
+                            className={seleccionado ? "activo" : ""}
+                          >
+                            <span>
+                              <strong>{ejercicio.nombre}</strong>
+                              <small>{ejercicio.grupo_muscular || "Entrenamiento"}</small>
+                            </span>
+                            {seleccionado && <IconoCheck />}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.8rem" }}>
-                <button onClick={agregarEjercicioCatalogo} style={botonPrincipal}>Agregar</button>
-                <button type="button" onClick={() => { setMostrarAgregar(false); setSelectorAbierto(false); setBusquedaEjercicio(""); }} style={botonSecundario}>Cancelar</button>
+              <div className="aw-agregar-acciones">
+                <button type="button" onClick={() => { setMostrarAgregar(false); setSelectorAbierto(false); setBusquedaEjercicio(""); }} className="aw-btn">Cancelar</button>
+                <button type="button" onClick={agregarEjercicioCatalogo} className="aw-btn primario">Agregar</button>
               </div>
-            </div>
+            </section>
           ) : (
-            <button onClick={() => setMostrarAgregar(true)} style={agregarEjercicioStyle}>
-              + Agregar ejercicio
+            <button type="button" onClick={() => setMostrarAgregar(true)} className="aw-agregar-ejercicio">
+              Añadir ejercicio
             </button>
           )}
         </div>
-      </div>
+      </main>
 
       {mostrarFinalizar && (
-        <div style={modalOverlayStyle}>
-          <div style={finishConfirmModalStyle}>
-            <div style={finishConfirmIconStyle}>✓</div>
-            <div style={finishConfirmEyebrowStyle}>FINALIZAR ENTRENAMIENTO</div>
-            <h2 style={finishConfirmTitleStyle}>¿Quieres finalizar la sesión?</h2>
-            <p style={finishConfirmTextStyle}>
-              {totalSets === 0
-                ? "Todavía no has agregado ejercicios. Puedes finalizar de todas formas."
-                : `Te faltan ${totalSets - setsHechos} serie(s) por completar. Puedes finalizar de todas formas y conservar tus cambios.`}
-            </p>
-            <div style={finishConfirmActionsStyle}>
-              <button type="button" onClick={() => setMostrarFinalizar(false)} style={finishCancelButtonStyle}>
-                Seguir entrenando
-              </button>
-              <button type="button" onClick={ejecutarFinalizacion} style={finishConfirmButtonStyle}>
-                Finalizar ahora
-              </button>
-            </div>
-          </div>
-        </div>
+        <Alerta
+          titulo="¿Finalizar el entrenamiento?"
+          texto={totalSets === 0
+            ? "Todavía no has agregado ejercicios. Puedes finalizar de todas formas."
+            : `Te faltan ${totalSets - setsHechos} serie(s) por completar. Puedes finalizar de todas formas y conservar tus cambios.`}
+          cancelar="Seguir entrenando"
+          confirmar="Finalizar"
+          onCancelar={() => setMostrarFinalizar(false)}
+          onConfirmar={ejecutarFinalizacion}
+        />
       )}
 
       {mostrarDescartar && (
-        <div style={modalOverlayStyle}>
-          <div style={discardModalStyle}>
-            <div style={discardModalIconStyle}>×</div>
-            <div style={discardModalEyebrowStyle}>DESCARTAR ENTRENAMIENTO</div>
-            <h2 style={discardModalTitleStyle}>¿Quieres descartar la sesión?</h2>
-            <p style={discardModalTextStyle}>Si descartas esta sesión saldrás del entrenamiento actual. Tus pesos, libras, descansos y configuraciones ya guardados se conservarán para la próxima sesión.</p>
-            <div style={discardActionsStyle}>
-              <button type="button" onClick={() => setMostrarDescartar(false)} style={discardContinueButtonStyle}>
-                Continuar entrenando
-              </button>
-                    <button type="button" onClick={confirmarDescartar} style={discardConfirmButtonStyle}>
-                Descartar sesión
-              </button>
-            </div>
-          </div>
-        </div>
+        <Alerta
+          titulo="¿Descartar la sesión?"
+          texto="Saldrás del entrenamiento actual. Tus pesos, descansos y configuraciones ya guardados se conservan para la próxima vez."
+          cancelar="Seguir entrenando"
+          confirmar="Descartar"
+          peligro
+          onCancelar={() => setMostrarDescartar(false)}
+          onConfirmar={confirmarDescartar}
+        />
       )}
 
       {ejercicioAEliminar !== null && (
-        <div style={modalOverlayStyle}>
-          <div style={discardModalStyle}>
-            <div style={{ ...discardModalIconStyle, background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>🗑</div>
-            <div style={discardModalEyebrowStyle}>QUITAR EJERCICIO</div>
-            <h2 style={discardModalTitleStyle}>¿Quitar este ejercicio del entrenamiento?</h2>
-            <p style={discardModalTextStyle}>
-              Se eliminará "{ejercicios[ejercicioAEliminar]?.nombre}" de esta sesión junto con sus series. El resto de tu entrenamiento no se verá afectado.
-            </p>
-            <div style={discardActionsStyle}>
-              <button type="button" onClick={() => setEjercicioAEliminar(null)} style={discardContinueButtonStyle}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmarEliminarEjercicio}
-                style={{ ...discardConfirmButtonStyle, background: "linear-gradient(135deg, #ef4444, #dc2626)", boxShadow: "0 10px 25px rgba(239,68,68,0.28)" }}
-              >
-                Quitar ejercicio
-              </button>
-            </div>
-          </div>
-        </div>
+        <Alerta
+          titulo="¿Quitar este ejercicio?"
+          texto={`Se quitará "${ejercicios[ejercicioAEliminar]?.nombre}" de esta sesión junto con sus series.`}
+          cancelar="Cancelar"
+          confirmar="Quitar"
+          peligro
+          onCancelar={() => setEjercicioAEliminar(null)}
+          onConfirmar={confirmarEliminarEjercicio}
+        />
       )}
     </>
   );
 }
+
 // ======================================================
-// ESTILOS
+// PIEZAS VISUALES
 // ======================================================
-
-const headerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "1rem",
-  marginBottom: "1rem",
-  flexWrap: "wrap",
-};
-
-const tituloInput = {
-  background: "transparent",
-  border: "none",
-  color: "#fff",
-  fontSize: "1.55rem",
-  fontWeight: 800,
-  outline: "none",
-  padding: 0,
-};
-
-const accionesStyle = { display: "flex", gap: "0.55rem" };
-
-const botonPrincipal = {
-  background: "linear-gradient(135deg, #a855f7, #ec4899)",
-  color: "#fff",
-  border: "none",
-  padding: "0.65rem 1.1rem",
-  borderRadius: "10px",
-  cursor: "pointer",
-  fontWeight: 700,
-};
-
-const botonSecundario = {
-  background: "transparent",
-  color: "#9ca3af",
-  border: "1px solid #444",
-  padding: "0.65rem 1rem",
-  borderRadius: "10px",
-  cursor: "pointer",
-};
-
-
-const descansoMenuWrap = {
-  position: "relative",
-  margin: "0.65rem 0 0.55rem",
-  zIndex: 30,
-};
-
-const descansoMenuTrigger = {
-  width: "auto",
-  minWidth: "104px",
-  minHeight: "40px",
-  marginLeft: "0",
-  marginRight: "auto",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: "0.45rem",
-  padding: "0.38rem 0.55rem",
-  borderRadius: "11px",
-  border: "1px solid rgba(168,85,247,0.28)",
-  background: "rgba(168,85,247,0.07)",
-  color: "#f3f4f6",
-  cursor: "pointer",
-  textAlign: "left",
-};
-
-const descansoMenuIcon = {
-  width: "27px",
-  height: "27px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "7px",
-  background: "rgba(168,85,247,0.16)",
-  border: "1px solid rgba(168,85,247,0.24)",
-  color: "#d8b4fe",
-};
-
-const descansoMenuValue = {
-  padding: "0.2rem 0.35rem",
-  color: "#f5e9ff",
-  fontSize: "0.82rem",
-  fontVariantNumeric: "tabular-nums",
-  letterSpacing: "0.02em",
-};
-
-const descansoMenuChevron = {
-  color: "#c4b5fd",
-  fontSize: "0.95rem",
-  width: "14px",
-  textAlign: "center",
-};
-
-const descansoPickerOverlay = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 99999,
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "center",
-};
-
-const descansoPickerBackdrop = {
-  position: "absolute",
-  inset: 0,
-  background: "rgba(5,3,12,0.66)",
-  backdropFilter: "blur(7px)",
-};
-
-const descansoPickerSheet = {
-  position: "relative",
-  width: "min(520px, 100%)",
-  maxHeight: "92dvh",
-  boxSizing: "border-box",
-  overflow: "hidden",
-  padding: "0.8rem 1.15rem 1.15rem",
-  borderRadius: "28px 28px 0 0",
-  background: "linear-gradient(160deg, #15121f 0%, #1c102b 55%, #241333 100%)",
-  border: "1px solid rgba(168,85,247,0.28)",
-  boxShadow: "0 -24px 70px rgba(0,0,0,0.55)",
-};
-
-const descansoPickerHeader = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "0.25rem",
-  padding: "0.35rem 0.3rem 1.05rem",
-  borderBottom: "1px solid rgba(255,255,255,0.08)",
-  textAlign: "center",
-};
-
-const descansoPickerTitle = {
-  margin: 0,
-  color: "#fff",
-  fontSize: "1.55rem",
-  fontWeight: 500,
-  letterSpacing: "-0.02em",
-};
-
-const descansoPickerExercise = {
-  margin: "0.35rem 0 0",
-  color: "#8f8aa0",
-  fontSize: "1.05rem",
-};
-
-const descansoWheel = {
-  position: "relative",
-  height: "300px",
-  margin: "0.65rem 0 1rem",
-  overflowY: "auto",
-  overflowX: "hidden",
-  scrollSnapType: "y mandatory",
-  scrollbarWidth: "none",
-  overscrollBehavior: "contain",
-  maskImage: "linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)",
-  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)",
-};
-
-const descansoWheelSpacer = {
-  height: "122px",
-  flex: "0 0 122px",
-};
-
-const descansoWheelItem = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: "100%",
-  height: "56px",
-  boxSizing: "border-box",
-  border: "none",
-  background: "transparent",
-  color: "#4d4b55",
-  fontSize: "2rem",
-  fontWeight: 500,
-  fontVariantNumeric: "tabular-nums",
-  scrollSnapAlign: "start",
-  cursor: "pointer",
-  transition: "color .18s ease, transform .18s ease, background .18s ease",
-};
-
-const descansoWheelItemActive = {
-  color: "#fff",
-  background: "rgba(255,255,255,0.035)",
-  borderRadius: "22px",
-  transform: "scale(1.02)",
-};
-
-const descansoWheelSelection = {
-  position: "absolute",
-  left: "0",
-  right: "0",
-  top: "122px",
-  height: "56px",
-  pointerEvents: "none",
-  borderRadius: "20px",
-  border: "1px solid rgba(255,255,255,0.025)",
-  boxShadow: "inset 0 0 24px rgba(168,85,247,0.035)",
-};
-
-const descansoPickerDone = {
-  width: "100%",
-  height: "62px",
-  border: "1px solid rgba(168,85,247,0.5)",
-  borderRadius: "17px",
-  background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-  color: "#fff",
-  fontSize: "1.1rem",
-  fontWeight: 800,
-  cursor: "pointer",
-  boxShadow: "0 12px 30px rgba(168,85,247,0.24)",
-};
-
-
-
-
-
-
-const descansoInlineStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "0.75rem",
-  flexWrap: "wrap",
-  marginTop: "0.35rem",
-  padding: "0.65rem 0.75rem",
-  borderRadius: "10px",
-  background: "rgba(168,85,247,0.12)",
-  border: "1px solid rgba(168,85,247,0.35)",
+function IconoCheck({ size = 16 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor"
+      strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
 }
 
-const descansoInlineInfo = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.55rem",
-  minWidth: "170px",
+function IconoMas() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
 }
 
-const descansoInlineIcon = {
-  width: "30px",
-  height: "30px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "8px",
-  background: "rgba(168,85,247,0.2)",
-  color: "#d8b4fe",
+function IconoPlay() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <path d="M8 5.5v13l10.5-6.5z" />
+    </svg>
+  );
 }
 
-const descansoInlineTime = {
-  fontSize: "1.35rem",
-  fontVariantNumeric: "tabular-nums",
-  color: "#fff",
-  minWidth: "58px",
-  textAlign: "center",
+function IconoReiniciar() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+      <path d="M4 4v4h4" />
+    </svg>
+  );
 }
 
-const descansoInlineActions = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.35rem",
-  flexWrap: "wrap",
+function IconoPausa() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <rect x="6.5" y="5" width="4" height="14" rx="1.2" />
+      <rect x="13.5" y="5" width="4" height="14" rx="1.2" />
+    </svg>
+  );
 }
 
-
-const botonDescanso = {
-  background: "rgba(168,85,247,0.2)",
-  color: "#d8b4fe",
-  border: "1px solid rgba(168,85,247,0.4)",
-  padding: "0.35rem 0.6rem",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: 700,
-  fontSize: "0.75rem",
-};
-
-const botonSaltar = {
-  background: "transparent",
-  color: "#9ca3af",
-  border: "1px solid #555",
-  padding: "0.35rem 0.6rem",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontSize: "0.75rem",
-};
-
-const ejercicioHeaderStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "1rem",
-  marginBottom: "0.3rem",
-};
-
-const badgeTiempo = {
-  color: "#60a5fa",
-  background: "rgba(59,130,246,0.12)",
-  border: "1px solid rgba(59,130,246,0.25)",
-  borderRadius: "6px",
-  padding: "0.25rem 0.5rem",
-  fontSize: "0.72rem",
-  fontWeight: 700,
-};
-
-const unidadStyle = {
-  display: "inline-flex",
-  padding: "0.15rem",
-  borderRadius: "7px",
-  background: "rgba(0,0,0,0.3)",
-  border: "1px solid rgba(168,85,247,0.3)",
-};
-
-const unidadButton = (activo) => ({
-  border: "none",
-  borderRadius: "5px",
-  padding: "0.25rem 0.5rem",
-  background: activo ? "#a855f7" : "transparent",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: "0.7rem",
-  fontWeight: 700,
-});
-
-const menuTrigger = {
-  background: "none",
-  border: "none",
-  color: "#9ca3af",
-  fontSize: "1.3rem",
-  cursor: "pointer",
-  padding: "0 0.25rem",
-};
-
-const menuEjercicioStyle = {
-  position: "absolute",
-  right: 0,
-  top: "2.1rem",
-  zIndex: 100,
-  minWidth: "190px",
-  padding: "0.35rem",
-  background: "#19101f",
-  border: "1px solid rgba(168,85,247,0.28)",
-  borderRadius: "12px",
-  boxShadow: "0 14px 35px rgba(0,0,0,0.6)",
-  overflow: "hidden",
-};
-
-const menuEjercicioItemStyle = (disabled) => ({
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.55rem",
-  padding: "0.5rem 0.55rem",
-  minHeight: "42px",
-  border: "1px solid transparent",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#f4f4f5",
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.35 : 1,
-  textAlign: "left",
-  fontSize: "0.82rem",
-  fontWeight: 600,
-});
-
-const menuEjercicioItemIcon = {
-  width: "26px",
-  height: "26px",
-  minWidth: "26px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "7px",
-  background: "rgba(168,85,247,0.14)",
-  color: "#c4b5fd",
-  fontSize: "0.85rem",
-};
-
-const menuEjercicioDeleteStyle = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.55rem",
-  marginTop: "0.2rem",
-  padding: "0.5rem 0.55rem",
-  minHeight: "42px",
-  border: "none",
-  borderTop: "1px solid rgba(255,255,255,0.07)",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#ef4444",
-  cursor: "pointer",
-  textAlign: "left",
-  fontSize: "0.82rem",
-  fontWeight: 700,
-};
-
-const gridStyle = (porTiempo, encabezado = false) => ({
-  display: "grid",
-  gridTemplateColumns: porTiempo
-    ? "36px 50px minmax(0, 1fr) 36px"
-    : "36px 50px minmax(42px, 1fr) minmax(42px, 1fr) 36px",
-  gap: "0.35rem",
-  alignItems: "center",
-  minHeight: encabezado ? "40px" : "64px",
-  color: encabezado ? "#a1a1aa" : "#fff",
-  fontSize: encabezado ? "0.78rem" : "0.98rem",
-  fontWeight: encabezado ? 800 : 400,
-  textTransform: encabezado ? "uppercase" : "none",
-  textAlign: "center",
-  width: "100%",
-});
-
-const anteriorStyle = {
-  color: "#777",
-  fontSize: "0.7rem",
-  textAlign: "center",
-  justifySelf: "center",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const cronometroCell = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "0.3rem",
-  width: "100%",
-  justifySelf: "center",
-};
-
-const cronometroDisplay = {
-  minWidth: "62px",
-  maxWidth: "92px",
-  width: "100%",
-  height: "36px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxSizing: "border-box",
-  borderRadius: "8px",
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(0,0,0,0.35)",
-  color: "#fff",
-  fontSize: "0.85rem",
-  fontWeight: 800,
-  fontVariantNumeric: "tabular-nums",
-};
-
-const playButtonStyle = (disabled) => ({
-  width: "32px",
-  height: "32px",
-  minWidth: "32px",
-  borderRadius: "50%",
-  border: "2px solid #2196f3",
-  background: "transparent",
-  color: "#2196f3",
-  display: "grid",
-  placeItems: "center",
-  padding: 0,
-  cursor: disabled ? "default" : "pointer",
-  opacity: disabled ? 0.4 : 1,
-  fontSize: "0.72rem",
-  fontWeight: 800,
-});
-
-const reiniciarButtonStyle = (disabled) => ({
-  width: "26px",
-  height: "26px",
-  minWidth: "26px",
-  borderRadius: "7px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.05)",
-  color: "#9ca3af",
-  cursor: disabled ? "default" : "pointer",
-  opacity: disabled ? 0.4 : 1,
-  fontSize: "0.9rem",
-  padding: 0,
-});
-
-const checkButtonStyle = (hecho) => ({
-  width: "34px",
-  height: "34px",
-  borderRadius: "9px",
-  border: hecho ? "1px solid #22c55e" : "1px solid rgba(168,85,247,0.35)",
-  background: hecho ? "linear-gradient(135deg, rgba(34,197,94,0.28), rgba(34,197,94,0.10))" : "linear-gradient(135deg, rgba(168,85,247,0.16), rgba(255,255,255,0.04))",
-  color: hecho ? "#4ade80" : "#a855f7",
-  cursor: "pointer",
-  fontSize: hecho ? "1.05rem" : "1.2rem",
-  fontWeight: 900,
-  justifySelf: "center",
-  display: "grid",
-  placeItems: "center",
-  boxShadow: hecho ? "0 0 14px rgba(34,197,94,0.16)" : "0 0 12px rgba(168,85,247,0.10)",
-  transition: "all 0.2s ease",
-});
-
-const serieBadgeStyle = (color) => ({
-  width: "34px",
-  height: "34px",
-  border: `1px solid ${color}55`,
-  borderRadius: "10px",
-  background: `${color}16`,
-  color,
-  cursor: "pointer",
-  fontSize: "0.92rem",
-  fontWeight: 900,
-  display: "grid",
-  placeItems: "center",
-  boxShadow: `0 4px 14px ${color}12`,
-  transition: "transform 0.15s ease, background 0.15s ease",
-});
-
-const menuSerieStyle = {
-  position: "absolute",
-  left: "calc(100% + 10px)",
-  top: "50%",
-  transform: "translateY(-50%)",
-  width: "215px",
-  zIndex: 999,
-  padding: "0.35rem",
-  background: "#19191c",
-  border: "1px solid rgba(168,85,247,0.28)",
-  borderRadius: "12px",
-  boxShadow: "0 14px 35px rgba(0,0,0,0.6)",
-  overflow: "hidden",
-};
-
-const menuSerieOptionStyle = (color, activa) => ({
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.55rem",
-  padding: "0.5rem 0.55rem",
-  minHeight: "44px",
-  border: "1px solid transparent",
-  borderRadius: "9px",
-  background: activa ? `${color}12` : "transparent",
-  color: "#f4f4f5",
-  cursor: "pointer",
-  textAlign: "left",
-  fontSize: "0.82rem",
-  fontWeight: activa ? 700 : 500,
-});
-
-const menuSerieOptionIcon = {
-  width: "30px",
-  height: "30px",
-  minWidth: "30px",
-  display: "grid",
-  placeItems: "center",
-  border: "1px solid",
-  borderRadius: "8px",
-  fontSize: "0.88rem",
-  fontWeight: 900,
-};
-
-const menuSerieDeleteStyle = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.55rem",
-  marginTop: "0.2rem",
-  padding: "0.5rem 0.6rem",
-  minHeight: "40px",
-  border: "none",
-  borderTop: "1px solid rgba(255,255,255,0.07)",
-  background: "transparent",
-  color: "#ef4444",
-  fontSize: "0.8rem",
-  fontWeight: 700,
-  textAlign: "left",
-};
-
-const agregarSerieStyle = {
-  width: "100%",
-  marginTop: "0.6rem",
-  padding: "0.6rem",
-  borderRadius: "8px",
-  border: "1px dashed rgba(168,85,247,0.4)",
-  background: "rgba(168,85,247,0.08)",
-  color: "#a855f7",
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-const agregarEjercicioStyle = {
-  width: "100%",
-  padding: "0.9rem",
-  marginTop: "0.2rem",
-  borderRadius: "12px",
-  border: "1px solid rgba(168,85,247,0.3)",
-  background: "rgba(255,255,255,0.05)",
-  color: "#fff",
-  cursor: "pointer",
-  fontWeight: 600,
-};
-const selectorBoxStyle = { position: "relative", width: "100%" };
-const selectorTriggerStyle = { width: "100%", minHeight: "64px", display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.7rem 0.8rem", borderRadius: "14px", border: "1px solid rgba(168,85,247,0.38)", background: "rgba(9,6,16,0.72)", color: "#fff", cursor: "pointer", boxSizing: "border-box" };
-const selectorTriggerIcon = { width: "40px", height: "40px", minWidth: "40px", display: "grid", placeItems: "center", borderRadius: "11px", background: "linear-gradient(135deg, rgba(168,85,247,0.22), rgba(236,72,153,0.14))", fontSize: "1.2rem" };
-const selectorMenuStyle = { position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, zIndex: 1200, padding: "0.65rem", borderRadius: "16px", border: "1px solid rgba(168,85,247,0.35)", background: "#17101f", boxShadow: "0 22px 50px rgba(0,0,0,0.55)" };
-const selectorListStyle = { maxHeight: "280px", overflowY: "auto", display: "grid", gap: "0.3rem" };
-const selectorItemStyle = { width: "100%", display: "flex", alignItems: "center", gap: "0.7rem", padding: "0.65rem", borderRadius: "11px", border: "1px solid transparent", background: "transparent", color: "#fff", cursor: "pointer", textAlign: "left" };
-const selectorItemActiveStyle = { background: "rgba(168,85,247,0.13)", borderColor: "rgba(168,85,247,0.35)" };
-const selectorItemIcon = { width: "36px", height: "36px", minWidth: "36px", display: "grid", placeItems: "center", borderRadius: "10px", background: "rgba(255,255,255,0.06)", fontSize: "1rem" };
-const selectorEmptyStyle = { padding: "1rem", color: "#9ca3af", textAlign: "center", fontSize: "0.85rem" };
-
-
-const finalOverlayStyle = {
-  position: "fixed",
-  inset: 0,
-  width: "100vw",
-  height: "100dvh",
-  zIndex: 5000,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "1rem",
-  boxSizing: "border-box",
-  background: "radial-gradient(circle at 50% 35%, rgba(168,85,247,0.22), transparent 35%), rgba(6,5,12,0.96)",
-  overflowY: "auto",
-};
-
-const finalCardStyle = {
-  width: "min(100%, 560px)",
-  boxSizing: "border-box",
-  textAlign: "center",
-  padding: "2.3rem 1.5rem 1.6rem",
-  borderRadius: "26px",
-  background: "linear-gradient(160deg, rgba(32,20,52,0.98), rgba(16,12,26,0.99))",
-  border: "1px solid rgba(192,132,252,0.35)",
-  boxShadow: "0 30px 80px rgba(0,0,0,0.55), 0 0 50px rgba(168,85,247,0.14)",
-};
-
-const finalIconStyle = {
-  width: "76px",
-  height: "76px",
-  margin: "0 auto 1rem",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "24px",
-  background: "linear-gradient(135deg, #a855f7, #ec4899)",
-  color: "#fff",
-  fontSize: "2.3rem",
-  fontWeight: 950,
-  boxShadow: "0 14px 35px rgba(168,85,247,0.3)",
-};
-
-const finalEyebrowStyle = { color: "#c4b5fd", fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.16em" };
-const finalTitleStyle = { margin: "0.35rem 0 0.35rem", fontSize: "clamp(1.8rem, 5vw, 2.45rem)", lineHeight: 1.1 };
-const finalSubtitleStyle = { margin: 0, color: "#a1a1aa", fontSize: "0.95rem" };
-const finalStatsStyle = { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", margin: "1.8rem 0 1rem", padding: "1rem", borderRadius: "18px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" };
-const finalStatStyle = { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.15rem" };
-const finalStatIconStyle = { color: "#c084fc", fontSize: "1.1rem" };
-const finalStatDividerStyle = { width: "1px", height: "48px", background: "rgba(255,255,255,0.1)" };
-const finalSavedStyle = { margin: "0 0 1.3rem", padding: "0.75rem 0.9rem", borderRadius: "12px", background: "rgba(74,222,128,0.07)", border: "1px solid rgba(74,222,128,0.16)", color: "#bbf7d0", fontSize: "0.78rem", lineHeight: 1.45 };
-const finalPrimaryButtonStyle = { width: "100%", minHeight: "50px", border: "0", borderRadius: "14px", background: "linear-gradient(135deg, #a855f7, #ec4899)", color: "#fff", cursor: "pointer", fontWeight: 900, fontSize: "0.95rem", boxShadow: "0 12px 28px rgba(168,85,247,0.24)" };
-
-const finishConfirmModalStyle = {
-  width: "min(100%, 500px)",
-  padding: "1.7rem",
-  borderRadius: "26px",
-  background: "linear-gradient(155deg, #2b1740 0%, #191126 58%, #24142f 100%)",
-  border: "1px solid rgba(192,132,252,0.42)",
-  boxShadow: "0 30px 90px rgba(0,0,0,0.58), 0 0 55px rgba(168,85,247,0.14)",
-  textAlign: "center",
-  boxSizing: "border-box",
-};
-const finishConfirmIconStyle = {
-  width: "62px",
-  height: "62px",
-  margin: "0 auto 0.85rem",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "20px",
-  background: "linear-gradient(135deg, #a855f7, #ec4899)",
-  color: "#fff",
-  fontSize: "1.65rem",
-  fontWeight: 950,
-  boxShadow: "0 14px 32px rgba(168,85,247,0.28)",
-};
-const finishConfirmEyebrowStyle = { color: "#d8b4fe", fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.13em" };
-const finishConfirmTitleStyle = { margin: "0.4rem 0 0.55rem", fontSize: "1.5rem", color: "#fff" };
-const finishConfirmTextStyle = { margin: "0 auto 1.3rem", maxWidth: "410px", color: "#c4b5fd", lineHeight: 1.55, fontSize: "0.88rem" };
-const finishConfirmActionsStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" };
-const finishCancelButtonStyle = { minHeight: "50px", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "14px", background: "rgba(255,255,255,0.06)", color: "#e4e4e7", cursor: "pointer", fontWeight: 850 };
-const finishConfirmButtonStyle = { minHeight: "50px", border: "0", borderRadius: "14px", background: "linear-gradient(135deg, #a855f7, #ec4899)", color: "#fff", cursor: "pointer", fontWeight: 900, boxShadow: "0 10px 25px rgba(168,85,247,0.24)" };
-
-const discardModalStyle = {
-  width: "min(100%, 500px)",
-  padding: "1.7rem",
-  borderRadius: "26px",
-  background: "linear-gradient(155deg, #2b1740 0%, #191126 58%, #24142f 100%)",
-  border: "1px solid rgba(192,132,252,0.42)",
-  boxShadow: "0 30px 90px rgba(0,0,0,0.58), 0 0 55px rgba(168,85,247,0.14)",
-  textAlign: "center",
-  boxSizing: "border-box",
-};
-const discardModalIconStyle = {
-  width: "62px",
-  height: "62px",
-  margin: "0 auto 0.85rem",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "20px",
-  background: "linear-gradient(135deg, #a855f7, #ec4899)",
-  color: "#fff",
-  fontSize: "1.65rem",
-  fontWeight: 950,
-  boxShadow: "0 14px 32px rgba(168,85,247,0.28)",
-};
-const discardModalEyebrowStyle = { color: "#d8b4fe", fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.13em" };
-const discardModalTitleStyle = { margin: "0.4rem 0 0.55rem", fontSize: "1.5rem", color: "#fff" };
-const discardModalTextStyle = { margin: "0 auto 1.3rem", maxWidth: "410px", color: "#c4b5fd", lineHeight: 1.55, fontSize: "0.88rem" };
-const discardActionsStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" };
-const discardContinueButtonStyle = { minHeight: "50px", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "14px", background: "rgba(255,255,255,0.06)", color: "#e4e4e7", cursor: "pointer", fontWeight: 850 };
-const discardConfirmButtonStyle = { minHeight: "50px", border: "0", borderRadius: "14px", background: "linear-gradient(135deg, #a855f7, #ec4899)", color: "#fff", cursor: "pointer", fontWeight: 900, boxShadow: "0 10px 25px rgba(168,85,247,0.24)" };
-
-const modalOverlayStyle = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 2000,
-  display: "grid",
-  placeItems: "center",
-  padding: "1rem",
-  background: "radial-gradient(circle at 50% 35%, rgba(168,85,247,0.16), rgba(12,8,20,0.76) 62%, rgba(5,4,10,0.82))",
-  backdropFilter: "blur(12px)",
-};
-
+// Alerta al estilo iOS: título, texto y dos botones
+function Alerta({ titulo, texto, cancelar, confirmar, peligro = false, onCancelar, onConfirmar }) {
+  return (
+    <div className="aw-alerta-overlay" role="alertdialog" aria-modal="true" aria-label={titulo}>
+      <div className="aw-glass aw-alerta">
+        <h2>{titulo}</h2>
+        <p>{texto}</p>
+        <div className="aw-alerta-acciones">
+          <button type="button" onClick={onCancelar} className="aw-btn">{cancelar}</button>
+          <button type="button" onClick={onConfirmar} className={`aw-btn ${peligro ? "peligro" : "primario"}`}>{confirmar}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
