@@ -21,6 +21,7 @@ export default function VerificarPage() {
       try {
         const res = await api.get(`/verificar/${token}/`)
         if (res.data.token) localStorage.setItem('token', res.data.token)
+        if (res.data.refresh) localStorage.setItem('refresh', res.data.refresh)
         setEstado('ok')
         setMensaje(res.data.mensaje || 'Cuenta confirmada correctamente.')
       } catch (err) {

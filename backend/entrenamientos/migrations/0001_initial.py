@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                 ('usuario', models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.CASCADE, to='users.usuario', db_column='usuario_id')),
             ],
             options={
-                'db_table': 'rutinas',
+                'db_table': 'entrenamientos_rutina_legacy',
             },
         ),
         migrations.CreateModel(
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 ('rutina', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ejercicios', to='entrenamientos.rutina', db_column='rutina_id')),
             ],
             options={
-                'db_table': 'ejercicios',
+                'db_table': 'entrenamientos_ejercicio_legacy',
                 'ordering': ['dia', 'orden'],
             },
         ),

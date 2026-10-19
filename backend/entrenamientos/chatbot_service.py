@@ -1,17 +1,22 @@
-import os
 import json
 import time
 import google.generativeai as genai
 
 from django.conf import settings
 
+from .rutina_ia import catalogo_para_prompt, vincular_ejercicios
+
 # ── Configuración de Gemini ──────────────────────────────
 genai.configure(api_key=settings.GEMINI_API_KEY)
 MODELO = "gemini-flash-latest"  # alias que siempre apunta al Flash estable vigente
+# Para generar rutinas: con el catálogo en el prompt, Flash tarda más de un minuto y
+# Flash-Lite unos segundos, eligiendo igual ejercicios de la biblioteca.
+MODELO_RUTINA = "gemini-flash-lite-latest"
 
 
-def calcular_imc(peso_kg, altura_cm):
-    altura_m = altura_cm / 100
+def calcular_imc(peso_kg, altura):
+    # El registro guarda la altura en metros (1.75); por si viene en cm (175) también
+    altura_m = altura / 100 if altura > 3 else altura
     return round(peso_kg / (altura_m ** 2), 1)
 
 
@@ -77,6 +82,7 @@ exacta:
   "ejercicios": [
     {{
       "dia": "Día 1",
+      "ejercicio_id": number,
       "nombre": "string",
       "series": number,
       "repeticiones": number,
@@ -85,6 +91,9 @@ exacta:
     }}
   ]
 }}
+
+Catálogo de ejercicios disponibles (id | nombre | grupo):
+{catalogo_para_prompt()}
 
 Datos del usuario:
 {contexto}
@@ -105,10 +114,15 @@ Instrucciones:
   triviales para llenar espacio.
 - Sé específico y realista con series/repeticiones/descanso según el nivel
   y el equipo disponible.
+- Elige TODOS los ejercicios del catálogo de arriba: pon su número en
+  "ejercicio_id" y copia su "nombre" exactamente igual. No inventes
+  ejercicios que no estén en el catálogo.
+- Usa "dia" para separar los días ("Día 1", "Día 2"...) según
+  "dias_por_semana", con 4 a 8 ejercicios por día.
 """
 
     modelo = genai.GenerativeModel(
-        MODELO,
+        MODELO_RUTINA,
         generation_config={"response_mime_type": "application/json"},
     )
     inicio = time.time()
@@ -129,7 +143,7 @@ Instrucciones:
         texto = texto[inicio_json:fin_json + 1]
 
     try:
-        return json.loads(texto)
+        return vincular_ejercicios(json.loads(texto))
     except json.JSONDecodeError as e:
         print(f"[chatbot_service] Gemini devolvió JSON inválido: {e}")
         print(f"[chatbot_service] Texto recibido (primeros 800 caracteres):\n{texto[:800]}")

@@ -11,12 +11,16 @@ import VerificarPage from "./pages/VerificarPage";
 import Dashboard from "./pages/Dashboard";
 import ChatbotRutina from "./pages/ChatbotRutina";
 import Progreso from "./pages/Progreso";
-import Ejercicios from "./pages/ejercicios/Ejercicios";
-import EjercicioDetalle from "./pages/ejercicios/EjercicioDetalle";
+import Ejercicios from "./pages/ejercicios/ejercicios";
+import EjercicioDetalle from "./pages/ejercicios/ejercicioDetalle";
 import Planes from "./pages/Planes";
 import FormularioPago from "./pages/FormularioPago";
 import PagoExitoso from "./pages/PagoExitoso";
 import EsperandoVerificacion from './pages/EsperandoVerificacion'
+import ComunidadPage from "./pages/ComunidadPage";
+import PerfilPage from "./pages/PerfilPage";
+import MiPerfil from "./pages/MiPerfil";
+import ConfiguracionPage from "./pages/ConfiguracionPage";
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -55,8 +59,22 @@ export default function App() {
           }
         />
 
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/nutricion" element={<NutricionPage />} />
+        <Route
+          path="/admin"
+          element={
+            <RutaProtegida>
+              <AdminPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/nutricion"
+          element={
+            <RutaProtegida>
+              <NutricionPage />
+            </RutaProtegida>
+          }
+        />
 
         <Route
           path="/dashboard"
@@ -99,6 +117,42 @@ export default function App() {
           element={
             <RutaProtegida>
               <EjercicioDetalle />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/comunidad"
+          element={
+            <RutaProtegida>
+              <ComunidadPage />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/perfil"
+          element={
+            <RutaProtegida>
+              <MiPerfil />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/perfil/:username"
+          element={
+            <RutaProtegida>
+              <PerfilPage />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/configuracion"
+          element={
+            <RutaProtegida>
+              <ConfiguracionPage />
             </RutaProtegida>
           }
         />

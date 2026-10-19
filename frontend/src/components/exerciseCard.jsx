@@ -33,8 +33,6 @@ const clasesGrupos = {
 function ExerciseCard({ ejercicio }) {
   const navigate = useNavigate();
 
-  const grupo = ejercicio.grupo_muscular;
-
 const grupoNombre =
   nombresGrupos[ejercicio.grupo] || ejercicio.grupo;
 

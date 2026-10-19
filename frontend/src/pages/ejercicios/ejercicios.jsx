@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ExerciseCard from "../../components/ExerciseCard";
+import ExerciseCard from "../../components/exerciseCard";
 import Navbar from "../../components/Navbar";
 import "../../css/ejercicios.css";
 

@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useState } from 'react'
-import api from '../api/api'
+import CodigoVerificacion from '../components/Auth/CodigoVerificacion'
 import './../css/styles.css'
 
 export default function EsperandoVerificacion() {
@@ -9,28 +8,6 @@ export default function EsperandoVerificacion() {
 
   const params = new URLSearchParams(location.search)
   const email = params.get('email') || ''
-
-  const [reenviando, setReenviando] = useState(false)
-  const [mensaje, setMensaje] = useState('')
-
-  const reenviar = async () => {
-    if (!email || reenviando) return
-
-    setReenviando(true)
-    setMensaje('')
-
-    try {
-      const res = await api.post('/reenviar-verificacion/', { email })
-      setMensaje(res.data.mensaje || 'Te enviamos un nuevo enlace de verificación.')
-    } catch (err) {
-      setMensaje(
-        err.response?.data?.error ||
-        'No pudimos reenviar el correo. Inténtalo nuevamente.'
-      )
-    } finally {
-      setReenviando(false)
-    }
-  }
 
   return (
     <div className="auth-wrapper">
@@ -71,7 +48,7 @@ export default function EsperandoVerificacion() {
 
           <div className="verification-step">
             <span>3</span>
-            <p>Haz clic en el enlace para confirmar tu cuenta.</p>
+            <p>Escribe el código de 6 dígitos o abre el enlace.</p>
           </div>
         </div>
 
@@ -82,22 +59,13 @@ export default function EsperandoVerificacion() {
           </p>
         </div>
 
-        {mensaje && (
-          <div className="verification-feedback">
-            {mensaje}
-          </div>
+        {email ? (
+          <CodigoVerificacion email={email} recienEnviado={false} />
+        ) : (
+          <p className="error">Vuelve a iniciar sesión para recibir el código.</p>
         )}
 
         <div className="verification-actions">
-          <button
-            className="verification-primary-btn"
-            type="button"
-            onClick={reenviar}
-            disabled={reenviando || !email}
-          >
-            {reenviando ? 'Enviando...' : 'Reenviar correo'}
-          </button>
-
           <button
             className="verification-secondary-btn"
             type="button"
