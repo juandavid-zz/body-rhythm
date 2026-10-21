@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
 import { getEmoji } from "../utils/rutinasStorage";
+import "../css/rutinas-progreso.css";
 
 const GRUPO_ICONO = {
   pecho: "🏋️", espalda: "🧗", hombros: "💪", biceps: "💪",
@@ -419,13 +420,13 @@ export default function RutinasPage() {
     <>
       <Navbar />
 
-      <div style={styles.page}>
+      <div className="rn-page" style={styles.page}>
         <div style={styles.container}>
           <button
             onClick={() => navigate("/rutinas/entrenamiento")}
-            style={styles.emptyWorkoutButton}
+            className="rn-empty-workout-button" style={styles.emptyWorkoutButton}
           >
-            <span style={styles.emptyWorkoutIcon}>⚡</span>
+            <span className="rn-empty-workout-icon" style={styles.emptyWorkoutIcon}>⚡</span>
             <span>
               <strong style={{ display: "block", color: "#fff" }}>
                 Empezar entrenamiento
@@ -434,33 +435,33 @@ export default function RutinasPage() {
                 Comienza desde cero y añade ejercicios
               </small>
             </span>
-            <span style={styles.arrow}>→</span>
+            <span className="rn-arrow" style={styles.arrow}>→</span>
           </button>
 
           <header style={styles.header}>
             <div>
-              <div style={styles.eyebrow}>TU ENTRENAMIENTO</div>
-              <h1 style={styles.title}>
+              <div className="rn-eyebrow" style={styles.eyebrow}>TU ENTRENAMIENTO</div>
+              <h1 className="rn-title" style={styles.title}>
                 Mis <span>Rutinas</span>
               </h1>
-              <p style={styles.subtitle}>
+              <p className="rn-subtitle" style={styles.subtitle}>
                 Organiza tus ejercicios y ten tu entrenamiento listo para empezar.
               </p>
             </div>
 
-            <div style={styles.catalogReadyBadge}>
-              <span style={styles.catalogReadyDot}></span>
+            <div className="rn-catalog-ready-badge" style={styles.catalogReadyBadge}>
+              <span className="rn-catalog-ready-dot" style={styles.catalogReadyDot}></span>
               Catálogo automático
             </div>
           </header>
 
           {/* CREADOR DE RUTINAS PERSONALIZADAS */}
-          <section style={styles.creatorSection}>
+          <section className="rn-creator-section" style={styles.creatorSection}>
             <div style={styles.creatorIntro}>
               <div>
-                <div style={styles.eyebrow}>A TU MANERA</div>
-                <h2 style={styles.creatorTitle}>Crea tu rutina</h2>
-                <p style={styles.creatorDescription}>
+                <div className="rn-eyebrow" style={styles.eyebrow}>A TU MANERA</div>
+                <h2 className="rn-creator-title" style={styles.creatorTitle}>Crea tu rutina</h2>
+                <p className="rn-creator-description" style={styles.creatorDescription}>
                   Elige tus ejercicios y configura tu entrenamiento.
                 </p>
               </div>
@@ -471,15 +472,15 @@ export default function RutinasPage() {
                   setMostrarCreador((actual) => !actual);
                   setErrorCreador("");
                 }}
-                style={styles.createRoutineButton}
+                className="rn-create-routine-button" style={styles.createRoutineButton}
               >
                 {mostrarCreador ? "Cerrar ×" : "＋ Crear rutina"}
               </button>
             </div>
 
             {mostrarCreador && (
-              <div style={styles.creatorForm}>
-                <label style={styles.label} htmlFor="nombre-nueva-rutina">
+              <div className="rn-creator-form" style={styles.creatorForm}>
+                <label className="rn-label" style={styles.label} htmlFor="nombre-nueva-rutina">
                   Nombre de la rutina
                 </label>
                 <input
@@ -489,10 +490,10 @@ export default function RutinasPage() {
                   value={nombreNuevaRutina}
                   onChange={(e) => setNombreNuevaRutina(e.target.value)}
                   placeholder="Ej. Pecho y tríceps"
-                  style={styles.input}
+                  className="rn-input" style={styles.input}
                 />
 
-                <label style={styles.label} htmlFor="descripcion-nueva-rutina">
+                <label className="rn-label" style={styles.label} htmlFor="descripcion-nueva-rutina">
                   Descripción (opcional)
                 </label>
                 <textarea
@@ -502,15 +503,15 @@ export default function RutinasPage() {
                   onChange={(e) => setDescripcionNuevaRutina(e.target.value)}
                   placeholder="Describe tu entrenamiento..."
                   rows={3}
-                  style={styles.creatorTextarea}
+                  className="rn-creator-textarea" style={styles.creatorTextarea}
                 />
 
                 <div style={styles.creatorExerciseHeading}>
                   <div>
-                    <h3 style={styles.creatorSubtitle}>
+                    <h3 className="rn-creator-subtitle" style={styles.creatorSubtitle}>
                       Selecciona los ejercicios
                     </h3>
-                    <p style={styles.creatorDescription}>
+                    <p className="rn-creator-description" style={styles.creatorDescription}>
                       {ejerciciosNuevos.length} seleccionado(s)
                     </p>
                   </div>
@@ -521,12 +522,12 @@ export default function RutinasPage() {
                   value={busquedaCreador}
                   onChange={(e) => setBusquedaCreador(e.target.value)}
                   placeholder="Buscar ejercicio o grupo muscular..."
-                  style={styles.input}
+                  className="rn-input" style={styles.input}
                 />
 
-                <div style={styles.creatorCatalog}>
+                <div className="rn-creator-catalog" style={styles.creatorCatalog}>
                   {ejerciciosDisponiblesCreador.length === 0 ? (
-                    <div style={styles.noExercises}>
+                    <div className="rn-no-exercises" style={styles.noExercises}>
                       No se encontraron ejercicios.
                     </div>
                   ) : (
@@ -541,18 +542,18 @@ export default function RutinasPage() {
                           type="button"
                           key={ejercicio.id}
                           onClick={() => alternarEjercicioNuevo(ejercicio)}
-                          style={styles.creatorExerciseOption(seleccionado)}
+                          className={`rn-option${seleccionado ? " rn-on" : ""}`} style={styles.creatorExerciseOption(seleccionado)}
                         >
-                          <span style={styles.creatorExerciseIcon}>
+                          <span className="rn-creator-exercise-icon" style={styles.creatorExerciseIcon}>
                             {iconoEjercicio(ejercicio)}
                           </span>
-                          <span style={styles.creatorExerciseText}>
+                          <span className="rn-creator-exercise-text" style={styles.creatorExerciseText}>
                             <strong>{ejercicio.nombre}</strong>
                             <small>
                               {grupoLabel(ejercicio.grupo_muscular)}
                             </small>
                           </span>
-                          <span style={styles.creatorCheck}>
+                          <span className="rn-creator-check" style={styles.creatorCheck}>
                             {seleccionado ? "✓" : "+"}
                           </span>
                         </button>
@@ -563,7 +564,7 @@ export default function RutinasPage() {
 
                 {ejerciciosNuevos.length > 0 && (
                   <div style={styles.creatorConfigurations}>
-                    <h3 style={styles.creatorSubtitle}>
+                    <h3 className="rn-creator-subtitle" style={styles.creatorSubtitle}>
                       Configura cada ejercicio
                     </h3>
 
@@ -575,7 +576,7 @@ export default function RutinasPage() {
                       return (
                         <div
                           key={item.ejercicio_id}
-                          style={styles.creatorConfigCard}
+                          className="rn-creator-config-card" style={styles.creatorConfigCard}
                         >
                           <div style={styles.creatorConfigHeading}>
                             <strong>
@@ -588,7 +589,7 @@ export default function RutinasPage() {
                                   id: item.ejercicio_id,
                                 })
                               }
-                              style={styles.creatorRemoveButton}
+                              className="rn-creator-remove-button" style={styles.creatorRemoveButton}
                             >
                               Quitar ×
                             </button>
@@ -597,7 +598,7 @@ export default function RutinasPage() {
                           <div style={styles.formGrid}>
                             <div>
                               <label
-                                style={styles.label}
+                                className="rn-label" style={styles.label}
                                 htmlFor={`series-${item.ejercicio_id}`}
                               >
                                 Series
@@ -615,13 +616,13 @@ export default function RutinasPage() {
                                     e.target.value
                                   )
                                 }
-                                style={styles.smallInput}
+                                className="rn-small-input" style={styles.smallInput}
                               />
                             </div>
 
                             <div>
                               <label
-                                style={styles.label}
+                                className="rn-label" style={styles.label}
                                 htmlFor={`reps-${item.ejercicio_id}`}
                               >
                                 Repeticiones
@@ -639,13 +640,13 @@ export default function RutinasPage() {
                                     e.target.value
                                   )
                                 }
-                                style={styles.smallInput}
+                                className="rn-small-input" style={styles.smallInput}
                               />
                             </div>
 
                             <div>
                               <label
-                                style={styles.label}
+                                className="rn-label" style={styles.label}
                                 htmlFor={`descanso-${item.ejercicio_id}`}
                               >
                                 Descanso (s)
@@ -663,7 +664,7 @@ export default function RutinasPage() {
                                     e.target.value
                                   )
                                 }
-                                style={styles.smallInput}
+                                className="rn-small-input" style={styles.smallInput}
                               />
                             </div>
                           </div>
@@ -674,7 +675,7 @@ export default function RutinasPage() {
                 )}
 
                 {errorCreador && (
-                  <p role="alert" style={styles.creatorError}>
+                  <p role="alert" className="rn-creator-error" style={styles.creatorError}>
                     {errorCreador}
                   </p>
                 )}
@@ -684,7 +685,7 @@ export default function RutinasPage() {
                     type="button"
                     onClick={crearRutinaPersonalizada}
                     disabled={guardandoRutina}
-                    style={{
+                    className="rn-primary-button" style={{
                       ...styles.primaryButton,
                       opacity: guardandoRutina ? 0.6 : 1,
                       cursor: guardandoRutina ? "wait" : "pointer",
@@ -700,7 +701,7 @@ export default function RutinasPage() {
                       setMostrarCreador(false);
                       setErrorCreador("");
                     }}
-                    style={styles.secondaryButton}
+                    className="rn-secondary-button" style={styles.secondaryButton}
                   >
                     Cancelar
                   </button>
@@ -710,9 +711,9 @@ export default function RutinasPage() {
           </section>
 
           {temporizador !== null && (
-            <div style={styles.timerCard}>
+            <div className="rn-timer-card" style={styles.timerCard}>
               <div>
-                <span style={styles.timerLabel}>DESCANSO</span>
+                <span className="rn-timer-label" style={styles.timerLabel}>DESCANSO</span>
                 <div style={styles.timer}>{formatTiempo(tiempoRestante)}</div>
               </div>
               <button
@@ -720,7 +721,7 @@ export default function RutinasPage() {
                   clearInterval(intervalRef.current);
                   setTemporizador(null);
                 }}
-                style={styles.secondaryButton}
+                className="rn-secondary-button" style={styles.secondaryButton}
               >
                 Terminar
               </button>
@@ -728,11 +729,11 @@ export default function RutinasPage() {
           )}
 
           {cargando && (
-            <div style={styles.emptyState}>Cargando tus rutinas...</div>
+            <div className="rn-empty-state" style={styles.emptyState}>Cargando tus rutinas...</div>
           )}
 
           {!cargando && rutinas.length === 0 && (
-            <div style={styles.emptyState}>
+            <div className="rn-empty-state" style={styles.emptyState}>
               <div style={styles.emptyIcon}>🏋️</div>
               <h3 style={{ margin: "0 0 0.4rem", color: "#e4e4e7" }}>
                 Aún no tienes rutinas
@@ -761,16 +762,16 @@ export default function RutinasPage() {
                     <article
                       key={r.id}
                       onClick={() => seleccionarRutina(r)}
-                      style={styles.routineCard(activa)}
+                      className={`rn-card${activa ? " rn-on" : ""}`} style={styles.routineCard(activa)}
                     >
                       <div style={styles.cardTop}>
-                        <div style={styles.exerciseTile(activa)}>{icono}</div>
+                        <div className={`rn-tile${activa ? " rn-on" : ""}`} style={styles.exerciseTile(activa)}>{icono}</div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.cardKicker}>{grupo}</div>
-                          <h3 style={styles.cardTitle}>{r.nombre}</h3>
+                          <div className="rn-card-kicker" style={styles.cardKicker}>{grupo}</div>
+                          <h3 className="rn-card-title" style={styles.cardTitle}>{r.nombre}</h3>
                           {r.recomendada && (
-                            <span style={styles.recomendadaBadge}>
+                            <span className="rn-recomendada-badge" style={styles.recomendadaBadge}>
                               ★ Recomendada para ti
                             </span>
                           )}
@@ -782,7 +783,7 @@ export default function RutinasPage() {
                               e.stopPropagation();
                               toggleFavorita(r.id);
                             }}
-                            style={styles.iconButton}
+                            className="rn-icon-button" style={styles.iconButton}
                             aria-label="Favorita"
                           >
                             {r.es_favorita ? "★" : "☆"}
@@ -792,7 +793,7 @@ export default function RutinasPage() {
                               e.stopPropagation();
                               eliminarRutina(r.id);
                             }}
-                            style={styles.deleteButton}
+                            className="rn-delete-button" style={styles.deleteButton}
                             aria-label="Eliminar"
                           >
                             ×
@@ -800,11 +801,11 @@ export default function RutinasPage() {
                         </div>
                       </div>
 
-                      <p style={styles.cardDescription}>
+                      <p className="rn-card-description" style={styles.cardDescription}>
                         {r.descripcion || "Tu entrenamiento personalizado"}
                       </p>
 
-                      <div style={styles.cardStats}>
+                      <div className="rn-card-stats" style={styles.cardStats}>
                         <span>
                           🏋️ {resumen.total} ejercicio
                           {resumen.total === 1 ? "" : "s"}
@@ -812,11 +813,11 @@ export default function RutinasPage() {
                         <span>▦ {resumen.series} series</span>
                       </div>
 
-                      <div style={styles.cardFooter}>
+                      <div className="rn-card-footer" style={styles.cardFooter}>
                         <span>
                           {activa ? "Rutina abierta" : "Toca para ver detalle"}
                         </span>
-                        <span style={styles.cardArrow}>→</span>
+                        <span className="rn-card-arrow" style={styles.cardArrow}>→</span>
                       </div>
                     </article>
                   );
@@ -824,11 +825,11 @@ export default function RutinasPage() {
               </div>
 
               {rutinaActiva && (
-                <aside style={styles.detailCard}>
+                <aside className="rn-detail-card" style={styles.detailCard}>
                   <div style={styles.detailHeader}>
                     <div>
-                      <div style={styles.eyebrow}>RUTINA ACTIVA</div>
-                      <h2 style={styles.detailTitle}>{rutinaActiva.nombre}</h2>
+                      <div className="rn-eyebrow" style={styles.eyebrow}>RUTINA ACTIVA</div>
+                      <h2 className="rn-detail-title" style={styles.detailTitle}>{rutinaActiva.nombre}</h2>
                     </div>
                     <button
                       onClick={() =>
@@ -836,13 +837,13 @@ export default function RutinasPage() {
                           state: { rutina: rutinaActiva },
                         })
                       }
-                      style={styles.startButton}
+                      className="rn-start-button" style={styles.startButton}
                     >
                       ▶ Empezar
                     </button>
                   </div>
 
-                  <p style={styles.detailDescription}>
+                  <p className="rn-detail-description" style={styles.detailDescription}>
                     {rutinaActiva.descripcion ||
                       "Añade ejercicios para construir tu entrenamiento."}
                   </p>
@@ -852,14 +853,14 @@ export default function RutinasPage() {
                       setMostrarAgregarEjercicio((v) => !v);
                       setSelectorAbierto(false);
                     }}
-                    style={styles.addExerciseButton}
+                    className="rn-add-exercise-button" style={styles.addExerciseButton}
                   >
                     ＋ Añadir ejercicio
                   </button>
 
                   {mostrarAgregarEjercicio && (
-                    <div style={styles.addPanel}>
-                      <label style={styles.label}>Ejercicio</label>
+                    <div className="rn-add-panel" style={styles.addPanel}>
+                      <label className="rn-label" style={styles.label}>Ejercicio</label>
 
                       <div style={{ position: "relative" }}>
                         <button
@@ -868,20 +869,20 @@ export default function RutinasPage() {
                             setSelectorAbierto((v) => !v);
                             setBusquedaEjercicio("");
                           }}
-                          style={styles.customSelect}
+                          className="rn-custom-select" style={styles.customSelect}
                         >
                           <span style={styles.selectedExercise}>
-                            <span style={styles.selectedExerciseIcon}>
+                            <span className="rn-selected-exercise-icon" style={styles.selectedExerciseIcon}>
                               {ejercicioSeleccionado
                                 ? iconoEjercicio(ejercicioSeleccionado)
                                 : "🏋️"}
                             </span>
                             <span style={{ minWidth: 0 }}>
-                              <strong style={styles.selectedExerciseName}>
+                              <strong className="rn-selected-exercise-name" style={styles.selectedExerciseName}>
                                 {ejercicioSeleccionado?.nombre ||
                                   "Elegir ejercicio"}
                               </strong>
-                              <small style={styles.selectedExerciseHint}>
+                              <small className="rn-selected-exercise-hint" style={styles.selectedExerciseHint}>
                                 {ejercicioSeleccionado
                                   ? grupoLabel(
                                       ejercicioSeleccionado.grupo_muscular
@@ -891,7 +892,7 @@ export default function RutinasPage() {
                             </span>
                           </span>
                           <span
-                            style={{
+                            className="rn-select-chevron" style={{
                               ...styles.selectChevron,
                               transform: selectorAbierto
                                 ? "rotate(180deg)"
@@ -903,9 +904,9 @@ export default function RutinasPage() {
                         </button>
 
                         {selectorAbierto && (
-                          <div style={styles.optionMenu}>
-                            <div style={styles.optionSearchWrap}>
-                              <span style={styles.searchIcon}>⌕</span>
+                          <div className="rn-option-menu" style={styles.optionMenu}>
+                            <div className="rn-option-search-wrap" style={styles.optionSearchWrap}>
+                              <span className="rn-search-icon" style={styles.searchIcon}>⌕</span>
                               <input
                                 autoFocus
                                 value={busquedaEjercicio}
@@ -913,12 +914,12 @@ export default function RutinasPage() {
                                   setBusquedaEjercicio(e.target.value)
                                 }
                                 placeholder="Buscar ejercicio..."
-                                style={styles.optionSearch}
+                                className="rn-option-search" style={styles.optionSearch}
                                 onClick={(e) => e.stopPropagation()}
                               />
                             </div>
 
-                            <div style={styles.optionHeader}>
+                            <div className="rn-option-header" style={styles.optionHeader}>
                               <span>
                                 {ejerciciosFiltrados.length} ejercicios
                               </span>
@@ -927,7 +928,7 @@ export default function RutinasPage() {
 
                             <div style={styles.optionList}>
                               {ejerciciosFiltrados.length === 0 ? (
-                                <div style={styles.noExerciseFound}>
+                                <div className="rn-no-exercise-found" style={styles.noExerciseFound}>
                                   No encontramos ese ejercicio.
                                 </div>
                               ) : (
@@ -948,9 +949,9 @@ export default function RutinasPage() {
                                         setSelectorAbierto(false);
                                         setBusquedaEjercicio("");
                                       }}
-                                      style={styles.optionButton(seleccionado)}
+                                      className={`rn-option${seleccionado ? " rn-on" : ""}`} style={styles.optionButton(seleccionado)}
                                     >
-                                      <span style={styles.optionIcon}>
+                                      <span className="rn-option-icon" style={styles.optionIcon}>
                                         {iconoEjercicio(ejercicio)}
                                       </span>
                                       <span style={styles.optionText}>
@@ -962,7 +963,7 @@ export default function RutinasPage() {
                                         </small>
                                       </span>
                                       {seleccionado && (
-                                        <span style={styles.optionCheck}>✓</span>
+                                        <span className="rn-option-check" style={styles.optionCheck}>✓</span>
                                       )}
                                     </button>
                                   );
@@ -975,7 +976,7 @@ export default function RutinasPage() {
 
                       <div style={styles.formGrid}>
                         <div>
-                          <label style={styles.label}>Series</label>
+                          <label className="rn-label" style={styles.label}>Series</label>
                           <input
                             type="number"
                             min="1"
@@ -986,11 +987,11 @@ export default function RutinasPage() {
                                 series: Number(e.target.value),
                               })
                             }
-                            style={styles.smallInput}
+                            className="rn-small-input" style={styles.smallInput}
                           />
                         </div>
                         <div>
-                          <label style={styles.label}>Repeticiones</label>
+                          <label className="rn-label" style={styles.label}>Repeticiones</label>
                           <input
                             type="number"
                             min="1"
@@ -1001,11 +1002,11 @@ export default function RutinasPage() {
                                 repeticiones: Number(e.target.value),
                               })
                             }
-                            style={styles.smallInput}
+                            className="rn-small-input" style={styles.smallInput}
                           />
                         </div>
                         <div>
-                          <label style={styles.label}>Descanso (seg)</label>
+                          <label className="rn-label" style={styles.label}>Descanso (seg)</label>
                           <input
                             type="number"
                             min="0"
@@ -1016,7 +1017,7 @@ export default function RutinasPage() {
                                 descanso_segundos: Number(e.target.value),
                               })
                             }
-                            style={styles.smallInput}
+                            className="rn-small-input" style={styles.smallInput}
                           />
                         </div>
                       </div>
@@ -1025,7 +1026,7 @@ export default function RutinasPage() {
                         <button
                           onClick={agregarEjercicio}
                           disabled={!ejercicioSeleccionado}
-                          style={{
+                          className="rn-primary-button" style={{
                             ...styles.primaryButton,
                             opacity: ejercicioSeleccionado ? 1 : 0.45,
                           }}
@@ -1034,7 +1035,7 @@ export default function RutinasPage() {
                         </button>
                         <button
                           onClick={() => setMostrarAgregarEjercicio(false)}
-                          style={styles.secondaryButton}
+                          className="rn-secondary-button" style={styles.secondaryButton}
                         >
                           Cancelar
                         </button>
@@ -1044,20 +1045,20 @@ export default function RutinasPage() {
 
                   <div style={{ marginTop: "1.2rem" }}>
                     {(rutinaActiva.ejercicios_detalle || []).length === 0 ? (
-                      <div style={styles.noExercises}>
+                      <div className="rn-no-exercises" style={styles.noExercises}>
                         Aún no hay ejercicios. Añade uno para empezar.
                       </div>
                     ) : (
                       rutinaActiva.ejercicios_detalle.map((re, idx) => (
-                        <div key={re.id || idx} style={styles.exerciseRow}>
-                          <div style={styles.exerciseRowIcon}>
+                        <div key={re.id || idx} className="rn-exercise-row" style={styles.exerciseRow}>
+                          <div className="rn-exercise-row-icon" style={styles.exerciseRowIcon}>
                             {iconoEjercicio(re.ejercicio)}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <strong style={styles.exerciseName}>
+                            <strong className="rn-exercise-name" style={styles.exerciseName}>
                               {re.ejercicio?.nombre || "Ejercicio"}
                             </strong>
-                            <span style={styles.exerciseMeta}>
+                            <span className="rn-exercise-meta" style={styles.exerciseMeta}>
                               {grupoLabel(re.ejercicio?.grupo_muscular)} ·{" "}
                               {re.series} series · {re.repeticiones} reps
                             </span>
@@ -1066,7 +1067,7 @@ export default function RutinasPage() {
                             onClick={() =>
                               iniciarTemporizador(re.descanso_segundos)
                             }
-                            style={styles.restButton}
+                            className="rn-rest-button" style={styles.restButton}
                           >
                             ⏱ {formatTiempo(re.descanso_segundos)}
                           </button>

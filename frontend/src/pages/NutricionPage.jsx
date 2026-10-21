@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../api/api'
 import Navbar from '../components/Navbar'
+import NutricionVisual from '../components/NutricionVisual'
 import '../css/nutricion.css'
 
 const formatearTipo = (tipo) => {
@@ -246,6 +247,8 @@ export default function NutricionPage() {
             </div>
           </div>
         )}
+
+        <NutricionVisual caloriasHoy={caloriasHoy} objetivo={objetivo} registros={registros} />
 
         <section className="nutricion-overview-grid">
           <article className="nutricion-card nutricion-catalog-card">
@@ -544,6 +547,16 @@ export default function NutricionPage() {
               <strong>{formatearNumero(caloriasHoy, ' kcal')}</strong>
               {objetivo && (
                 <span>de {formatearNumero(objetivo.calorias, ' kcal')} objetivo</span>
+              )}
+              {objetivo && Number(objetivo.calorias) > 0 && (
+                <div className="nutricion-progreso" aria-hidden="true">
+                  <div
+                    className="nutricion-progreso-fill"
+                    style={{
+                      width: `${Math.min(100, (caloriasHoy / Number(objetivo.calorias)) * 100)}%`,
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}

@@ -1,0 +1,294 @@
+/* =====================================================
+   RUTINAS - TEMA PROGRESO
+   Mismo estilo que la página de Progreso: fondo oscuro neutro,
+   paneles sobrios y violeta suave como único acento.
+   Solo estilos: se engancha con las clases "rn-..." de RutinasPage.jsx.
+   Los !important son necesarios porque esa página define sus
+   estilos en línea (objeto "styles").
+   ===================================================== */
+
+.rn-page {
+  --rn-panel: #101219;
+  --rn-panel-2: #13151d;
+  --rn-hover: #181b24;
+  --rn-border: rgba(255, 255, 255, 0.075);
+  --rn-border-strong: rgba(255, 255, 255, 0.13);
+  --rn-muted: #858996;
+  --rn-muted-light: #b7bac5;
+  --rn-purple: #8b5cf6;
+  --rn-purple-light: #a78bfa;
+  --rn-purple-soft: rgba(139, 92, 246, 0.12);
+  --rn-green: #34d399;
+
+  background:
+    radial-gradient(circle at 50% -15%, rgba(139, 92, 246, 0.12), transparent 32%),
+    radial-gradient(circle at 90% 50%, rgba(139, 92, 246, 0.035), transparent 30%),
+    #08090d !important;
+}
+
+/* ── Cabecera ── */
+.rn-eyebrow {
+  color: var(--rn-purple-light) !important;
+  font-size: .72rem !important;
+  font-weight: 750 !important;
+  letter-spacing: .14em !important;
+}
+
+.rn-title {
+  font-size: clamp(2.4rem, 4vw, 3.3rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -.055em !important;
+}
+
+.rn-title span { color: var(--rn-purple-light); }
+
+.rn-subtitle { color: var(--rn-muted) !important; font-size: .95rem; line-height: 1.6; }
+
+.rn-catalog-ready-badge {
+  color: var(--rn-purple-light) !important;
+  background: var(--rn-purple-soft) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  border-radius: 8px !important;
+}
+
+.rn-catalog-ready-dot {
+  background: var(--rn-purple) !important;
+  box-shadow: none !important;
+}
+
+/* ── Empezar entrenamiento ── */
+.rn-empty-workout-button {
+  background: var(--rn-panel) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 14px !important;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease !important;
+}
+
+.rn-empty-workout-button:hover {
+  transform: translateY(-2px);
+  background: var(--rn-hover) !important;
+  border-color: var(--rn-border-strong) !important;
+}
+
+.rn-empty-workout-icon { background: var(--rn-purple-soft) !important; border-radius: 10px !important; }
+.rn-arrow { color: var(--rn-purple-light) !important; }
+
+/* ── Paneles ── */
+.rn-creator-section,
+.rn-detail-card,
+.rn-empty-state {
+  background: var(--rn-panel) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 14px !important;
+  backdrop-filter: none !important;
+}
+
+.rn-empty-state { border-style: solid !important; color: var(--rn-muted) !important; }
+
+.rn-creator-title,
+.rn-detail-title {
+  color: #f4f4f6 !important;
+  font-size: 1.25rem !important;
+  font-weight: 680 !important;
+  letter-spacing: -.02em !important;
+}
+
+.rn-creator-subtitle { color: #f4f4f6 !important; font-weight: 680 !important; }
+.rn-creator-description,
+.rn-detail-description,
+.rn-card-description { color: var(--rn-muted) !important; }
+.rn-label { color: var(--rn-muted) !important; }
+
+.rn-creator-form { border-top: 1px solid var(--rn-border) !important; }
+
+/* ── Botones ── */
+.rn-create-routine-button,
+.rn-primary-button {
+  background: var(--rn-purple) !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+  font-weight: 650 !important;
+  transition: background .2s ease, transform .2s ease, box-shadow .2s ease !important;
+}
+
+.rn-create-routine-button:hover,
+.rn-primary-button:hover:not(:disabled) {
+  background: #7c4de8 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25) !important;
+}
+
+.rn-secondary-button {
+  background: #181a22 !important;
+  color: var(--rn-muted-light) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 9px !important;
+}
+
+.rn-secondary-button:hover { color: #fff !important; border-color: var(--rn-border-strong) !important; }
+
+.rn-start-button,
+.rn-add-exercise-button,
+.rn-rest-button {
+  background: var(--rn-purple-soft) !important;
+  color: var(--rn-purple-light) !important;
+  border: 1px solid rgba(139, 92, 246, 0.25) !important;
+  border-radius: 9px !important;
+  transition: background .2s ease, color .2s ease !important;
+}
+
+.rn-start-button:hover,
+.rn-add-exercise-button:hover,
+.rn-rest-button:hover { background: var(--rn-purple) !important; color: #fff !important; }
+
+/* ── Campos ── */
+.rn-input,
+.rn-creator-textarea,
+.rn-small-input,
+.rn-custom-select {
+  background: #0b0d13 !important;
+  color: #fff !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+}
+
+.rn-input:focus,
+.rn-creator-textarea:focus,
+.rn-small-input:focus { border-color: rgba(139, 92, 246, 0.6) !important; outline: none; }
+
+.rn-selected-exercise-icon,
+.rn-option-icon,
+.rn-creator-exercise-icon,
+.rn-exercise-row-icon {
+  background: var(--rn-purple-soft) !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+}
+
+.rn-selected-exercise-hint,
+.rn-exercise-meta,
+.rn-option-header,
+.rn-no-exercise-found { color: var(--rn-muted) !important; }
+
+.rn-select-chevron,
+.rn-search-icon,
+.rn-option-check,
+.rn-creator-check { color: var(--rn-purple-light) !important; }
+
+.rn-option-menu {
+  background: var(--rn-panel-2) !important;
+  border: 1px solid var(--rn-border-strong) !important;
+  border-radius: 12px !important;
+}
+
+.rn-option-search-wrap { background: rgba(255, 255, 255, 0.04) !important; border: 1px solid var(--rn-border) !important; }
+
+.rn-add-panel,
+.rn-creator-config-card {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 10px !important;
+}
+
+.rn-no-exercises { color: var(--rn-muted) !important; border: 1px dashed var(--rn-border-strong) !important; }
+
+/* ── Opciones de ejercicios (selector y creador) ── */
+.rn-option {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 10px !important;
+  transition: border-color .2s ease, background .2s ease !important;
+}
+
+.rn-option:hover { border-color: var(--rn-border-strong) !important; background: rgba(255, 255, 255, 0.045) !important; }
+
+.rn-option.rn-on {
+  background: var(--rn-purple-soft) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+
+/* ── Tarjetas de rutinas ── */
+.rn-card {
+  background: var(--rn-panel) !important;
+  border: 1px solid var(--rn-border) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  animation: rn-rise .45s ease backwards;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease !important;
+}
+
+.rn-routines-grid > .rn-card:nth-child(2) { animation-delay: .06s; }
+.rn-routines-grid > .rn-card:nth-child(3) { animation-delay: .12s; }
+.rn-routines-grid > .rn-card:nth-child(4) { animation-delay: .18s; }
+.rn-routines-grid > .rn-card:nth-child(5) { animation-delay: .24s; }
+.rn-routines-grid > .rn-card:nth-child(6) { animation-delay: .30s; }
+
+.rn-card:hover {
+  transform: translateY(-2px);
+  background: var(--rn-hover) !important;
+  border-color: var(--rn-border-strong) !important;
+}
+
+.rn-card.rn-on {
+  background: var(--rn-panel-2) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+
+.rn-tile {
+  background: var(--rn-purple-soft) !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.rn-tile.rn-on { background: var(--rn-purple) !important; }
+
+.rn-card-kicker { color: var(--rn-purple-light) !important; }
+
+.rn-card-title {
+  color: #fff;
+  font-weight: 680 !important;
+  letter-spacing: -.02em;
+}
+
+.rn-card-stats { color: var(--rn-muted-light) !important; }
+.rn-card-footer { color: var(--rn-muted) !important; border-top: 1px solid var(--rn-border) !important; }
+.rn-card-arrow { color: var(--rn-purple-light) !important; }
+
+.rn-recomendada-badge {
+  color: var(--rn-green) !important;
+  background: rgba(52, 211, 153, 0.1) !important;
+  border: 1px solid rgba(52, 211, 153, 0.25) !important;
+}
+
+.rn-icon-button { color: #fbbf24 !important; }
+
+.rn-delete-button {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  border-radius: 8px !important;
+}
+
+/* ── Detalle ── */
+.rn-detail-card { animation: rn-rise .4s ease backwards; }
+.rn-exercise-row { border-bottom: 1px solid var(--rn-border) !important; }
+.rn-exercise-name { color: #f4f4f6 !important; }
+
+/* ── Temporizador ── */
+.rn-timer-card {
+  background: var(--rn-panel) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 14px !important;
+}
+
+.rn-timer-label { color: var(--rn-purple-light) !important; }
+
+@keyframes rn-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rn-card, .rn-detail-card { animation: none !important; transition: none !important; }
+}

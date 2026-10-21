@@ -12,6 +12,8 @@ export default function Hero() {
 
       <div className="hero-left">
 
+        <span className="hero-pill">Entrena. Come bien. Repite.</span>
+
         <h1>
           Transforma Tu Cuerpo,
         </h1>
@@ -41,6 +43,17 @@ export default function Hero() {
               ? 'Ver Planes →'
               : 'Comenzar Ahora →'}
           </button>
+
+          <button
+            className="btn-secundario"
+            onClick={() =>
+              document
+                .getElementById('beneficios')
+                ?.scrollIntoView({ behavior: 'smooth' })
+            }
+          >
+            Conocer más
+          </button>
         </div>
 
       </div>
@@ -54,6 +67,19 @@ export default function Hero() {
             alt="Body Rhythm"
             className="hero-logo"
           />
+
+          <div className="hero-chip hero-chip-a">
+            <span className="hero-chip-dot" />
+            Rutinas a tu medida
+          </div>
+          <div className="hero-chip hero-chip-b">
+            <span className="hero-chip-dot rosa" />
+            Nutrición personalizada
+          </div>
+          <div className="hero-chip hero-chip-c">
+            <span className="hero-chip-dot" />
+            Progreso real
+          </div>
 
         </div>
 
