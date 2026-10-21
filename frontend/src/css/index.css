@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -19,8 +19,13 @@ nav {
   align-items: center;
   padding: 0 2rem;
   height: 62px;
-  background: #0d0f1a;
+  background: rgba(13, 15, 26, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .logo {
@@ -55,8 +60,30 @@ nav {
   transition: color 0.15s;
 }
 
+.nav-links li a {
+  position: relative;
+}
+
+.nav-links li a::after {
+  content: '';
+  position: absolute;
+  left: 1.1rem;
+  right: 1.1rem;
+  bottom: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
 .nav-links li a:hover {
   color: #fff;
+}
+
+.nav-links li a:hover::after {
+  transform: scaleX(1);
 }
 
 /* La barra no debe ensanchar la página: textos en una línea y menos aire en pantallas medianas */
@@ -367,7 +394,13 @@ h1 {
 
 
 .btn-primary:hover {
-  opacity: 0.9;
+  opacity: 1;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(168, 85, 247, 0.45);
+}
+
+.btn-primary {
+  animation: br-pulse 2.6s 1.6s infinite;
 }
 
 
@@ -423,7 +456,401 @@ h1 {
       0 18px 35px rgba(0, 0, 0, 0.55)
     );
 }
+/* ── ESTILO NUEVO: titulares con carácter ── */
+.hero h1,
+.hero .h1-accent {
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  font-size: clamp(3.4rem, 6.4vw, 5.6rem);
+  line-height: 0.95;
+}
+
+.hero .h1-accent {
+  line-height: 1;
+}
+
+/* ── ANIMACIONES DE ENTRADA ── */
+.hero h1,
+.hero .h1-accent,
+.hero-sub,
+.hero-btns {
+  animation: br-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.hero .h1-accent { animation-delay: 0.12s; }
+.hero-sub { animation-delay: 0.26s; }
+.hero-btns { animation-delay: 0.4s; }
+
+.hero-logo {
+  animation: br-rise 1s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both,
+             br-float 6s 1.2s ease-in-out infinite;
+}
+
+/* ── TARJETAS FLOTANTES ── */
+.hero-chip {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+  animation: br-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both,
+             br-float 5s ease-in-out infinite;
+}
+
+.hero-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 12px #a855f7;
+}
+
+.hero-chip-dot.rosa {
+  background: #ec4899;
+  box-shadow: 0 0 12px #ec4899;
+}
+
+.hero-chip-a { top: 14%; left: 2%; animation-delay: 0.7s, 0.7s; }
+.hero-chip-b { top: 46%; right: 0; animation-delay: 0.9s, 1.6s; }
+.hero-chip-c { bottom: 12%; left: 8%; animation-delay: 1.1s, 1s; }
+
+/* ── KEYFRAMES ── */
+@keyframes br-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes br-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes br-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(168, 85, 247, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero h1, .hero .h1-accent, .hero-sub, .hero-btns,
+  .hero-logo, .hero-chip, .btn-primary {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =====================================================
+   INICIO COMO LA MAQUETA: tarjeta del hero, secciones y CTA
+   ===================================================== */
+
+.hero-pill {
+  display: inline-block;
+  margin-bottom: 1.4rem;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c084fc;
+  font-size: 0.82rem;
+  font-weight: 600;
+  animation: br-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.btn-primary {
+  border-radius: 999px;
+  padding: 0.9rem 2rem;
+}
+
+.btn-secundario {
+  padding: 0.9rem 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.btn-secundario:hover {
+  transform: translateY(-3px);
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.hero-btns {
+  flex-wrap: wrap;
+}
+
+/* tarjeta oscura donde vive el logo */
+.visual-card {
+  max-width: 520px;
+  border: 1px solid #272a40;
+  border-radius: 32px;
+  background: linear-gradient(145deg, #241a3d 0%, #11142a 55%, #0d0f1a 100%);
+}
+
+.visual-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  background: repeating-radial-gradient(
+    circle at 0% 100%,
+    rgba(168, 85, 247, 0.18) 0 2px,
+    transparent 2px 22px
+  );
+  pointer-events: none;
+}
+
+.hero-logo {
+  width: 350px;
+  margin-top: 2.4rem;
+}
+
+.hero-chip-a { top: 6%; left: -6%; }
+.hero-chip-b { top: 14%; right: -7%; }
+.hero-chip-c { bottom: 5%; left: 7%; }
+
+/* ── Secciones ── */
+.home-section {
+  padding: 5rem 3rem 0;
+  text-align: left;
+}
+
+.home-kicker {
+  display: block;
+  color: #a855f7;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-title {
+  margin: 0.5rem 0 2.2rem;
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.home-reveal {
+  opacity: 0;
+  transform: translateY(34px);
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+              transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.home-reveal-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.home-cards,
+.home-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.4rem;
+}
+
+.home-card {
+  display: block;
+  border: 1px solid #272a40;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #151827;
+  color: #fff;
+  text-decoration: none;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+              border-color 0.35s, box-shadow 0.35s;
+}
+
+.home-card:hover {
+  transform: translateY(-8px);
+  border-color: #a855f7;
+  box-shadow: 0 24px 50px rgba(168, 85, 247, 0.18);
+}
+
+.home-card-top {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+}
+
+.home-card-badge {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.home-card-num {
+  position: absolute;
+  top: 6px;
+  right: 18px;
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: 7.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.08);
+  transition: transform 0.5s ease;
+}
+
+.home-card:hover .home-card-num {
+  transform: scale(1.12) translateX(-6px);
+}
+
+.home-card-top h3 {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 20px;
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: clamp(1.9rem, 3.1vw, 2.5rem);
+  font-weight: 800;
+  line-height: 0.98;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  color: #fff;
+}
+
+.home-card-body {
+  padding: 1.3rem 1.5rem 1.5rem;
+}
+
+.home-card-body p {
+  margin: 0;
+  color: #a6afc0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.home-card-cta {
+  display: block;
+  margin-top: 1rem;
+  color: #c084fc;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.home-step {
+  padding: 1.8rem;
+  border: 1px solid #272a40;
+  border-radius: 26px;
+  background: #151827;
+  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.home-step:hover {
+  transform: translateY(-6px);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 20px 44px rgba(168, 85, 247, 0.14);
+}
+
+.home-step-num {
+  display: block;
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: 5rem;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.home-step h3 {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 1.15rem;
+  color: #fff;
+}
+
+.home-step p {
+  margin: 0;
+  color: #a6afc0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-pill,
+  .home-reveal {
+    animation: none !important;
+    transition: none !important;
+  }
+  .home-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .home-section { padding: 3.5rem 1.5rem 0; }
+  .home-cards,
+  .home-steps { grid-template-columns: 1fr; }
+}
+
+/* ── Fondo unificado de la página de inicio ── */
+.home-fondo {
+  position: relative;
+  isolation: isolate;
+  background: #0d0f1a;
+}
+
+.home-fondo::before {
+  content: '';
+  position: fixed;
+  inset: -20px;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(9, 7, 20, 0.80) 0%, rgba(11, 8, 24, 0.90) 60%, rgba(13, 15, 26, 0.96) 100%),
+    url('../assets/gym-fondo.jpg') center center / cover no-repeat;
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* el hero ya no pinta su propio fondo: usa el de toda la página */
+.hero::before { display: none; }
+
+/* el logo flota sin tarjeta detrás */
+.visual-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.visual-card::before { display: none; }
+
+.home-steps { margin-bottom: 5rem; }
+
 /* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .hero-chip { display: none; }
+}
+
 @media (max-width: 700px) {
   .hero {
     grid-template-columns: 1fr;
