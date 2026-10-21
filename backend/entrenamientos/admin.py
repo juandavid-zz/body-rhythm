@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import HistorialEntrenamiento, ProgresoEjercicio
+from .models import HistorialEntrenamiento, ProgresoEjercicio, RegistroEntrenamiento
+
+
+@admin.register(RegistroEntrenamiento)
+class RegistroEntrenamientoAdmin(admin.ModelAdmin):
+    list_display = ['usuario', 'nombre', 'fecha', 'series_completadas', 'volumen_kg', 'compartido']
+    list_filter = ['compartido', 'fecha']
+    search_fields = ['usuario__username', 'nombre']
 
 
 @admin.register(HistorialEntrenamiento)

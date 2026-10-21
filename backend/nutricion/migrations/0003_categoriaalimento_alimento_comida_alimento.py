@@ -10,7 +10,18 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.SeparateDatabaseAndState(
-            database_operations=[],
+            # En bases antiguas la tabla ya existía; en una base nueva hay que crearla.
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS categorias_alimentos (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            nombre VARCHAR(80) NOT NULL UNIQUE
+                        )
+                    """,
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
             state_operations=[
                 migrations.CreateModel(
                     name='CategoriaAlimento',

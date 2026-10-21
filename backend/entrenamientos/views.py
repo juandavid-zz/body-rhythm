@@ -3,9 +3,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
-from rutinas.models import Rutina, Ejercicio
+from .records import _clave, calcular_records, mejor_marca
+from .rutina_ia import guardar_rutina, rutina_respaldo
+from users.models import Usuario
+from .models import RegistroEntrenamiento
+from .serializers import RegistroEntrenamientoSerializer
 
 # Ajusta este import al modelo real de tu app chatbot_ia
 from chatbot_ia.models import ConversacionIa
@@ -26,83 +31,6 @@ def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
         )
     except Exception as e:
         print(f"[conversaciones_ia] No se pudo guardar el registro: {e}")
-
-
-MAPA_GRUPO_MUSCULAR = {
-    "tren superior": ["pecho", "espalda", "hombros", "biceps", "triceps", "brazos"],
-    "superior": ["pecho", "espalda", "hombros", "biceps", "triceps", "brazos"],
-    "tren inferior": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "inferior": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "piernas": ["cuadriceps", "gluteos", "isquiotibiales", "pantorrillas", "piernas"],
-    "core": ["abdomen", "core"],
-    "abdomen": ["abdomen", "core"],
-}
-
-
-def _rutina_respaldo(meta, rango_imc, grupo_muscular=None):
-    """
-    Busca en el catálogo precargado una rutina
-    que coincida con el objetivo y rango de IMC.
-    """
-
-    rutina = Rutina.objects.filter(
-        objetivo=meta,
-        rango_imc=rango_imc,
-        usuario__isnull=True
-    ).first()
-
-    if not rutina:
-        rutina = Rutina.objects.filter(
-            rango_imc=rango_imc,
-            usuario__isnull=True
-        ).first()
-
-    if not rutina:
-        return None
-
-    relaciones = list(
-        RutinaEjercicio.objects
-        .filter(rutina=rutina)
-        .select_related('ejercicio')
-        .order_by('orden')
-    )
-
-    if grupo_muscular:
-        clave = grupo_muscular.strip().lower()
-        palabras_clave = MAPA_GRUPO_MUSCULAR.get(clave)
-
-        if palabras_clave:
-            filtrados = [
-                relacion
-                for relacion in relaciones
-                if any(
-                    palabra in (relacion.ejercicio.grupo_muscular or "").lower()
-                    for palabra in palabras_clave
-                )
-            ]
-
-            if filtrados:
-                relaciones = filtrados
-
-    return {
-        "nombre": rutina.nombre,
-        "descripcion": rutina.descripcion,
-        "dias_por_semana": rutina.dias_por_semana,
-        "duracion_minutos": rutina.duracion_minutos,
-        "ejercicios": [
-            {
-                "id": relacion.ejercicio.id,
-                "nombre": relacion.ejercicio.nombre,
-                "descripcion": relacion.ejercicio.descripcion,
-                "grupo_muscular": relacion.ejercicio.grupo_muscular,
-                "series": relacion.series,
-                "repeticiones": relacion.repeticiones,
-                "descanso_segundos": relacion.descanso_segundos,
-                "orden": relacion.orden,
-            }
-            for relacion in relaciones
-        ],
-    }
 
 
 class ChatbotRutinaView(APIView):
@@ -140,7 +68,7 @@ class ChatbotRutinaView(APIView):
             fuente = "ia"
         except Exception as e:
             print(f"[chatbot] Gemini falló, usando respaldo: {e}")
-            rutina = _rutina_respaldo(meta, rango_imc, grupo_muscular)
+            rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
             fuente = "respaldo"
 
             if rutina is None:
@@ -164,6 +92,32 @@ class ChatbotRutinaView(APIView):
         )
 
         return Response(resultado, status=status.HTTP_200_OK)
+
+
+class GuardarRutinaChatbotView(APIView):
+    """Guarda la rutina generada en el chat como rutinas del usuario (una por día)."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        rutina = request.data.get("rutina")
+        if not isinstance(rutina, dict) or not isinstance(rutina.get("ejercicios"), list):
+            return Response(
+                {"error": "No llegó una rutina válida para guardar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        creadas, omitidos = guardar_rutina(usuario, rutina)
+
+        if not creadas:
+            return Response(
+                {"error": "Ningún ejercicio de esta rutina está en la biblioteca, así que no se pudo guardar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"rutinas": creadas, "omitidos": omitidos}, status=status.HTTP_201_CREATED)
 
 
 class ChatbotMensajeView(APIView):
@@ -203,3 +157,122 @@ class ChatbotMensajeView(APIView):
         _guardar_conversacion(usuario, mensaje, respuesta, fuente)
 
         return Response({"respuesta": respuesta, "fuente": fuente}, status=status.HTTP_200_OK)
+
+class RegistroEntrenamientoListView(APIView):
+    """Entrenamientos terminados del usuario: listar y guardar uno nuevo."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        registros = usuario.registros_entrenamiento.all()[:100]
+        return Response(RegistroEntrenamientoSerializer(registros, many=True).data)
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        serializer = RegistroEntrenamientoSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        # Si el entrenamiento no dice si se comparte, se usa la preferencia de la cuenta
+        extra = {} if 'compartido' in request.data else {'compartido': usuario.compartir_por_defecto}
+        registro = serializer.save(usuario=usuario, **extra)
+
+        registro.records = calcular_records(registro)
+        registro.save(update_fields=['records'])
+
+        return Response(RegistroEntrenamientoSerializer(registro).data, status=status.HTTP_201_CREATED)
+
+
+class RegistroEntrenamientoDetailView(APIView):
+    """Cambiar si se comparte (compartido) o borrar un entrenamiento propio."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _registro(self, request, id):
+        return get_object_or_404(RegistroEntrenamiento, id=id, usuario__auth=request.user)
+
+    def patch(self, request, id):
+        registro = self._registro(request, id)
+        serializer = RegistroEntrenamientoSerializer(registro, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, id):
+        self._registro(request, id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _series_hechas(ejercicio):
+    return [s for s in ejercicio.get('series') or [] if s.get('hecho')]
+
+
+class AnteriorView(APIView):
+    """
+    "Anterior" de Hevy/Strong: lo que hiciste la última vez en cada ejercicio,
+    sin importar en qué rutina. GET ?nombres=Sentadilla|Press de banca
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        pedidos = {_clave(n): n for n in request.query_params.get('nombres', '').split('|') if n.strip()}
+        if not pedidos:
+            return Response({})
+
+        encontrados = {}
+        registros = usuario.registros_entrenamiento.order_by('-fecha', '-id').only('fecha', 'ejercicios')
+        for registro in registros.iterator():
+            for ejercicio in registro.ejercicios or []:
+                clave = _clave(ejercicio.get('nombre'))
+                hechas = _series_hechas(ejercicio)
+                if clave in pedidos and clave not in encontrados and hechas:
+                    encontrados[clave] = {
+                        'fecha': registro.fecha,
+                        'unidad_peso': ejercicio.get('unidad_peso') or 'kg',
+                        'series': hechas,
+                    }
+            if len(encontrados) == len(pedidos):
+                break
+
+        # Se responde con el nombre tal como lo pidió el frontend
+        return Response({pedidos[clave]: datos for clave, datos in encontrados.items()})
+
+
+class HistorialEjercicioView(APIView):
+    """Sesiones en las que hiciste un ejercicio, con la mejor serie de cada una. GET ?nombre=..."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        clave = _clave(request.query_params.get('nombre', ''))
+        if not clave:
+            return Response({'sesiones': [], 'mejor': None, 'veces': 0})
+
+        sesiones = []
+        mejor = None
+        for registro in usuario.registros_entrenamiento.order_by('-fecha', '-id').only('fecha', 'nombre', 'ejercicios'):
+            for ejercicio in registro.ejercicios or []:
+                if _clave(ejercicio.get('nombre')) != clave:
+                    continue
+                hechas = _series_hechas(ejercicio)
+                marca = mejor_marca(ejercicio)
+                if not hechas or marca is None:
+                    continue
+                sesiones.append({
+                    'fecha': registro.fecha,
+                    'entrenamiento': registro.nombre,
+                    'unidad_peso': ejercicio.get('unidad_peso') or 'kg',
+                    'por_tiempo': bool(ejercicio.get('por_tiempo')),
+                    'series': hechas,
+                    'mejor': {'tipo': marca[0], 'valor': marca[1]},
+                })
+                if mejor is None or (marca[0] == mejor['tipo'] and marca[1] > mejor['valor']):
+                    mejor = {'tipo': marca[0], 'valor': marca[1], 'fecha': registro.fecha}
+
+        return Response({'sesiones': sesiones[:30], 'mejor': mejor, 'veces': len(sesiones)})

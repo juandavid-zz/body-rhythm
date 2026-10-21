@@ -1,4 +1,8 @@
+from datetime import timedelta
+
+from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -44,6 +48,9 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     intentos_fallidos = models.IntegerField(default=0)
 
+    # Intentos fallidos con el código de verificación actual
+    intentos_codigo = models.PositiveSmallIntegerField(default=0)
+
     bloqueado_hasta = models.DateTimeField(
         null=True,
         blank=True
@@ -56,7 +63,8 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
 
     # NUEVO
     is_active = models.BooleanField(default=True, verbose_name='Activo')
-    is_staff = models.BooleanField(default=True, verbose_name='Administrador')
+    # Solo los administradores (superusuarios) deben serlo; antes era True para todos
+    is_staff = models.BooleanField(default=False, verbose_name='Administrador')
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
 
@@ -74,6 +82,12 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+USERNAME_REGEX = r"^[a-z0-9._]{3,30}$"
+
+# Días que dura un plan pagado
+DIAS_PLAN = 30
+
+
 class Usuario(models.Model):
     auth = models.OneToOneField(
         AuthUsuario,
@@ -81,6 +95,18 @@ class Usuario(models.Model):
     )
 
     nombre = models.CharField(max_length=100)
+
+    # Nombre de usuario público (@username): único y en minúsculas
+    username = models.CharField(
+        max_length=30,
+        unique=True,
+        validators=[
+            RegexValidator(
+                USERNAME_REGEX,
+                "Usa de 3 a 30 caracteres: letras minúsculas, números, punto o guion bajo."
+            )
+        ]
+    )
 
     peso = models.FloatField(null=True, blank=True)
 
@@ -134,6 +160,13 @@ class Usuario(models.Model):
         null=True
     )
 
+    # Privacidad: con la cuenta privada, seguir requiere aprobación y solo los
+    # seguidores aceptados ven los entrenamientos. Pública por defecto.
+    cuenta_privada = models.BooleanField('Cuenta privada', default=False)
+
+    # Valor inicial de "compartido" en cada entrenamiento nuevo
+    compartir_por_defecto = models.BooleanField('Compartir entrenamientos por defecto', default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -143,6 +176,27 @@ class Usuario(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def activar_plan(self, plan):
+        """
+        Activa un plan pagado por DIAS_PLAN días. Si ya tenía ese mismo plan
+        vigente, los días se suman a los que le quedan (renovación anticipada).
+        """
+        ahora = timezone.now()
+        renovacion = self.plan == plan and self.fecha_fin_plan and self.fecha_fin_plan > ahora
+        inicio = self.fecha_fin_plan if renovacion else ahora
+
+        self.plan = plan
+        if not renovacion:
+            self.fecha_inicio_plan = ahora
+        self.fecha_fin_plan = inicio + timedelta(days=DIAS_PLAN)
+        self.save(update_fields=['plan', 'fecha_inicio_plan', 'fecha_fin_plan'])
+
+    def revisar_vencimiento(self):
+        """Si el plan pagado ya venció, vuelve al plan gratuito."""
+        if self.plan != 'free' and self.fecha_fin_plan and self.fecha_fin_plan <= timezone.now():
+            self.plan = 'free'
+            self.save(update_fields=['plan'])
 
 
 class Pago(models.Model):

@@ -3,17 +3,37 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import IntegrityError, transaction
+from django.db.transaction import atomic
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
-import requests
+
+from progreso.views import registrar_peso
+from social.models import Seguimiento
 
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
+from rest_framework.exceptions import ValidationError
+
 from .serializers import (
+    CambiarPasswordSerializer,
+    ConfiguracionSerializer,
     RegistroSerializer,
     LoginSerializer,
-    EjercicioSerializer
+    EjercicioSerializer,
+    normalizar_username,
+    validar_username,
 )
-from .emails import enviar_correo_verificacion, token_vigente
+import secrets
+
+from .emails import (
+    MAX_INTENTOS_CODIGO,
+    datos_envio,
+    enviar_correo_verificacion,
+    segundos_para_reenviar,
+    token_vigente,
+)
 
 
 # CREATE - Registro
@@ -32,34 +52,48 @@ class RegistroView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            auth = AuthUsuario.objects.create_user(
-                email=data['email'],
-                password=data['password']
-            )
-           
-            Usuario.objects.create(
-                auth=auth,
-                nombre=data['nombre'],
-                peso=data.get('peso'),
-                altura=data.get('altura'),
-                fecha_nacimiento=data.get('fecha_nacimiento'),
-                genero=data.get('genero'),
-                meta=data.get('meta')
-            )
+            try:
+                with transaction.atomic():
+                    auth = AuthUsuario.objects.create_user(
+                        email=data['email'],
+                        password=data['password']
+                    )
+
+                    Usuario.objects.create(
+                        auth=auth,
+                        nombre=data['nombre'],
+                        username=data['username'],
+                        peso=data.get('peso'),
+                        altura=data.get('altura'),
+                        fecha_nacimiento=data.get('fecha_nacimiento'),
+                        genero=data.get('genero'),
+                        meta=data.get('meta')
+                    )
+            except IntegrityError:
+                # Otro registro tomó el mismo username al mismo tiempo
+                return Response(
+                    {'username': ['Ese nombre de usuario ya está en uso.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             enviado = enviar_correo_verificacion(auth, nombre=data['nombre'])
 
             return Response({
                 'mensaje': 'Cuenta creada. Te enviamos un correo para confirmarla.',
                 'email': auth.email,
-                'correo_enviado': enviado,
                 'requiere_verificacion': True,
+                **datos_envio(auth, enviado),
             }, status=status.HTTP_201_CREATED)
 
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+# Bloqueo por fuerza bruta: tras MAX_INTENTOS_LOGIN contraseñas incorrectas seguidas
+MAX_INTENTOS_LOGIN = 5
+MINUTOS_BLOQUEO_LOGIN = 15
 
 
 # LOGIN
@@ -72,21 +106,45 @@ class LoginView(APIView):
         if serializer.is_valid():
             data = serializer.validated_data
 
+            identificador = data['email'].strip()
+
             try:
-                auth = AuthUsuario.objects.get(email=data['email'])
-            except AuthUsuario.DoesNotExist:
+                if '@' in identificador.lstrip('@'):
+                    auth = AuthUsuario.objects.get(email__iexact=identificador)
+                else:
+                    auth = Usuario.objects.select_related('auth').get(
+                        username__iexact=normalizar_username(identificador)
+                    ).auth
+            except (AuthUsuario.DoesNotExist, Usuario.DoesNotExist):
                 return Response(
                     {'error': 'Credenciales incorrectas'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
 
+            ahora = timezone.now()
+            if auth.bloqueado_hasta and auth.bloqueado_hasta > ahora:
+                minutos = max(1, int((auth.bloqueado_hasta - ahora).total_seconds() // 60) + 1)
+                return Response(
+                    {'error': f'Demasiados intentos fallidos. Intenta de nuevo en {minutos} minutos.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
             if not auth.check_password(data['password']):
                 auth.intentos_fallidos += 1
-                auth.save()
+                if auth.intentos_fallidos >= MAX_INTENTOS_LOGIN:
+                    auth.bloqueado_hasta = ahora + timedelta(minutes=MINUTOS_BLOQUEO_LOGIN)
+                    auth.intentos_fallidos = 0
+                auth.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
 
                 return Response(
                     {'error': 'Credenciales incorrectas'},
                     status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            if not auth.is_active:
+                return Response(
+                    {'error': 'Esta cuenta está desactivada.'},
+                    status=status.HTTP_403_FORBIDDEN
                 )
 
             if not auth.verificado:
@@ -97,8 +155,9 @@ class LoginView(APIView):
                 }, status=status.HTTP_403_FORBIDDEN)
 
             auth.intentos_fallidos = 0
-            auth.ultimo_login = timezone.now()
-            auth.save()
+            auth.bloqueado_hasta = None
+            auth.ultimo_login = ahora
+            auth.save(update_fields=['intentos_fallidos', 'bloqueado_hasta', 'ultimo_login'])
 
             refresh = RefreshToken.for_user(auth)
             usuario = Usuario.objects.get(auth=auth)
@@ -107,7 +166,8 @@ class LoginView(APIView):
                 'token': str(refresh.access_token),
                 'refresh': str(refresh),
                 'mensaje': 'Login exitoso',
-                'nombre': usuario.nombre
+                'nombre': usuario.nombre,
+                'username': usuario.username
             })
 
         return Response(
@@ -174,99 +234,94 @@ class UsuarioDetailView(APIView):
         })
 
 
-# OBTENER USUARIO AUTENTICADO
+# CUENTA DEL USUARIO AUTENTICADO: ver, configurar y eliminar
 class UsuarioMeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def _usuario(self, request):
+        return get_object_or_404(Usuario.objects.select_related('auth'), auth=request.user)
+
     def get(self, request):
+        usuario = self._usuario(request)
+        usuario.revisar_vencimiento()
+        return Response(ConfiguracionSerializer(usuario).data)
+
+    def patch(self, request):
+        usuario = self._usuario(request)
+        era_privada = usuario.cuenta_privada
+        peso_antes, altura_antes = usuario.peso, usuario.altura
+
+        serializer = ConfiguracionSerializer(usuario, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
         try:
-            usuario = Usuario.objects.get(auth=request.user)
-        except Usuario.DoesNotExist:
+            with transaction.atomic():
+                usuario = serializer.save()
+
+                # Si cambió el peso o la altura, queda en el historial de Progreso
+                if {'peso', 'altura'} & set(serializer.validated_data) and (
+                    usuario.peso != peso_antes or usuario.altura != altura_antes
+                ):
+                    registrar_peso(usuario)
+
+                # Como en Instagram: al hacer pública la cuenta se aceptan las solicitudes pendientes
+                if era_privada and not usuario.cuenta_privada:
+                    Seguimiento.objects.filter(
+                        seguido=usuario, estado=Seguimiento.PENDIENTE,
+                    ).update(estado=Seguimiento.ACEPTADO, aceptado_at=timezone.now())
+        except IntegrityError:
             return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
+                {'username': ['Ese nombre de usuario ya está en uso.']},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response({
-            'id': usuario.id,
-            'nombre': usuario.nombre,
-            'peso': usuario.peso,
-            'altura': usuario.altura,
-            'fecha_nacimiento': usuario.fecha_nacimiento,
-            'genero': usuario.genero,
-            'meta': usuario.meta,
-            'plan': usuario.plan,
-            'fecha_inicio_plan': usuario.fecha_inicio_plan,
-            'fecha_fin_plan': usuario.fecha_fin_plan,
-            'created_at': usuario.created_at
-        })
+        return Response(ConfiguracionSerializer(usuario).data)
 
-    def put(self, request, id):
-        try:
-            usuario = Usuario.objects.get(id=id)
-        except Usuario.DoesNotExist:
+    def delete(self, request):
+        """Elimina la cuenta y todos sus datos. Pide la contraseña para confirmar."""
+        usuario = self._usuario(request)
+
+        if not usuario.auth.check_password(request.data.get('password') or ''):
             return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if usuario.auth_id != request.user.id:
-            return Response(
-                {'error': 'No tienes permiso sobre este recurso'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        usuario.nombre = request.data.get(
-            'nombre',
-            usuario.nombre
-        )
-        usuario.peso = request.data.get(
-            'peso',
-            usuario.peso
-        )
-        usuario.altura = request.data.get(
-            'altura',
-            usuario.altura
-        )
-        usuario.fecha_nacimiento = request.data.get(
-            'fecha_nacimiento',
-            usuario.fecha_nacimiento
-        )
-        usuario.genero = request.data.get(
-            'genero',
-            usuario.genero
-        )
-        usuario.meta = request.data.get(
-            'meta',
-            usuario.meta
-        )
-
-        usuario.save()
-
-        return Response({
-            'mensaje': 'Usuario actualizado correctamente'
-        })
-
-    def delete(self, request, id):
-        try:
-            usuario = Usuario.objects.get(id=id)
-        except Usuario.DoesNotExist:
-            return Response(
-                {'error': 'Usuario no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if usuario.auth_id != request.user.id:
-            return Response(
-                {'error': 'No tienes permiso sobre este recurso'},
-                status=status.HTTP_403_FORBIDDEN
+                {'error': 'La contraseña no es correcta.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         usuario.auth.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return Response({
-            'mensaje': 'Usuario eliminado correctamente'
-        })
+
+class CambiarPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = CambiarPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        auth = request.user
+
+        if not auth.check_password(serializer.validated_data['actual']):
+            return Response(
+                {'actual': ['La contraseña actual no es correcta.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth.set_password(serializer.validated_data['nueva'])
+        auth.save(update_fields=['password'])
+        return Response({'mensaje': 'Contraseña actualizada.'})
+
+
+# Comprobar si un @username está libre (se usa en el registro)
+class UsernameDisponibleView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        try:
+            username = validar_username(request.query_params.get('username', ''))
+        except ValidationError as e:
+            return Response({'disponible': False, 'mensaje': str(e.detail[0])})
+
+        return Response({'disponible': True, 'username': username})
 
 
 # READ - Obtener todos los ejercicios
@@ -420,6 +475,13 @@ class WompiWebhookView(APIView):
 
         data = request.data
 
+        if not settings.WOMPI_EVENTS_SECRET:
+            # Sin el secreto no se puede verificar la firma del evento
+            return Response(
+                {'error': 'Wompi no está configurado en el servidor.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
         print("=== WEBHOOK WOMPI RECIBIDO ===")
         print(data)
 
@@ -535,8 +597,12 @@ class WompiWebhookView(APIView):
                     status=status.HTTP_200_OK
                 )
 
-            pago.estado = 'aprobado'
-            pago.save(update_fields=['estado'])
+            # atomic se importa aparte: aquí "transaction" es la transacción de Wompi
+            with atomic():
+                pago.estado = 'aprobado'
+                pago.save(update_fields=['estado'])
+                # Antes el pago quedaba aprobado pero el plan del usuario nunca cambiaba
+                pago.usuario.activar_plan(pago.plan)
 
             print("Pago aprobado:", pago.id)
 
@@ -582,25 +648,87 @@ class VerificarEmailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        auth.verificado = True
-        auth.token = None
-        auth.token_expira = None
-        auth.codigo_verificacion = None
-        auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion'])
-
-        refresh = RefreshToken.for_user(auth)
-
-        return Response({
-            'mensaje': 'Cuenta verificada correctamente. Ya puedes iniciar sesión.',
-            'token': str(refresh.access_token),
-            'refresh': str(refresh),
-        })
+        return Response(activar_cuenta(auth))
 
     def get(self, request, token):
         return self._verificar(request, token)
 
     def post(self, request, token):
         return self._verificar(request, token)
+
+
+# VERIFICAR CON EL CÓDIGO DE 6 DÍGITOS DEL CORREO
+class VerificarCodigoView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        codigo = ''.join(c for c in str(request.data.get('codigo') or '') if c.isdigit())
+
+        if not email or len(codigo) != 6:
+            return Response(
+                {'error': 'Escribe el código de 6 dígitos que te llegó al correo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        if auth is None:
+            return Response(
+                {'error': 'El código no es válido.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if auth.verificado:
+            return Response({'mensaje': 'Esta cuenta ya estaba verificada. Inicia sesión.', 'ya_verificada': True})
+
+        if not auth.codigo_verificacion or not token_vigente(auth):
+            return Response(
+                {'error': 'El código venció. Pide uno nuevo.', 'expirado': True},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not secrets.compare_digest(codigo, auth.codigo_verificacion):
+            auth.intentos_codigo += 1
+            restantes = MAX_INTENTOS_CODIGO - auth.intentos_codigo
+
+            if restantes <= 0:
+                # Demasiados intentos: el código deja de servir y hay que pedir otro
+                auth.codigo_verificacion = None
+                auth.save(update_fields=['intentos_codigo', 'codigo_verificacion'])
+                return Response(
+                    {'error': 'Demasiados intentos. Pide un código nuevo.', 'expirado': True},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            auth.save(update_fields=['intentos_codigo'])
+            return Response(
+                {'error': f'Código incorrecto. Te quedan {restantes} intentos.', 'intentos_restantes': restantes},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(activar_cuenta(auth))
+
+
+def activar_cuenta(auth):
+    """Marca la cuenta como verificada y devuelve la sesión iniciada."""
+    auth.verificado = True
+    auth.token = None
+    auth.token_expira = None
+    auth.codigo_verificacion = None
+    auth.intentos_codigo = 0
+    auth.save(update_fields=['verificado', 'token', 'token_expira', 'codigo_verificacion', 'intentos_codigo'])
+
+    refresh = RefreshToken.for_user(auth)
+    usuario = Usuario.objects.filter(auth=auth).first()
+
+    return {
+        'mensaje': 'Cuenta verificada correctamente.',
+        'token': str(refresh.access_token),
+        'refresh': str(refresh),
+        'nombre': usuario.nombre if usuario else '',
+        'username': usuario.username if usuario else '',
+    }
 
 
 # REENVIAR CORREO DE VERIFICACIÓN
@@ -617,7 +745,7 @@ class ReenviarVerificacionView(APIView):
             )
 
         try:
-            auth = AuthUsuario.objects.get(email=email)
+            auth = AuthUsuario.objects.get(email__iexact=email.strip())
         except AuthUsuario.DoesNotExist:
             return Response(
                 {'error': 'No encontramos una cuenta con ese correo.'},
@@ -626,6 +754,13 @@ class ReenviarVerificacionView(APIView):
 
         if auth.verificado:
             return Response({'mensaje': 'Esta cuenta ya está verificada.'})
+
+        espera = segundos_para_reenviar(auth)
+        if espera:
+            return Response(
+                {'error': f'Espera {espera} segundos para pedir otro correo.', 'espera_segundos': espera},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
 
         try:
             usuario = Usuario.objects.get(auth=auth)
@@ -637,5 +772,5 @@ class ReenviarVerificacionView(APIView):
 
         return Response({
             'mensaje': 'Te reenviamos el correo de confirmación.',
-            'correo_enviado': enviado,
+            **datos_envio(auth, enviado),
         })

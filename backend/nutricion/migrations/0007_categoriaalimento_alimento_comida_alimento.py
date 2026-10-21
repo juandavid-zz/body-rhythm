@@ -10,43 +10,50 @@ class Migration(migrations.Migration):
         ('nutricion', '0006_alter_comida_options_alter_plannutricional_options_and_more'),
     ]
 
+    # Las tablas ya existen desde 0003 (0006 solo las quitó del estado),
+    # así que aquí solo se vuelven a registrar en el estado de Django.
     operations = [
-        migrations.CreateModel(
-            name='CategoriaAlimento',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nombre', models.CharField(max_length=80, unique=True)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.CreateModel(
+                    name='CategoriaAlimento',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('nombre', models.CharField(max_length=80, unique=True)),
+                    ],
+                    options={
+                        'verbose_name': 'Categoría de alimento',
+                        'verbose_name_plural': 'Categorías de alimentos',
+                        'db_table': 'categorias_alimentos',
+                        'ordering': ['nombre'],
+                    },
+                ),
+                migrations.CreateModel(
+                    name='Alimento',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('nombre', models.CharField(max_length=150, unique=True)),
+                        ('descripcion', models.TextField(blank=True)),
+                        ('calorias_100g', models.FloatField(default=0)),
+                        ('proteinas_100g', models.FloatField(default=0)),
+                        ('carbohidratos_100g', models.FloatField(default=0)),
+                        ('grasas_100g', models.FloatField(default=0)),
+                        ('activo', models.BooleanField(default=True)),
+                        ('categoria', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='alimentos', to='nutricion.categoriaalimento')),
+                    ],
+                    options={
+                        'verbose_name': 'Alimento',
+                        'verbose_name_plural': 'Alimentos',
+                        'db_table': 'alimentos',
+                        'ordering': ['nombre'],
+                    },
+                ),
+                migrations.AddField(
+                    model_name='comida',
+                    name='alimento',
+                    field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='comidas_en_planes', to='nutricion.alimento'),
+                ),
             ],
-            options={
-                'verbose_name': 'Categoría de alimento',
-                'verbose_name_plural': 'Categorías de alimentos',
-                'db_table': 'categorias_alimentos',
-                'ordering': ['nombre'],
-            },
-        ),
-        migrations.CreateModel(
-            name='Alimento',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nombre', models.CharField(max_length=150, unique=True)),
-                ('descripcion', models.TextField(blank=True)),
-                ('calorias_100g', models.FloatField(default=0)),
-                ('proteinas_100g', models.FloatField(default=0)),
-                ('carbohidratos_100g', models.FloatField(default=0)),
-                ('grasas_100g', models.FloatField(default=0)),
-                ('activo', models.BooleanField(default=True)),
-                ('categoria', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='alimentos', to='nutricion.categoriaalimento')),
-            ],
-            options={
-                'verbose_name': 'Alimento',
-                'verbose_name_plural': 'Alimentos',
-                'db_table': 'alimentos',
-                'ordering': ['nombre'],
-            },
-        ),
-        migrations.AddField(
-            model_name='comida',
-            name='alimento',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='comidas_en_planes', to='nutricion.alimento'),
         ),
     ]

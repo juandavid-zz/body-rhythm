@@ -1,0 +1,999 @@
+/* ============================================================
+   RUTINAS — lista sencilla al estilo de Hevy, con el acabado de
+   vidrio del resto de la app. El detalle y el creador se abren en
+   un panel (ventana en escritorio, hoja inferior en móvil).
+   ============================================================ */
+
+.rt-page,
+.rt-fondo {
+  --rt-texto: #f5f3ff;
+  --rt-texto-2: rgba(240, 235, 255, 0.72);
+  --rt-texto-3: rgba(240, 235, 255, 0.5);
+  --rt-separador: rgba(255, 255, 255, 0.09);
+  --rt-degradado: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rt-page {
+  min-height: calc(100vh - 62px);
+  padding: 2.4rem 1.25rem 4rem;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(124, 58, 237, 0.32), transparent 70%),
+    radial-gradient(ellipse 45% 35% at 90% 18%, rgba(236, 72, 153, 0.16), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 50% 105%, rgba(59, 130, 246, 0.16), transparent 70%),
+    #07060d;
+  background-attachment: fixed;
+  color: var(--rt-texto);
+}
+
+.rt-page button,
+.rt-fondo button {
+  font: inherit;
+}
+
+.rt-page button:focus-visible,
+.rt-fondo button:focus-visible,
+.rt-fondo input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+.rt-contenedor {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+/* ---------- Cabecera ---------- */
+.rt-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+
+.rt-cabecera h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.rt-cabecera p {
+  margin: 0.25rem 0 0;
+  color: var(--rt-texto-3);
+}
+
+.rt-acciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ---------- Botones ---------- */
+.rt-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.6rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: var(--rt-texto);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.rt-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.rt-btn.primario {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--rt-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.rt-btn.peligro {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}
+
+.rt-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rt-btn-ancho {
+  width: 100%;
+  margin-top: 0.8rem;
+}
+
+.rt-link {
+  align-self: center;
+  padding: 0.3rem;
+  border: none;
+  background: none;
+  color: var(--rt-texto-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* ---------- Vidrio compartido ---------- */
+.rt-destacada,
+.rt-tarjeta,
+.rt-vacio-crear {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.035) 45%, rgba(255, 255, 255, 0.06) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 44px -24px rgba(0, 0, 0, 0.65);
+}
+
+/* Borde especular */
+.rt-destacada::before,
+.rt-tarjeta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.06) 28%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.15) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* ---------- Destacada ---------- */
+.rt-destacada {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2.2rem;
+  padding: 1.8rem;
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse 70% 90% at 100% 50%, rgba(168, 85, 247, 0.22), transparent 70%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.07) 100%);
+}
+
+.rt-sobretitulo {
+  color: #c4b5fd;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.rt-destacada h2 {
+  margin: 0.35rem 0 0.4rem;
+  font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.rt-destacada p {
+  margin: 0 0 0.6rem;
+  color: var(--rt-texto-2);
+  line-height: 1.5;
+}
+
+.rt-destacada-meta {
+  display: block;
+  color: var(--rt-texto-3);
+  font-size: 0.84rem;
+}
+
+.rt-destacada-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.3rem;
+}
+
+.rt-btn-grande {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.8rem 1.6rem;
+  font-size: 0.95rem;
+}
+
+/* ---------- Lista de la destacada ---------- */
+.rt-destacada-lista {
+  justify-self: stretch;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.18);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rt-destacada-lista-titulo,
+.rt-destacada-mas {
+  display: block;
+  color: var(--rt-texto-3);
+  font-size: 0.78rem;
+}
+
+.rt-destacada-lista ol {
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-destacada-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  overflow: hidden;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--rt-separador);
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-destacada-lista li:last-child {
+  border-bottom: none;
+}
+
+.rt-destacada-lista li span {
+  flex-shrink: 0;
+  width: 1.2rem;
+  color: var(--rt-texto-3);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Bloques de color por músculo ---------- */
+.rt-tono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tono-superior { background: linear-gradient(145deg, #a855f7, #6d28d9); }
+.tono-espalda { background: linear-gradient(145deg, #60a5fa, #4338ca); }
+.tono-piernas { background: linear-gradient(145deg, #f472b6, #be185d); }
+.tono-core { background: linear-gradient(145deg, #fbbf24, #ea580c); }
+.tono-completo { background: linear-gradient(145deg, #2dd4bf, #0f766e); }
+
+/* ---------- Secciones y cuadrícula ---------- */
+.rt-seccion + .rt-seccion {
+  margin-top: 2rem;
+}
+
+.rt-seccion-titulo {
+  margin: 0 0 0.8rem;
+  color: var(--rt-texto-2);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.rt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border-radius: 22px;
+}
+
+.rt-tarjeta-info {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rt-tarjeta-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.rt-tarjeta-textos strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.rt-tarjeta-textos > span {
+  overflow: hidden;
+  color: var(--rt-texto-3);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-estrella {
+  color: #fde68a;
+}
+
+/* Botón circular de empezar: discreto, se ilumina al pasar el cursor */
+.rt-play {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0 0 0 2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.rt-play:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--rt-degradado);
+}
+
+.rt-play:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---------- Tu semana ---------- */
+.rt-semana {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+  padding: 1.1rem 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.rt-semana-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rt-semana-texto strong {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rt-semana-texto > span:last-child {
+  color: var(--rt-texto-3);
+  font-size: 0.84rem;
+}
+
+.rt-dias {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-dias li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.rt-dia-punto {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rt-dias li.hecho .rt-dia-punto {
+  border-color: transparent;
+  background: var(--rt-degradado);
+  box-shadow: 0 6px 16px -6px rgba(219, 39, 119, 0.6);
+}
+
+.rt-dias li.hoy .rt-dia-punto {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.rt-dias li.futuro .rt-dia-punto {
+  opacity: 0.45;
+}
+
+.rt-dia-letra {
+  color: var(--rt-texto-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.rt-dias li.hoy .rt-dia-letra {
+  color: var(--rt-texto);
+}
+
+/* ---------- Filtros por músculo ---------- */
+.rt-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.rt-filtros button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.42rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--rt-texto-2);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.rt-filtros button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--rt-texto);
+}
+
+.rt-filtros button.activo {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+}
+
+.rt-filtro-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ---------- Hover con elevación ---------- */
+.rt-tarjeta,
+.rt-destacada {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+@media (hover: hover) {
+  .rt-tarjeta:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 24px 46px -22px rgba(124, 58, 237, 0.45);
+  }
+
+  .rt-destacada:hover {
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 28px 60px -30px rgba(124, 58, 237, 0.5);
+  }
+
+  .rt-tarjeta:hover .rt-tono {
+    filter: brightness(1.12);
+  }
+
+  .rt-tarjeta:hover .rt-play:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: var(--rt-degradado);
+    color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-tarjeta,
+  .rt-destacada,
+  .rt-filtros button {
+    transition: none;
+  }
+
+  .rt-tarjeta:hover,
+  .rt-destacada:hover {
+    transform: none;
+  }
+}
+
+/* Sin rutinas propias: invitación a crear una */
+.rt-vacio-crear {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.1rem;
+  border-radius: 22px;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rt-vacio-crear:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rt-vacio-icono {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--rt-degradado);
+  color: #fff;
+  font-size: 1.4rem;
+}
+
+.rt-vacio-crear strong {
+  display: block;
+  font-weight: 600;
+}
+
+.rt-vacio-crear small {
+  color: var(--rt-texto-3);
+  font-size: 0.82rem;
+}
+
+/* ---------- Estados ---------- */
+.rt-vacio {
+  margin: 1rem 0;
+  color: var(--rt-texto-3);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.rt-error {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+/* ---------- Panel (detalle y creador) ---------- */
+.rt-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(5, 4, 10, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--rt-texto);
+}
+
+.rt-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(88vh, 860px);
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(160deg, rgba(38, 28, 60, 0.97), rgba(16, 12, 26, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 30px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.rt-panel-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.4rem 0.9rem;
+  border-bottom: 1px solid var(--rt-separador);
+}
+
+.rt-panel-cabecera h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.rt-cerrar {
+  border: none;
+  background: none;
+  color: var(--rt-texto-3);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.rt-panel-cuerpo {
+  flex: 1;
+  min-height: 0;
+  padding: 1.1rem 1.4rem;
+  overflow-y: auto;
+}
+
+.rt-panel-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.9rem 1.4rem 1.1rem;
+  border-top: 1px solid var(--rt-separador);
+}
+
+.rt-panel-pie .rt-error {
+  flex-basis: 100%;
+}
+
+.rt-panel-pie .rt-btn-empezar {
+  margin-left: auto;
+}
+
+.rt-descripcion {
+  margin: 0 0 0.4rem;
+  color: var(--rt-texto-2);
+}
+
+.rt-meta {
+  margin: 0 0 1rem;
+  color: var(--rt-texto-3);
+  font-size: 0.84rem;
+}
+
+.rt-subtitulo {
+  margin: 1.2rem 0 0.6rem;
+  color: var(--rt-texto-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Campo de nombre (anula los estilos globales de input) */
+.rt-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--rt-texto-2);
+  font-size: 0.8rem;
+}
+
+.rt-campo input,
+.rt-buscador input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.rt-campo input:focus,
+.rt-buscador input:focus {
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: none;
+}
+
+/* ---------- Ejercicios de una rutina ---------- */
+.rt-ejercicios {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-ejercicios > li {
+  padding: 0.8rem 0.9rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rt-ejercicio-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.rt-ejercicio-cabecera > span:not(.rt-orden):not(.rt-mover) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rt-ejercicio-cabecera strong {
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-ejercicio-cabecera small {
+  color: var(--rt-texto-3);
+  font-size: 0.76rem;
+}
+
+.rt-orden {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--rt-texto-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.rt-mover {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.rt-mover button,
+.rt-quitar {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rt-texto-3);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.rt-mover button:hover:not(:disabled),
+.rt-quitar:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.rt-quitar:hover {
+  color: #fca5a5;
+}
+
+.rt-mover button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Series, reps y descanso */
+.rt-config {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.rt-config label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  color: var(--rt-texto-3);
+  font-size: 0.72rem;
+}
+
+.rt-contador {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rt-contador button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rt-contador button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.rt-contador span {
+  color: var(--rt-texto);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Buscador de ejercicios ---------- */
+.rt-agregar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.rt-buscador ul {
+  max-height: 300px;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rt-buscador li + li {
+  border-top: 1px solid var(--rt-separador);
+}
+
+.rt-buscador li button {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.55rem 0.3rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rt-buscador li button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rt-buscador li button > span:not(.rt-mas) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rt-buscador strong {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.rt-buscador small {
+  color: var(--rt-texto-3);
+  font-size: 0.74rem;
+}
+
+.rt-mas {
+  color: #c4b5fd;
+  font-size: 1.2rem;
+}
+
+.rt-buscador .rt-vacio {
+  padding: 0.8rem 0;
+}
+
+/* ---------- Móvil ---------- */
+@media (max-width: 640px) {
+  .rt-semana {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  .rt-dias {
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  .rt-page {
+    padding: 1.4rem 0.9rem 3rem;
+  }
+
+  .rt-cabecera {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rt-acciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rt-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rt-destacada {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1.3rem;
+  }
+
+  /* En el teléfono la lista alarga mucho la tarjeta; queda el botón Ver ejercicios */
+  .rt-destacada-lista {
+    display: none;
+  }
+
+  .rt-destacada-acciones .rt-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* En el panel, Empezar va primero y a todo el ancho */
+  .rt-panel-pie .rt-btn-empezar {
+    order: -1;
+    flex-basis: 100%;
+    margin-left: 0;
+    padding: 0.8rem;
+  }
+
+  .rt-panel-pie .rt-btn:not(.rt-btn-empezar) {
+    flex: 1;
+  }
+
+  /* El panel sube desde abajo, como una hoja de iOS */
+  .rt-fondo {
+    align-items: end;
+    padding: 0;
+  }
+
+  .rt-panel {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .rt-panel-cuerpo,
+  .rt-panel-cabecera,
+  .rt-panel-pie {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

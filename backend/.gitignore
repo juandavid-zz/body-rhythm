@@ -1,2 +1,4 @@
 __pycache__/
 *.py[cod]
+# Respaldos de la base de datos
+*.sql

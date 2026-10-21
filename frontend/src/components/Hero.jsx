@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import logoBodyRhythm from '../assets/logo.png'
-import heroBg from '../assets/gym-fondo.jpg'
 export default function Hero() {
   const navigate = useNavigate()
 

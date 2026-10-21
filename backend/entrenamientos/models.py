@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from users.models import Usuario
 from rutinas.models import Rutina, Ejercicio
 
@@ -78,3 +79,50 @@ class ProgresoEjercicio(models.Model):
 
     def __str__(self):
         return f"{self.ejercicio.nombre} en {self.historial}"
+
+
+class RegistroEntrenamiento(models.Model):
+    """
+    Entrenamiento terminado desde "Registrar entrenamiento".
+    Guarda cada ejercicio con sus series (peso y repeticiones) en JSON:
+    [{"nombre", "por_tiempo", "unidad_peso", "series": [{"tipo", "reps",
+      "peso", "peso_kg", "duracion_segundos", "hecho"}]}]
+    """
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='registros_entrenamiento'
+    )
+    # Rutina de la que salió (si se borra la rutina, el entrenamiento se conserva)
+    rutina = models.ForeignKey(
+        Rutina,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registros'
+    )
+    nombre = models.CharField(max_length=150)
+    fecha = models.DateTimeField(default=timezone.now)
+    duracion_segundos = models.PositiveIntegerField(default=0)
+    series_completadas = models.PositiveIntegerField(default=0)
+    series_totales = models.PositiveIntegerField(default=0)
+    volumen_kg = models.FloatField(default=0)
+    ejercicios = models.JSONField(default=list, blank=True)
+
+    # Récords personales logrados en este entrenamiento (ver records.py)
+    records = models.JSONField(default=list, blank=True)
+
+    # Si es False solo lo ve su dueño, aunque tenga seguidores
+    compartido = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'registros_entrenamiento'
+        ordering = ['-fecha']
+        verbose_name = 'Registro de entrenamiento'
+        verbose_name_plural = 'Registros de entrenamiento'
+
+    def __str__(self):
+        return f"{self.usuario} - {self.nombre} - {self.fecha:%Y-%m-%d}"
