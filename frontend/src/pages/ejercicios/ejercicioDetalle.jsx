@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   CartesianGrid,
   Line,
@@ -332,6 +332,7 @@ function TarjetaMusculos({ tipo, icono, titulo, subtitulo, musculos }) {
 export default function EjercicioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [ejercicio, setEjercicio] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -571,6 +572,8 @@ export default function EjercicioDetalle() {
                   onClick={() => {
                     navigate("/rutinas", {
                       state: {
+                        modoCrearRutina: true,
+                        borradorRutina: location.state?.borradorRutina || null,
                         ejercicioSeleccionado: ejercicio,
                       },
                     });

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const nombresGrupos = {
   pecho: "Pecho",
@@ -32,6 +32,7 @@ const clasesGrupos = {
 
 function ExerciseCard({ ejercicio }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
 const grupoNombre =
   nombresGrupos[ejercicio.grupo] || ejercicio.grupo;
@@ -40,6 +41,17 @@ const grupoClase =
   clasesGrupos[ejercicio.grupo] || "default";
 
   const abrirDetalle = () => {
+    if (location.state?.modoSeleccionEjercicio) {
+      navigate("/rutinas", {
+        state: {
+          modoCrearRutina: true,
+          borradorRutina: location.state.borradorRutina,
+          ejercicioSeleccionado: ejercicio,
+        },
+      });
+      return;
+    }
+
     navigate(`/ejercicios/${ejercicio.id}`);
   };
 

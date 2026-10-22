@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
@@ -262,9 +262,21 @@ function DetalleRutina({ rutina, usuarioId, catalogo, onActualizar, onEliminar, 
 }
 
 // ── Crear una rutina nueva ──
-function CrearRutina({ usuarioId, catalogo, onCreada, onCerrar }) {
-  const [nombre, setNombre] = useState("");
-  const [elegidos, setElegidos] = useState([]); // { ejercicio, series, repeticiones, descanso_segundos }
+function CrearRutina({
+  usuarioId, catalogo, onCreada, onCerrar,
+  borradorInicial, ejercicioInicial, onIrBiblioteca,
+}) {
+  const [nombre, setNombre] = useState(borradorInicial?.nombre || "");
+  const [elegidos, setElegidos] = useState(borradorInicial?.elegidos || []); // { ejercicio, series, repeticiones, descanso_segundos }
+
+  useEffect(() => {
+    if (!ejercicioInicial) return;
+    setElegidos((actuales) =>
+      actuales.some((item) => String(item.ejercicio.id) === String(ejercicioInicial.id))
+        ? actuales
+        : [...actuales, { ejercicio: ejercicioInicial, ...POR_DEFECTO }]
+    );
+  }, [ejercicioInicial]);
   const [estado, setEstado] = useState({ guardando: false, error: "" });
 
   const valido = nombre.trim() && elegidos.length > 0;
@@ -347,6 +359,13 @@ function CrearRutina({ usuarioId, catalogo, onCreada, onCerrar }) {
       )}
 
       <h3 className="rt-subtitulo">{elegidos.length ? "Añadir más ejercicios" : "Elige los ejercicios"}</h3>
+      <button
+        type="button"
+        className="rt-btn"
+        onClick={() => onIrBiblioteca({ nombre, elegidos })}
+      >
+        Explorar biblioteca de ejercicios
+      </button>
       <Buscador
         catalogo={catalogo}
         excluir={elegidos.map((x) => x.ejercicio.id)}
@@ -490,14 +509,39 @@ function TuSemana({ datos }) {
 
 export default function RutinasPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [usuarioId, setUsuarioId] = useState(null);
   const [rutinas, setRutinas] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
   const [estado, setEstado] = useState({ cargando: true, error: "" });
   const [abiertaId, setAbiertaId] = useState(null);
   const [creando, setCreando] = useState(false);
+  const [borradorInicial, setBorradorInicial] = useState(null);
+  const [ejercicioInicial, setEjercicioInicial] = useState(null);
   const [semana, setSemana] = useState(null);
   const [filtro, setFiltro] = useState("todas");
+
+  useEffect(() => {
+    const estadoRuta = location.state;
+    if (!estadoRuta?.modoCrearRutina && !estadoRuta?.ejercicioSeleccionado) return;
+
+    setBorradorInicial(estadoRuta.borradorRutina || null);
+    setEjercicioInicial(estadoRuta.ejercicioSeleccionado || null);
+    setCreando(true);
+    navigate("/rutinas", { replace: true, state: null });
+  }, [location.state, navigate]);
+
+  const cerrarCreador = () => {
+    setCreando(false);
+    setBorradorInicial(null);
+    setEjercicioInicial(null);
+  };
+
+  const irBiblioteca = (borradorRutina) => {
+    navigate("/ejercicios", {
+      state: { modoSeleccionEjercicio: true, borradorRutina },
+    });
+  };
 
   const cargarRutinas = async (id) => {
     const res = await api.get(`/usuarios/${id}/rutinas/`);
@@ -578,7 +622,7 @@ export default function RutinasPage() {
 
   const creada = async (id) => {
     await cargarRutinas(usuarioId);
-    setCreando(false);
+    cerrarCreador();
     setAbiertaId(id);
   };
 
@@ -671,7 +715,17 @@ export default function RutinasPage() {
         />
       )}
 
-      {creando && <CrearRutina usuarioId={usuarioId} catalogo={catalogo} onCreada={creada} onCerrar={() => setCreando(false)} />}
+      {creando && (
+        <CrearRutina
+          usuarioId={usuarioId}
+          catalogo={catalogo}
+          onCreada={creada}
+          onCerrar={cerrarCreador}
+          borradorInicial={borradorInicial}
+          ejercicioInicial={ejercicioInicial}
+          onIrBiblioteca={irBiblioteca}
+        />
+      )}
     </>
   );
 }
