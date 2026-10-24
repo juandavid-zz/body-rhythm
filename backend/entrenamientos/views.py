@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import Throttled
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 
@@ -33,7 +35,17 @@ def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
         print(f"[conversaciones_ia] No se pudo guardar el registro: {e}")
 
 
-class ChatbotRutinaView(APIView):
+class LimiteIAMixin:
+    """Limita cuántas llamadas a la IA hace cada usuario por hora: cada una cuesta en Gemini."""
+    throttle_classes = [ScopedRateThrottle]
+
+    def throttled(self, request, wait):
+        minutos = max(1, round((wait or 60) / 60))
+        raise Throttled(wait, detail=f"Usaste mucho el asistente por ahora. Intenta de nuevo en {minutos} min.")
+
+
+class ChatbotRutinaView(LimiteIAMixin, APIView):
+    throttle_scope = "ia_rutina"
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -120,11 +132,12 @@ class GuardarRutinaChatbotView(APIView):
         return Response({"rutinas": creadas, "omitidos": omitidos}, status=status.HTTP_201_CREATED)
 
 
-class ChatbotMensajeView(APIView):
+class ChatbotMensajeView(LimiteIAMixin, APIView):
     """
     NUEVO endpoint: chat libre. El usuario escribe cualquier pregunta y
     la IA responde en Markdown, con el contexto de su perfil.
     """
+    throttle_scope = "ia_chat"
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
