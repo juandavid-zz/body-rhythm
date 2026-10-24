@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../css/FormularioPago.css";
+import { API_URL } from "../api/api";
 
 function FormularioPago() {
   const location = useLocation();
@@ -43,7 +44,7 @@ function FormularioPago() {
 
     try {
       const respuesta = await fetch(
-        "http://127.0.0.1:8000/api/pagos/wompi/",
+        `${API_URL}/api/pagos/wompi/`,
         {
           method: "POST",
           headers: {
