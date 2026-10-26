@@ -568,13 +568,21 @@ export default function EjercicioDetalle() {
                 <button
                   type="button"
                   className="ej-detalle-button"
+
                   onClick={() => {
+                    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
+                    const rutinaAbierta = sessionStorage.getItem("bodyRhythmRutinaAbierta");
+
                     navigate("/rutinas", {
                       state: {
                         ejercicioSeleccionado: ejercicio,
+                        desdeCrearRutina: Boolean(borrador),
+                        desdeDetalleRutina: Boolean(rutinaAbierta && !borrador),
+                        rutinaId: rutinaAbierta ? Number(rutinaAbierta) : null,
                       },
                     });
                   }}
+
                 >
                   <span aria-hidden="true">+</span>
                   Agregar a mi rutina

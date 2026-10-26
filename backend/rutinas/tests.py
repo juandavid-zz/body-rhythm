@@ -3,7 +3,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import AuthUsuario, Ejercicio, Usuario
 
-from .models import Rutina
+from .models import Rutina, RutinaEjercicio
 
 
 def crear_usuario(username, staff=False):
@@ -95,3 +95,114 @@ class RutinaAjenaConMiIdTests(BaseRutinasTest):
         self.assertEqual(self.client.put(url, {'nombre': 'Robada'}, format='json').status_code, 404)
         self.assertEqual(self.client.delete(url).status_code, 404)
         self.assertTrue(Rutina.objects.filter(id=self.rutina_beto.id, nombre='Rutina de Beto').exists())
+
+
+
+class FichasEntrenamientoTests(BaseRutinasTest):
+    def setUp(self):
+        super().setUp()
+        self.rutina_ana = Rutina.objects.create(
+            usuario=self.ana,
+            nombre='Rutina de Ana',
+        )
+        self.entrar_como(self.ana)
+
+    def test_crear_ejercicio_con_configuracion_de_series(self):
+        url = (
+            f'/api/usuarios/{self.ana.id}/rutinas/'
+            f'{self.rutina_ana.id}/ejercicios/'
+        )
+        configuracion = [
+            {'tipo': 'normal', 'peso': 20, 'repeticiones': 12},
+            {'tipo': 'normal', 'peso': 22.5, 'repeticiones': 10},
+            {'tipo': 'fallo', 'peso': 25, 'repeticiones': 8},
+        ]
+
+        respuesta = self.client.post(
+            url,
+            {
+                'ejercicio_id': self.ejercicio.id,
+                'series': 3,
+                'repeticiones': 10,
+                'descanso_segundos': 90,
+                'configuracion_series': configuracion,
+                'unidad_peso': 'kg',
+                'notas': 'Controlar la técnica',
+                'orden': 0,
+            },
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(
+            respuesta.data['configuracion_series'],
+            configuracion,
+        )
+        self.assertEqual(respuesta.data['unidad_peso'], 'kg')
+        self.assertEqual(respuesta.data['notas'], 'Controlar la técnica')
+
+        ficha = RutinaEjercicio.objects.get(
+            rutina=self.rutina_ana,
+            ejercicio=self.ejercicio,
+        )
+        self.assertEqual(ficha.configuracion_series, configuracion)
+        self.assertEqual(ficha.notas, 'Controlar la técnica')
+
+    def test_actualizar_configuracion_sin_reemplazar_otros_campos(self):
+        ficha = RutinaEjercicio.objects.create(
+            rutina=self.rutina_ana,
+            ejercicio=self.ejercicio,
+            series=3,
+            repeticiones=10,
+            descanso_segundos=90,
+            notas='Nota inicial',
+        )
+        url = (
+            f'/api/usuarios/{self.ana.id}/rutinas/'
+            f'{self.rutina_ana.id}/ejercicios/{ficha.id}/'
+        )
+        configuracion = [
+            {'tipo': 'calentamiento', 'peso': 10, 'repeticiones': 15},
+            {'tipo': 'normal', 'peso': 20, 'repeticiones': 10},
+        ]
+
+        respuesta = self.client.patch(
+            url,
+            {
+                'configuracion_series': configuracion,
+                'unidad_peso': 'lb',
+                'notas': 'Subir peso progresivamente',
+            },
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        ficha.refresh_from_db()
+
+        self.assertEqual(ficha.configuracion_series, configuracion)
+        self.assertEqual(ficha.unidad_peso, 'lb')
+        self.assertEqual(ficha.notas, 'Subir peso progresivamente')
+        self.assertEqual(ficha.series, 3)
+        self.assertEqual(ficha.repeticiones, 10)
+        self.assertEqual(ficha.descanso_segundos, 90)
+
+    def test_no_se_puede_editar_ficha_de_otra_persona(self):
+        ficha = RutinaEjercicio.objects.create(
+            rutina=self.rutina_beto,
+            ejercicio=self.ejercicio,
+            notas='Nota de Beto',
+        )
+        url = (
+            f'/api/usuarios/{self.ana.id}/rutinas/'
+            f'{self.rutina_beto.id}/ejercicios/{ficha.id}/'
+        )
+
+        respuesta = self.client.patch(
+            url,
+            {'notas': 'Intento de modificación'},
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 404)
+        ficha.refresh_from_db()
+        self.assertEqual(ficha.notas, 'Nota de Beto')

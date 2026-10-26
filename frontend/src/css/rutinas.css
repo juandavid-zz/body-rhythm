@@ -1,7 +1,7 @@
 /* ============================================================
-   RUTINAS — lista sencilla al estilo de Hevy, con el acabado de
+   RUTINAS â€” lista sencilla al estilo de Hevy, con el acabado de
    vidrio del resto de la app. El detalle y el creador se abren en
-   un panel (ventana en escritorio, hoja inferior en móvil).
+   un panel (ventana en escritorio, hoja inferior en mÃ³vil).
    ============================================================ */
 
 .rt-page,
@@ -257,7 +257,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Bloques de color por músculo ---------- */
+/* ---------- Bloques de color por mÃºsculo ---------- */
 .rt-tono {
   display: grid;
   place-items: center;
@@ -278,7 +278,7 @@
 .tono-core { background: linear-gradient(145deg, #fbbf24, #ea580c); }
 .tono-completo { background: linear-gradient(145deg, #2dd4bf, #0f766e); }
 
-/* ---------- Secciones y cuadrícula ---------- */
+/* ---------- Secciones y cuadrÃ­cula ---------- */
 .rt-seccion + .rt-seccion {
   margin-top: 2rem;
 }
@@ -350,7 +350,7 @@
   color: #fde68a;
 }
 
-/* Botón circular de empezar: discreto, se ilumina al pasar el cursor */
+/* BotÃ³n circular de empezar: discreto, se ilumina al pasar el cursor */
 .rt-play {
   display: grid;
   place-items: center;
@@ -457,7 +457,7 @@
   color: var(--rt-texto);
 }
 
-/* ---------- Filtros por músculo ---------- */
+/* ---------- Filtros por mÃºsculo ---------- */
 .rt-filtros {
   display: flex;
   flex-wrap: wrap;
@@ -498,7 +498,7 @@
   border-radius: 50%;
 }
 
-/* ---------- Hover con elevación ---------- */
+/* ---------- Hover con elevaciÃ³n ---------- */
 .rt-tarjeta,
 .rt-destacada {
   transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
@@ -540,7 +540,7 @@
   }
 }
 
-/* Sin rutinas propias: invitación a crear una */
+/* Sin rutinas propias: invitaciÃ³n a crear una */
 .rt-vacio-crear {
   display: flex;
   align-items: center;
@@ -919,7 +919,7 @@
   padding: 0.8rem 0;
 }
 
-/* ---------- Móvil ---------- */
+/* ---------- MÃ³vil ---------- */
 @media (max-width: 640px) {
   .rt-semana {
     flex-direction: column;
@@ -956,7 +956,7 @@
     padding: 1.3rem;
   }
 
-  /* En el teléfono la lista alarga mucho la tarjeta; queda el botón Ver ejercicios */
+  /* En el telÃ©fono la lista alarga mucho la tarjeta; queda el botÃ³n Ver ejercicios */
   .rt-destacada-lista {
     display: none;
   }
@@ -996,4 +996,192 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
+}
+
+.rt-ficha-config {
+  margin-top: 0.7rem;
+}
+
+.rt-ficha-unidad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+  color: var(--rt-texto-3);
+  font-size: 0.8rem;
+}
+
+.rt-ficha-unidad > div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.rt-ficha-unidad button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  cursor: pointer;
+}
+
+.rt-ficha-unidad button.activo {
+  border-color: #a78bfa;
+  background: rgba(124, 58, 237, 0.25);
+  color: #fff;
+}
+
+.rt-series-planificadas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.rt-series-planificadas > strong {
+  font-size: 0.85rem;
+}
+
+.rt-serie-plan {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr);
+  align-items: end;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.rt-serie-numero {
+  align-self: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rt-serie-plan label,
+.rt-notas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  color: var(--rt-texto-3);
+  font-size: 0.72rem;
+}
+
+.rt-serie-plan input,
+.rt-serie-plan select,
+.rt-notas textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 20, 30, 0.8);
+  color: inherit;
+  font: inherit;
+}
+
+.rt-notas {
+  margin-top: 1rem;
+}
+
+.rt-notas textarea {
+  resize: vertical;
+}
+
+@media (max-width: 420px) {
+  .rt-serie-plan {
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .rt-serie-numero {
+    grid-row: span 2;
+  }
+
+  .rt-serie-plan label:first-of-type {
+    grid-column: span 2;
+  }
+}
+
+.rt-serie-tipo {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.rt-serie-numero {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #292433;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rt-serie-numero.tipo-calentamiento,
+.rt-serie-menu-etiqueta.tipo-calentamiento {
+  color: #facc15;
+}
+
+.rt-serie-numero.tipo-fallo,
+.rt-serie-menu-etiqueta.tipo-fallo {
+  color: #ef4444;
+}
+
+.rt-serie-numero.tipo-drop,
+.rt-serie-menu-etiqueta.tipo-drop {
+  color: #38bdf8;
+}
+
+.rt-serie-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  min-width: 180px;
+  padding: 5px;
+  border: 1px solid #484052;
+  border-radius: 12px;
+  background: #1e1a28;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.rt-serie-menu[hidden] {
+  display: none;
+}
+
+.rt-serie-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rt-serie-menu button:hover,
+.rt-serie-menu button.activo {
+  background: #393244;
+}
+
+.rt-serie-menu-etiqueta {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #292433;
+  font-weight: 700;
 }

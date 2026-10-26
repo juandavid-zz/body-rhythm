@@ -74,6 +74,18 @@ class RutinaEjercicio(models.Model):
     series = models.IntegerField('Series', default=3)
     repeticiones = models.IntegerField('Repeticiones', default=10)
     descanso_segundos = models.IntegerField('Descanso (segundos)', default=60)
+    configuracion_series = models.JSONField(
+        'Configuración de series',
+        default=list,
+        blank=True,
+    )
+    unidad_peso = models.CharField(
+        'Unidad de peso',
+        max_length=2,
+        choices=[('kg', 'Kilogramos'), ('lb', 'Libras')],
+        default='kg',
+    )
+    notas = models.TextField('Notas del ejercicio', blank=True, default='')
     orden = models.IntegerField('Orden', default=0)
 
     class Meta:
