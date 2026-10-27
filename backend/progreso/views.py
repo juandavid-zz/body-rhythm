@@ -66,6 +66,33 @@ LOGROS = [
     ('peso', '⚖️', 'Seguimiento de peso', 'Registraste tu peso 3 veces', lambda t: t['registros_peso'] >= 3),
 ]
 
+# Logros que tienen que ver con el peso corporal: no se muestran en el perfil público
+LOGROS_PRIVADOS = {'peso'}
+
+
+def totales_entrenamiento(registros, hoy=None):
+    """Totales de una lista de entrenamientos (necesitan fecha, duración, series, volumen y récords)."""
+    hoy = hoy or dia_local(timezone.now())
+    dias = {dia_local(r.fecha) for r in registros}
+    return {
+        'entrenamientos': len(registros),
+        'minutos': round(sum(r.duracion_segundos for r in registros) / 60),
+        'series': sum(r.series_completadas for r in registros),
+        'volumen': round(sum(r.volumen_kg for r in registros), 1),
+        'records': sum(len(r.records or []) for r in registros),
+        'racha': _racha(dias, hoy),
+        'mejor_racha': _mejor_racha(dias),
+    }
+
+
+def insignias_publicas(totales):
+    """Logros obtenidos que se pueden mostrar en el perfil (sin los de peso corporal)."""
+    return [
+        {'id': id_, 'titulo': titulo, 'descripcion': desc}
+        for id_, _icono, titulo, desc, cumple in LOGROS
+        if id_ not in LOGROS_PRIVADOS and cumple({**totales, 'registros_peso': 0})
+    ]
+
 
 class ProgresoView(APIView):
     """Todo lo que muestra la página de Progreso, calculado con datos reales."""
@@ -99,13 +126,7 @@ class ProgresoView(APIView):
         ][:5]
 
         totales = {
-            'entrenamientos': len(registros),
-            'minutos': round(sum(r.duracion_segundos for r in registros) / 60),
-            'series': sum(r.series_completadas for r in registros),
-            'volumen': round(sum(r.volumen_kg for r in registros), 1),
-            'records': sum(len(r.records or []) for r in registros),
-            'racha': _racha(dias, hoy),
-            'mejor_racha': _mejor_racha(dias),
+            **totales_entrenamiento(registros, hoy),
             'dias_semana': sum(1 for d in semana if d['entrenado']),
             'registros_peso': usuario.imc_historial.count(),
         }

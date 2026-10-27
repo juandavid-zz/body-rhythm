@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import Notificaciones from "./Notificaciones";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -149,6 +150,7 @@ export default function Navbar() {
         </>
       ) : (
         <>
+          <Notificaciones />
           <button
             type="button"
             className="btn-configuracion"
