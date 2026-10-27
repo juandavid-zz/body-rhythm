@@ -11,7 +11,8 @@ import {
   YAxis,
 } from "recharts";
 
-import api, { API_URL } from "../../api/api";
+import api from "../../api/api";
+import { obtenerEjercicios } from "../../utils/ejercicios";
 import { getHistorial } from "../../utils/rutinasStorage";
 
 // Convierte las sesiones del backend al formato que usa construirEstadisticas
@@ -370,14 +371,8 @@ export default function EjercicioDetalle() {
         setCargando(true);
         setError("");
 
-        const response = await fetch(`${API_URL}/api/ejercicios/`);
-
-        if (!response.ok) {
-          throw new Error("No se pudieron cargar los ejercicios");
-        }
-
-        const data = await response.json();
-        const lista = Array.isArray(data) ? data : data.results || [];
+        // Si vienes de la lista de ejercicios, ya está descargado y no se vuelve a pedir
+        const lista = await obtenerEjercicios();
 
         const encontrado = lista.find(
           (item) => Number(item.id) === Number(id)

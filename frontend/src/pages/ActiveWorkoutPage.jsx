@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
+import { obtenerEjercicios } from "../utils/ejercicios";
 import { guardarEntrenamiento } from "../utils/rutinasStorage";
 import "../css/entrenamiento-activo.css";
 
@@ -304,9 +305,6 @@ export default function ActiveWorkoutPage() {
   });
   const entrenamientoTimerRef = useRef(null);
 
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
   const ejerciciosFiltrados = catalogo.filter((ejercicio) => {
     const texto = busquedaEjercicio.trim().toLowerCase();
     if (!texto) return true;
@@ -325,8 +323,8 @@ export default function ActiveWorkoutPage() {
       setSegundosTranscurridos((segundos) => segundos + 1);
     }, 1000);
 
-    api.get("/ejercicios/", { headers })
-      .then((res) => setCatalogo(res.data))
+    obtenerEjercicios()
+      .then(setCatalogo)
       .catch(() => {});
 
     cargarAnterior(

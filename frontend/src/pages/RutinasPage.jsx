@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
+import { obtenerEjercicios } from "../utils/ejercicios";
 import { tiempoRelativo } from "../utils/formato";
 import "../css/rutinas.css";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -808,17 +809,21 @@ export default function RutinasPage() {
     let activo = true;
     (async () => {
       try {
-        const { data: yo } = await api.get("/usuarios/me/");
-        // Crea las rutinas base la primera vez (no duplica si ya existen)
-        await api.post("/rutinas/generar-catalogo/").catch(() => {});
-        const [rutinasRes, ejerciciosRes] = await Promise.all([
+        // El catálogo de ejercicios se pide de una vez, en paralelo con lo demás
+        const ejerciciosPromesa = obtenerEjercicios();
+        // Tu usuario y el catálogo base de rutinas (crea las base la primera vez, no duplica)
+        const [{ data: yo }] = await Promise.all([
+          api.get("/usuarios/me/"),
+          api.post("/rutinas/generar-catalogo/").catch(() => {}),
+        ]);
+        const [rutinasRes, ejerciciosData] = await Promise.all([
           api.get(`/usuarios/${yo.id}/rutinas/`),
-          api.get("/ejercicios/"),
+          ejerciciosPromesa,
         ]);
         if (!activo) return;
         setUsuarioId(yo.id);
         setRutinas(ordenar(rutinasRes.data));
-        setCatalogo(ejerciciosRes.data);
+        setCatalogo(ejerciciosData);
         setEstado({ cargando: false, error: "" });
       } catch {
         if (activo) setEstado({ cargando: false, error: "No se pudieron cargar tus rutinas." });
