@@ -66,7 +66,7 @@ export default function Clasificacion() {
             <li key={fila.usuario.id} className={fila.soy_yo ? "soy-yo" : ""}>
               <span className={`social-puesto puesto-${posicion}`}>{posicion}</span>
               <button type="button" className="social-clasif-usuario" onClick={() => navigate(`/perfil/${fila.usuario.username}`)}>
-                <Avatar nombre={fila.usuario.nombre} />
+                <Avatar nombre={fila.usuario.nombre} foto={fila.usuario.foto} />
                 <span>{fila.soy_yo ? "Tú" : fila.usuario.nombre}</span>
               </button>
               <strong>

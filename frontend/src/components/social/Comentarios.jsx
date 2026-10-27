@@ -85,7 +85,7 @@ export default function Comentarios({ registroId, esDuenoDelEntrenamiento, onCam
               onClick={() => navigate(`/perfil/${comentario.usuario.username}`)}
               aria-label={`Ver perfil de @${comentario.usuario.username}`}
             >
-              <Avatar nombre={comentario.usuario.nombre} />
+              <Avatar nombre={comentario.usuario.nombre} foto={comentario.usuario.foto} />
             </button>
             <div className="social-comentario-cuerpo">
               <p>

@@ -78,7 +78,7 @@ export default function PerfilPage() {
           {perfil && (
             <>
               <header className="social-perfil">
-                <Avatar nombre={perfil.nombre} grande />
+                <Avatar nombre={perfil.nombre} foto={perfil.foto} grande />
                 <div className="social-perfil-datos">
                   <div className="social-perfil-titulo">
                     <div>

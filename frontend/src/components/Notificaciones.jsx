@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-import { iniciales, tiempoRelativo } from "../utils/formato";
+import { tiempoRelativo } from "../utils/formato";
+import Avatar from "./social/Avatar";
 
 // Cada cuánto se revisa si hay avisos nuevos (solo con la pestaña visible)
 const INTERVALO_MS = 60000;
@@ -134,7 +135,9 @@ export default function Notificaciones() {
               {avisos.map((aviso) => (
                 <li key={aviso.id}>
                   <button type="button" className={aviso.leida ? "" : "nueva"} onClick={() => ir(aviso)}>
-                    <span className="notif-avatar" aria-hidden="true">{iniciales(aviso.actor.nombre)}</span>
+                    <span className="notif-avatar">
+                      <Avatar nombre={aviso.actor.nombre} foto={aviso.actor.foto} />
+                    </span>
                     <span className="notif-texto">
                       <span>
                         <strong>@{aviso.actor.username}</strong> {textoDe(aviso)}

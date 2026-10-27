@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -107,6 +109,9 @@ class Usuario(models.Model):
             )
         ]
     )
+
+    # Foto de perfil: se guarda recortada en cuadrado y en WebP (ver users/fotos.py)
+    foto = models.ImageField(upload_to='fotos_perfil/', null=True, blank=True)
 
     peso = models.FloatField(null=True, blank=True)
 
@@ -337,3 +342,10 @@ class Sesion(models.Model):
 
     class Meta:
         db_table = 'sesiones'
+
+
+@receiver(post_delete, sender=Usuario)
+def borrar_foto_del_usuario(sender, instance, **kwargs):
+    """Al eliminar una cuenta (desde la app, el admin o en cascada) se borra también su foto del disco."""
+    if instance.foto:
+        instance.foto.delete(save=False)

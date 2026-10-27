@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from entrenamientos.models import RegistroEntrenamiento
 from entrenamientos.records import _clave, mejor_marca
 from progreso.views import dia_local, insignias_publicas, totales_entrenamiento
+from users.fotos import url_foto
 from users.models import Usuario
 
 from .models import Comentario, Fuerza, Notificacion, Seguimiento
@@ -23,6 +24,7 @@ from .serializers import (
     SolicitudSerializer,
     cargar_relaciones,
     relacion_con,
+    resumen_usuario,
     serializar_usuarios,
 )
 
@@ -138,6 +140,7 @@ class PerfilView(APIView):
             'id': perfil.id,
             'username': perfil.username,
             'nombre': perfil.nombre,
+            'foto': url_foto(perfil),
             'meta': perfil.get_meta_display() if perfil.meta else None,
             'miembro_desde': perfil.created_at,
             'seguidores': perfil.seguimientos_recibidos.filter(estado=Seguimiento.ACEPTADO).count(),
@@ -422,7 +425,7 @@ def serializar_notificacion(n):
     return {
         'id': n.id,
         'tipo': n.tipo,
-        'actor': {'id': n.actor.id, 'username': n.actor.username, 'nombre': n.actor.nombre},
+        'actor': resumen_usuario(n.actor),
         'registro': {
             'id': n.registro.id, 'nombre': n.registro.nombre, 'usuario': n.registro.usuario.username,
         } if n.registro_id else None,
@@ -500,10 +503,10 @@ class ClasificacionView(APIView):
         }
 
         filas = []
-        for usuario in Usuario.objects.filter(id__in=ids).only('id', 'username', 'nombre'):
+        for usuario in Usuario.objects.filter(id__in=ids).only('id', 'username', 'nombre', 'foto'):
             datos = totales.get(usuario.id, {})
             filas.append({
-                'usuario': {'id': usuario.id, 'username': usuario.username, 'nombre': usuario.nombre},
+                'usuario': resumen_usuario(usuario),
                 'soy_yo': usuario.id == yo.id,
                 'entrenamientos': datos.get('entrenamientos', 0),
                 'minutos': round((datos.get('segundos') or 0) / 60),
@@ -570,7 +573,7 @@ class CompararView(APIView):
         ][:MAX_EJERCICIOS_EN_COMUN]
 
         return Response({
-            'yo': {'username': yo.username, 'nombre': yo.nombre, **totales_entrenamiento(mios)},
-            'otro': {'username': otro.username, 'nombre': otro.nombre, **totales_entrenamiento(suyos)},
+            'yo': {**resumen_usuario(yo), **totales_entrenamiento(mios)},
+            'otro': {**resumen_usuario(otro), **totales_entrenamiento(suyos)},
             'ejercicios_en_comun': en_comun,
         })
