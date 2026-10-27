@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 import { tiempoRelativo } from "../utils/formato";
 import "../css/rutinas.css";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const GRUPOS = {
   chest: "Pecho",
@@ -19,7 +19,31 @@ const GRUPOS = {
 };
 
 const SWAL = { confirmButtonColor: "#50118c", cancelButtonColor: "#6b7280" };
-const POR_DEFECTO = { series: 3, repeticiones: 10, descanso_segundos: 60 };
+const POR_DEFECTO = {
+  series: 3,
+  repeticiones: 10,
+  descanso_segundos: 60,
+  unidad_peso: "kg",
+  notas: "",
+};
+
+const TIPOS_SERIE = [
+  { valor: "normal", texto: "Normal" },
+  { valor: "calentamiento", texto: "Calentamiento" },
+  { valor: "fallo", texto: "Al fallo" },
+  { valor: "drop", texto: "Drop set" },
+];
+
+function crearConfiguracionSeries(cantidad, repeticiones = 10, existentes = []) {
+  return Array.from({ length: cantidad }, (_, i) => {
+    const serie = existentes[i] || {};
+    return {
+      tipo: serie.tipo || "normal",
+      peso: serie.peso ?? "",
+      repeticiones: Number(serie.repeticiones ?? repeticiones) || repeticiones,
+    };
+  });
+}
 
 const grupo = (codigo) => GRUPOS[codigo] || codigo || "";
 // "1:30" (minutos) o "45 s": corto para que quepa en el contador del móvil
@@ -91,32 +115,216 @@ function Contador({ valor, onCambio, min = 0, max = 99, paso = 1, formato = (v) 
   );
 }
 
+
 function FilaConfig({ datos, onCambio }) {
+  const [menuAbierto, setMenuAbierto] = useState(null);
+
+  const cantidad = Math.max(1, Number(datos.series) || 3);
+
+  const configuracion = crearConfiguracionSeries(
+    cantidad,
+    Number(datos.repeticiones) || 10,
+    datos.configuracion_series || []
+  );
+
+  const cambiarSerie = (indice, cambios) => {
+    const nuevas = configuracion.map((serie, i) =>
+      i === indice ? { ...serie, ...cambios } : serie
+    );
+
+    onCambio({
+      configuracion_series: nuevas,
+      series: nuevas.length,
+    });
+  };
+
+  const cambiarCantidad = (nuevaCantidad) => {
+    const nuevas = crearConfiguracionSeries(
+      nuevaCantidad,
+      Number(datos.repeticiones) || 10,
+      configuracion
+    );
+
+    onCambio({
+      series: nuevaCantidad,
+      configuracion_series: nuevas,
+    });
+
+    setMenuAbierto(null);
+  };
+
+  const cambiarRepeticionesBase = (valor) => {
+    onCambio({
+      repeticiones: valor,
+      configuracion_series: configuracion.map((serie) => ({
+        ...serie,
+        repeticiones: valor,
+      })),
+    });
+  };
+
+  const etiquetas = {
+    normal: (indice) => String(indice + 1),
+    calentamiento: () => "W",
+    fallo: () => "F",
+    drop: () => "D",
+  };
+
   return (
-    <div className="rt-config">
-      <label>
-        <span>Series</span>
-        <Contador etiqueta="series" valor={datos.series} min={1} max={10} onCambio={(v) => onCambio({ series: v })} />
-      </label>
-      <label>
-        <span>Reps</span>
-        <Contador etiqueta="repeticiones" valor={datos.repeticiones} min={1} max={50} onCambio={(v) => onCambio({ repeticiones: v })} />
-      </label>
-      <label>
-        <span>Descanso</span>
-        <Contador
-          etiqueta="descanso"
-          valor={datos.descanso_segundos}
-          min={0}
-          max={300}
-          paso={15}
-          formato={formatoDescanso}
-          onCambio={(v) => onCambio({ descanso_segundos: v })}
+    <div className="rt-ficha-config">
+      <div className="rt-config">
+        <label>
+          <span>Número de series</span>
+          <Contador
+            etiqueta="series"
+            valor={cantidad}
+            min={1}
+            max={10}
+            onCambio={cambiarCantidad}
+          />
+        </label>
+
+        <label>
+          <span>Reps base</span>
+          <Contador
+            etiqueta="repeticiones"
+            valor={Number(datos.repeticiones) || 10}
+            min={1}
+            max={50}
+            onCambio={cambiarRepeticionesBase}
+          />
+        </label>
+
+        <label>
+          <span>Descanso</span>
+          <Contador
+            etiqueta="descanso"
+            valor={Number(datos.descanso_segundos) || 0}
+            min={0}
+            max={300}
+            paso={15}
+            formato={formatoDescanso}
+            onCambio={(valor) =>
+              onCambio({ descanso_segundos: valor })
+            }
+          />
+        </label>
+      </div>
+
+      <div className="rt-ficha-unidad">
+        <span>Unidad de peso</span>
+        <div>
+          {["kg", "lb"].map((unidad) => (
+            <button
+              key={unidad}
+              type="button"
+              className={datos.unidad_peso === unidad ? "activo" : ""}
+              onClick={() => onCambio({ unidad_peso: unidad })}
+            >
+              {unidad}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rt-series-planificadas">
+        <strong>Plan por serie</strong>
+
+        {configuracion.map((serie, indice) => (
+          <div className="rt-serie-plan" key={indice}>
+            <div className="rt-serie-tipo">
+              <button
+                type="button"
+                className={`rt-serie-numero tipo-${serie.tipo || "normal"}`}
+                aria-label={`Cambiar tipo de la serie ${indice + 1}`}
+                aria-expanded={menuAbierto === indice}
+                onClick={() =>
+                  setMenuAbierto((actual) =>
+                    actual === indice ? null : indice
+                  )
+                }
+              >
+                {etiquetas[serie.tipo]?.(indice) ?? String(indice + 1)}
+              </button>
+
+              {menuAbierto === indice && (
+                <div className="rt-serie-menu">
+                  {TIPOS_SERIE.map((tipo) => (
+                    <button
+                      key={tipo.valor}
+                      type="button"
+                      className={serie.tipo === tipo.valor ? "activo" : ""}
+                      onClick={() => {
+                        cambiarSerie(indice, { tipo: tipo.valor });
+                        setMenuAbierto(null);
+                      }}
+                    >
+                      <span
+                        className={`rt-serie-menu-etiqueta tipo-${tipo.valor}`}
+                      >
+                        {etiquetas[tipo.valor]?.(indice) ?? indice + 1}
+                      </span>
+                      {tipo.texto}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <label>
+              <span>Peso ({datos.unidad_peso || "kg"})</span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={serie.peso}
+                placeholder="0"
+                onChange={(e) =>
+                  cambiarSerie(indice, {
+                    peso:
+                      e.target.value === ""
+                        ? ""
+                        : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              <span>Reps</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={serie.repeticiones}
+                onChange={(e) =>
+                  cambiarSerie(indice, {
+                    repeticiones:
+                      e.target.value === ""
+                        ? ""
+                        : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+
+      <label className="rt-notas">
+        <span>Notas del ejercicio</span>
+        <textarea
+          rows={2}
+          maxLength={1000}
+          placeholder="Ej. Controlar la bajada y mantener la técnica..."
+          value={datos.notas || ""}
+          onChange={(e) => onCambio({ notas: e.target.value })}
         />
       </label>
     </div>
   );
 }
+
 
 // Buscador de ejercicios de la biblioteca
 function Buscador({ catalogo, excluir = [], onElegir }) {
@@ -180,7 +388,7 @@ function Panel({ titulo, onCerrar, children, pie }) {
 }
 
 // ── Detalle de una rutina: ver, editar y empezar ──
-function DetalleRutina({ rutina, usuarioId, catalogo, onActualizar, onEliminar, onCerrar, onEmpezar }) {
+function DetalleRutina({ rutina, usuarioId, catalogo, navigate, onActualizar, onEliminar, onCerrar, onEmpezar }) {
   const [agregando, setAgregando] = useState(false);
   const base = `/usuarios/${usuarioId}/rutinas/${rutina.id}`;
   const detalles = rutina.ejercicios_detalle || [];
@@ -196,12 +404,29 @@ function DetalleRutina({ rutina, usuarioId, catalogo, onActualizar, onEliminar, 
     onActualizar({ ...rutina, ejercicios_detalle: detalles.filter((d) => d.id !== detalle.id) });
   };
 
-  const agregar = async (ejercicio) => {
-    const res = await api.post(`${base}/ejercicios/`, { ejercicio_id: ejercicio.id, ...POR_DEFECTO, orden: detalles.length });
-    onActualizar({ ...rutina, ejercicios_detalle: [...detalles, { ...res.data, ejercicio }] });
-    setAgregando(false);
-  };
+const agregar = async (ejercicio) => {
+  try {
+    const res = await api.post(`${base}/ejercicios/`, {
+      ejercicio_id: ejercicio.id,
+      ...POR_DEFECTO,
+      configuracion_series: crearConfiguracionSeries(3, 10),
+      orden: detalles.length,
+    });
 
+    onActualizar({
+      ...rutina,
+      ejercicios_detalle: [
+        ...detalles,
+        { ...res.data, ejercicio },
+      ],
+    });
+
+    setAgregando(false);
+  } catch (error) {
+    console.error("Error al agregar ejercicio:", error);
+    // No cerrar el selector si falla la petición.
+  }
+};
   const alternarFavorita = async () => {
     const res = await api.patch(`${base}/favorita/`, {});
     onActualizar({ ...rutina, es_favorita: res.data.es_favorita });
@@ -249,23 +474,85 @@ function DetalleRutina({ rutina, usuarioId, catalogo, onActualizar, onEliminar, 
 
       {detalles.length === 0 && !agregando && <p className="rt-vacio">Esta rutina no tiene ejercicios todavía.</p>}
 
-      {agregando ? (
-        <div className="rt-agregar">
-          <Buscador catalogo={catalogo} excluir={detalles.map((d) => d.ejercicio?.id)} onElegir={agregar} />
-          <button type="button" className="rt-link" onClick={() => setAgregando(false)}>Cancelar</button>
-        </div>
-      ) : (
-        <button type="button" className="rt-btn rt-btn-ancho" onClick={() => setAgregando(true)}>+ Añadir ejercicio</button>
-      )}
+
+<button
+  type="button"
+  className="rt-btn rt-btn-ancho"
+  onClick={() => {
+    sessionStorage.setItem(
+      "bodyRhythmRutinaAbierta",
+      String(rutina.id)
+    );
+
+    navigate("/ejercicios", {
+      state: {
+        desdeDetalleRutina: true,
+        rutinaId: rutina.id,
+      },
+    });
+  }}
+>
+  + Añadir ejercicio
+</button>
+
     </Panel>
   );
 }
 
 // ── Crear una rutina nueva ──
-function CrearRutina({ usuarioId, catalogo, onCreada, onCerrar }) {
-  const [nombre, setNombre] = useState("");
-  const [elegidos, setElegidos] = useState([]); // { ejercicio, series, repeticiones, descanso_segundos }
+function CrearRutina({
+  usuarioId,
+  catalogo,
+  navigate,
+  onCreada,
+  onCerrar,
+  ejercicioPendiente,
+  setEjercicioPendiente,
+}) {
   const [estado, setEstado] = useState({ guardando: false, error: "" });
+  const [nombre, setNombre] = useState(() => {
+  try {
+    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
+    return borrador ? JSON.parse(borrador).nombre || "" : "";
+  } catch {
+    return "";
+  }
+});
+
+const [elegidos, setElegidos] = useState(() => {
+  try {
+    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
+    return borrador ? JSON.parse(borrador).elegidos || [] : [];
+  } catch {
+    return [];
+  }
+});
+
+useEffect(() => {
+  if (!ejercicioPendiente) return;
+
+  setElegidos((actuales) => {
+    const yaExiste = actuales.some(
+      (item) =>
+        String(item.ejercicio?.id) === String(ejercicioPendiente.id)
+    );
+
+    if (yaExiste) return actuales;
+
+    return [
+      ...actuales,
+      {
+        ejercicio: ejercicioPendiente,
+        series: 3,
+        repeticiones: 10,
+        descanso_segundos: 180,
+        configuracion_series: crearConfiguracionSeries(3, 10),
+      },
+    ];
+  });
+
+  setEjercicioPendiente(null);
+}, [ejercicioPendiente, setEjercicioPendiente]);
 
   const valido = nombre.trim() && elegidos.length > 0;
 
@@ -277,6 +564,7 @@ function CrearRutina({ usuarioId, catalogo, onCreada, onCerrar }) {
         const { ejercicio, ...config } = elegidos[i];
         await api.post(`/usuarios/${usuarioId}/rutinas/${rutina.id}/ejercicios/`, { ejercicio_id: ejercicio.id, ...config, orden: i });
       }
+      sessionStorage.removeItem("bodyRhythmBorradorRutina");
       onCreada(rutina.id);
     } catch {
       setEstado({ guardando: false, error: "No se pudo guardar la rutina. Intenta de nuevo." });
@@ -346,12 +634,22 @@ function CrearRutina({ usuarioId, catalogo, onCreada, onCerrar }) {
         </>
       )}
 
-      <h3 className="rt-subtitulo">{elegidos.length ? "Añadir más ejercicios" : "Elige los ejercicios"}</h3>
-      <Buscador
-        catalogo={catalogo}
-        excluir={elegidos.map((x) => x.ejercicio.id)}
-        onElegir={(ejercicio) => setElegidos([...elegidos, { ejercicio, ...POR_DEFECTO }])}
-      />
+      <button
+        type="button"
+        className="rt-btn rt-btn-ancho"
+        onClick={() => {
+          sessionStorage.setItem(
+            "bodyRhythmBorradorRutina",
+            JSON.stringify({ nombre, elegidos })
+          );
+
+          navigate("/ejercicios", {
+            state: { desdeCrearRutina: true },
+          });
+        }}
+      >
+        + Agregar ejercicio
+      </button>
     </Panel>
   );
 }
@@ -490,12 +788,14 @@ function TuSemana({ datos }) {
 
 export default function RutinasPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [usuarioId, setUsuarioId] = useState(null);
   const [rutinas, setRutinas] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
   const [estado, setEstado] = useState({ cargando: true, error: "" });
   const [abiertaId, setAbiertaId] = useState(null);
   const [creando, setCreando] = useState(false);
+  const [ejercicioPendiente, setEjercicioPendiente] = useState(null);
   const [semana, setSemana] = useState(null);
   const [filtro, setFiltro] = useState("todas");
 
@@ -539,6 +839,51 @@ export default function RutinasPage() {
       activo = false;
     };
   }, []);
+
+
+useEffect(() => {
+  const ejercicio = location.state?.ejercicioSeleccionado;
+
+  if (!ejercicio) return;
+
+  const agregarARutinaExistente = async () => {
+    const rutinaId = location.state?.rutinaId;
+
+    if (location.state?.desdeDetalleRutina && rutinaId) {
+      try {
+        await api.post(
+          `/usuarios/${usuarioId}/rutinas/${rutinaId}/ejercicios/`,
+          {
+            ejercicio_id: ejercicio.id,
+            ...POR_DEFECTO,
+            configuracion_series: crearConfiguracionSeries(3, 10),
+            orden: 999,
+          }
+        );
+
+        Swal.fire("¡Agregado!", "El ejercicio se añadió a tu rutina.", "success");
+        setAbiertaId(rutinaId);
+        await cargarRutinas(usuarioId);
+      } catch (error) {
+        console.error("Error al agregar ejercicio:", error);
+        Swal.fire("Error", "No se pudo agregar el ejercicio a la rutina.", "error");
+      }
+    } else {
+      setEjercicioPendiente(ejercicio);
+
+      if (location.state?.desdeCrearRutina) {
+        setCreando(true);
+      }
+    }
+
+    navigate("/rutinas", { replace: true, state: null });
+  };
+
+  if (usuarioId) {
+    agregarARutinaExistente();
+  }
+}, [location.state, navigate, usuarioId]);
+
 
   const abierta = rutinas.find((r) => r.id === abiertaId) || null;
 
@@ -667,11 +1012,26 @@ export default function RutinasPage() {
           onActualizar={actualizar}
           onEliminar={eliminar}
           onEmpezar={empezar}
+          navigate={navigate}
           onCerrar={() => setAbiertaId(null)}
         />
       )}
 
-      {creando && <CrearRutina usuarioId={usuarioId} catalogo={catalogo} onCreada={creada} onCerrar={() => setCreando(false)} />}
-    </>
+
+
+{creando && (
+  <CrearRutina
+    usuarioId={usuarioId}
+    catalogo={catalogo}
+    navigate={navigate}
+    onCreada={creada}
+    onCerrar={() => setCreando(false)}
+    ejercicioPendiente={ejercicioPendiente}
+    setEjercicioPendiente={setEjercicioPendiente}
+  />
+)}
+
+
+  </>
   );
 }

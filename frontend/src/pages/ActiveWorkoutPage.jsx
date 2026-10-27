@@ -192,34 +192,116 @@ export default function ActiveWorkoutPage() {
       const guardado = progresoInicial?.ejercicios?.find(
         (item) => String(item.id) === String(detalle.id) || item.nombre === info.nombre
       );
-      const setsBase = crearSets(
-        detalle.series || 3,
-        detalle.repeticiones || 10,
-        porTiempo,
-        obtenerDuracionInicial(info, detalle),
-        guardado?.sets?.[0] || {}
-      );
+
+      const unidadPlanificada = detalle.unidad_peso === "lb" ? "lb" : "kg";
+      const unidadInicial = guardado?.unidadPeso || unidadPlanificada;
+
+      const configuracionPlanificada = Array.isArray(detalle.configuracion_series)
+        ? detalle.configuracion_series
+        : [];
+
+      const setsBase = configuracionPlanificada.length
+        ? configuracionPlanificada.map((serie, index) => {
+            const pesoKg = porTiempo
+              ? ""
+              : convertirPesoAKg(serie.peso, unidadPlanificada);
+
+            const repsPlanificadas =
+              Number(serie.repeticiones) > 0
+                ? Number(serie.repeticiones)
+                : Number(detalle.repeticiones) || 10;
+
+            return {
+              ...crearSerie(
+                index + 1,
+                porTiempo ? 0 : repsPlanificadas,
+                porTiempo,
+                obtenerDuracionInicial(info, detalle)
+              ),
+              tipo: ["normal", "calentamiento", "fallo", "drop"].includes(serie.tipo)
+                ? serie.tipo
+                : "normal",
+              reps: porTiempo ? 0 : repsPlanificadas,
+              pesoKg,
+              peso: porTiempo
+                ? ""
+                : convertirPesoParaMostrar(pesoKg, unidadInicial),
+            };
+          })
+        : crearSets(
+            detalle.series || 3,
+            detalle.repeticiones || 10,
+            porTiempo,
+            obtenerDuracionInicial(info, detalle)
+          );
+
 
       const setsGuardados = guardado?.sets || [];
-      const sets = (setsGuardados.length ? setsGuardados : setsBase).map((serie, index) => ({
-        ...crearSerie(index + 1, detalle.repeticiones || 10, porTiempo, obtenerDuracionInicial(info, detalle)),
-        ...serie,
-        numero: index + 1,
-        hecho: false,
-      }));
+
+      const sets = setsBase.map((seriePlanificada, index) => {
+        const serieGuardada = setsGuardados[index];
+
+        if (!serieGuardada) {
+          return {
+            ...seriePlanificada,
+            numero: index + 1,
+            hecho: false,
+          };
+        }
+
+        const pesoGuardadoKg =
+          serieGuardada.pesoKg !== undefined &&
+          serieGuardada.pesoKg !== null &&
+          serieGuardada.pesoKg !== ""
+            ? convertirPesoAKg(serieGuardada.pesoKg, "kg")
+            : convertirPesoAKg(
+                serieGuardada.peso,
+                guardado?.unidadPeso || unidadInicial
+              );
+
+        const tienePesoPlanificado =
+          seriePlanificada.pesoKg !== "" &&
+          seriePlanificada.pesoKg !== null &&
+          seriePlanificada.pesoKg !== undefined;
+
+        const pesoFinalKg = tienePesoPlanificado
+          ? seriePlanificada.pesoKg
+          : pesoGuardadoKg;
+
+        return {
+          ...seriePlanificada,
+          numero: index + 1,
+          tipo: seriePlanificada.tipo,
+          reps: seriePlanificada.reps,
+          pesoKg: porTiempo ? "" : pesoFinalKg,
+          peso: porTiempo
+            ? ""
+            : convertirPesoParaMostrar(pesoFinalKg, unidadInicial),
+          duracion: porTiempo
+            ? Number(serieGuardada.duracion) ||
+              seriePlanificada.duracion
+            : 0,
+          anteriorPeso: serieGuardada.anteriorPeso ?? "",
+          anteriorPesoKg: serieGuardada.anteriorPesoKg ?? "",
+          anteriorUnidadPeso: serieGuardada.anteriorUnidadPeso ?? "kg",
+          anteriorReps: serieGuardada.anteriorReps ?? "",
+          anteriorDuracion: serieGuardada.anteriorDuracion ?? "",
+          hecho: false,
+        };
+      });
+
 
       return {
         id: detalle.id,
         nombre: info.nombre || "Ejercicio",
         grupo: info.grupo_muscular || "",
         porTiempo,
-        unidadPeso: guardado?.unidadPeso || "kg",
+        unidadPeso: unidadInicial,
         descanso: guardado?.descanso ?? (detalle.descanso_segundos !== undefined ? Number(detalle.descanso_segundos) : 60),
         sets,
       };
     });
   });
-
   const entrenamientoTimerRef = useRef(null);
 
   const token = localStorage.getItem("token");

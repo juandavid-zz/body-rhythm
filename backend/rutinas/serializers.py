@@ -28,6 +28,9 @@ class RutinaEjercicioSerializer(serializers.ModelSerializer):
             "series",
             "repeticiones",
             "descanso_segundos",
+            "configuracion_series",
+            "unidad_peso",
+            "notas",
             "orden",
         ]
 

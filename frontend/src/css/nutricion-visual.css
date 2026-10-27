@@ -1,0 +1,93 @@
+/* Bloque visual de Nutrición (anillo, semana y macros) — estilo Progreso */
+.nv {
+  --nv-panel: #101219;
+  --nv-border: rgba(255, 255, 255, 0.075);
+  --nv-muted: #858996;
+  --nv-muted-light: #b7bac5;
+  --nv-purple: #8b5cf6;
+  --nv-purple-light: #a78bfa;
+
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.2fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nv-card {
+  min-width: 0;
+  padding: 1.35rem 1.4rem;
+  border: 1px solid var(--nv-border);
+  border-radius: 14px;
+  background: var(--nv-panel);
+  transition: transform .2s ease, border-color .2s ease;
+  animation: nv-rise .5s ease backwards;
+}
+.nv-card:nth-child(2) { animation-delay: .08s; }
+.nv-card:nth-child(3) { animation-delay: .16s; }
+.nv-card:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.13); }
+
+.nv-label {
+  display: block;
+  margin-bottom: 1rem;
+  color: var(--nv-purple-light);
+  font-size: .72rem;
+  font-weight: 750;
+  letter-spacing: .14em;
+}
+
+/* Anillo */
+.nv-dia { text-align: center; }
+.nv-ring { position: relative; width: 170px; height: 170px; margin: .4rem auto 0; }
+.nv-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.nv-ring circle { fill: none; stroke-width: 10; }
+.nv-ring-bg { stroke: #252936; }
+.nv-ring-fg {
+  stroke: var(--nv-purple);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 7px rgba(139, 92, 246, 0.35));
+  transition: stroke-dashoffset 1.2s cubic-bezier(.2, .8, .2, 1);
+  animation: nv-ring-in 1.3s cubic-bezier(.2, .8, .2, 1) backwards;
+}
+.nv-ring-txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.nv-ring-txt strong { color: #fff; font-size: 2.1rem; line-height: 1; font-weight: 750; letter-spacing: -.03em; }
+.nv-ring-txt span { margin-top: .35rem; color: var(--nv-muted); font-size: .72rem; }
+.nv-nota { margin: 1rem 0 0; color: var(--nv-muted-light); font-size: .82rem; }
+
+/* Semana */
+.nv-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: .5rem; height: 170px; }
+.nv-bar { display: flex; flex-direction: column; align-items: center; gap: .45rem; height: 100%; }
+.nv-bar-col { flex: 1; width: 100%; display: flex; align-items: flex-end; border-radius: 8px; background: #181a22; overflow: hidden; }
+.nv-bar-fill {
+  width: 100%;
+  border-radius: 8px;
+  background: #3b4254;
+  transform-origin: bottom;
+  animation: nv-grow .9s cubic-bezier(.2, .8, .2, 1) backwards;
+  transition: background .2s ease;
+}
+.nv-bar:hover .nv-bar-fill { background: #4b546a; }
+.nv-bar.hoy .nv-bar-fill { background: var(--nv-purple); box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25); }
+.nv-bar span { color: var(--nv-muted); font-size: .68rem; }
+.nv-bar.hoy span { color: var(--nv-purple-light); font-weight: 700; }
+
+/* Macros */
+.nv-macro + .nv-macro { margin-top: 1rem; }
+.nv-macro-top { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; color: var(--nv-muted-light); font-size: .8rem; }
+.nv-macro-top strong { color: #fff; font-weight: 600; }
+.nv-track { height: 6px; border-radius: 99px; background: #252936; overflow: hidden; }
+.nv-track-fill { height: 100%; border-radius: inherit; transform-origin: left; animation: nv-grow-x 1s cubic-bezier(.2, .8, .2, 1) backwards; }
+.nv-track-fill.p { background: linear-gradient(90deg, #6d3edc, #a78bfa); }
+.nv-track-fill.c { background: #60a5fa; }
+.nv-track-fill.g { background: #fb923c; }
+
+@keyframes nv-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes nv-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes nv-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes nv-ring-in { from { stroke-dashoffset: 340; } }
+
+@media (max-width: 1100px) { .nv { grid-template-columns: 1fr 1fr; } .nv-macros { grid-column: span 2; } }
+@media (max-width: 720px) { .nv { grid-template-columns: 1fr; } .nv-macros { grid-column: auto; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .nv-card, .nv-ring-fg, .nv-bar-fill, .nv-track-fill { animation: none; transition: none; }
+}
