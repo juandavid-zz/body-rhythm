@@ -108,3 +108,67 @@ def enviar_correo_verificacion(auth, nombre=''):
     except Exception:
         logger.exception('No se pudo enviar el correo de verificación a %s', auth.email)
         return False
+
+
+# ---------------------------------------------------------------------
+# Recuperación de contraseña
+# ---------------------------------------------------------------------
+# Minutos que dura válido el código para cambiar la contraseña
+MINUTOS_VALIDEZ_RECUPERACION = 30
+
+
+def segundos_para_reenviar_recuperacion(auth):
+    """Cuántos segundos faltan para poder pedir otro código de recuperación."""
+    if not auth.recuperacion_expira:
+        return 0
+    enviado_en = auth.recuperacion_expira - timedelta(minutes=MINUTOS_VALIDEZ_RECUPERACION)
+    transcurrido = (timezone.now() - enviado_en).total_seconds()
+    return max(0, math.ceil(SEGUNDOS_ENTRE_REENVIOS - transcurrido))
+
+
+def recuperacion_vigente(auth):
+    return bool(auth.recuperacion_expira and auth.recuperacion_expira > timezone.now())
+
+
+def enviar_correo_recuperacion(auth, nombre=''):
+    """Genera un código nuevo para cambiar la contraseña y lo manda. Devuelve True si salió."""
+    auth.codigo_recuperacion = f'{secrets.randbelow(1000000):06d}'
+    auth.recuperacion_expira = timezone.now() + timedelta(minutes=MINUTOS_VALIDEZ_RECUPERACION)
+    auth.intentos_recuperacion = 0
+    auth.save(update_fields=['codigo_recuperacion', 'recuperacion_expira', 'intentos_recuperacion'])
+
+    if not correo_configurado():
+        logger.warning(
+            'Correo SMTP sin configurar (faltan EMAIL_HOST_USER/EMAIL_HOST_PASSWORD en .env): '
+            'el código de recuperación solo se imprime en esta consola.'
+        )
+
+    contexto = {
+        'nombre': nombre or auth.email.split('@')[0],
+        'codigo': auth.codigo_recuperacion,
+        'minutos': MINUTOS_VALIDEZ_RECUPERACION,
+    }
+    cuerpo_texto = (
+        f"Hola {contexto['nombre']}:\n\n"
+        f"Recibimos una solicitud para cambiar la contraseña de tu cuenta de Body Rhythm.\n\n"
+        f"Tu código es: {auth.codigo_recuperacion}\n"
+        f"Vence en {MINUTOS_VALIDEZ_RECUPERACION} minutos.\n\n"
+        f"Si no fuiste tú, ignora este mensaje: tu contraseña no cambiará."
+    )
+
+    mensaje = EmailMultiAlternatives(
+        subject='Código para cambiar tu contraseña de Body Rhythm',
+        body=cuerpo_texto,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[auth.email],
+    )
+    try:
+        mensaje.attach_alternative(render_to_string('emails/recuperacion.html', contexto), 'text/html')
+    except Exception:
+        pass  # Si falta la plantilla, se manda solo en texto plano.
+
+    try:
+        return bool(mensaje.send(fail_silently=False))
+    except Exception:
+        logger.exception('No se pudo enviar el correo de recuperación a %s', auth.email)
+        return False

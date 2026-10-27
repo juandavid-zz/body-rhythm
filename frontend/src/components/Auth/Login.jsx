@@ -21,7 +21,7 @@ const IconoOjoCerrado = () => (
   </svg>
 )
 
-export default function Login({ onSwitch }) {
+export default function Login({ onSwitch, onOlvide }) {
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -138,6 +138,11 @@ export default function Login({ onSwitch }) {
               {verPassword ? <IconoOjoAbierto /> : <IconoOjoCerrado />}
             </button>
           </div>
+          {onOlvide && (
+            <button type="button" className="btn-olvide" onClick={onOlvide}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </div>
 
         <button type="submit" disabled={cargando}>

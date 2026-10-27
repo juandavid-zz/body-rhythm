@@ -51,6 +51,11 @@ class AuthUsuario(AbstractBaseUser, PermissionsMixin):
     # Intentos fallidos con el código de verificación actual
     intentos_codigo = models.PositiveSmallIntegerField(default=0)
 
+    # Recuperación de contraseña: código de 6 dígitos enviado al correo
+    codigo_recuperacion = models.CharField(max_length=10, null=True, blank=True)
+    recuperacion_expira = models.DateTimeField(null=True, blank=True)
+    intentos_recuperacion = models.PositiveSmallIntegerField(default=0)
+
     bloqueado_hasta = models.DateTimeField(
         null=True,
         blank=True
