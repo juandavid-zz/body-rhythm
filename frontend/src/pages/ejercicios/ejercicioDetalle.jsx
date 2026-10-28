@@ -569,19 +569,25 @@ export default function EjercicioDetalle() {
                   type="button"
                   className="ej-detalle-button"
 
+
                   onClick={() => {
-                    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
+                    const borradorEntrenamiento = sessionStorage.getItem(
+                      "bodyRhythmBorradorEntrenamiento"
+                    );
+                    const borradorRutina = sessionStorage.getItem("bodyRhythmBorradorRutina");
                     const rutinaAbierta = sessionStorage.getItem("bodyRhythmRutinaAbierta");
 
                     navigate("/rutinas", {
                       state: {
                         ejercicioSeleccionado: ejercicio,
-                        desdeCrearRutina: Boolean(borrador),
-                        desdeDetalleRutina: Boolean(rutinaAbierta && !borrador),
+                        desdeEntrenamientoVacio: Boolean(borradorEntrenamiento),
+                        desdeCrearRutina: Boolean(borradorRutina),
+                        desdeDetalleRutina: Boolean(rutinaAbierta && !borradorRutina && !borradorEntrenamiento),
                         rutinaId: rutinaAbierta ? Number(rutinaAbierta) : null,
                       },
                     });
                   }}
+
 
                 >
                   <span aria-hidden="true">+</span>
