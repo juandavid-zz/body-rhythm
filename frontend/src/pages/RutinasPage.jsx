@@ -508,25 +508,32 @@ function CrearRutina({
   onCerrar,
   ejercicioPendiente,
   setEjercicioPendiente,
+  modoEntrenamiento = false,
 }) {
   const [estado, setEstado] = useState({ guardando: false, error: "" });
-  const [nombre, setNombre] = useState(() => {
-  try {
-    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
-    return borrador ? JSON.parse(borrador).nombre || "" : "";
-  } catch {
-    return "";
-  }
-});
 
-const [elegidos, setElegidos] = useState(() => {
-  try {
-    const borrador = sessionStorage.getItem("bodyRhythmBorradorRutina");
-    return borrador ? JSON.parse(borrador).elegidos || [] : [];
-  } catch {
-    return [];
-  }
-});
+  const claveBorrador = modoEntrenamiento
+    ? "bodyRhythmBorradorEntrenamiento"
+    : "bodyRhythmBorradorRutina";
+
+  const [nombre, setNombre] = useState(() => {
+    try {
+      const borrador = sessionStorage.getItem(claveBorrador);
+      return borrador ? JSON.parse(borrador).nombre || "" : "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [elegidos, setElegidos] = useState(() => {
+    try {
+      const borrador = sessionStorage.getItem(claveBorrador);
+      return borrador ? JSON.parse(borrador).elegidos || [] : [];
+    } catch {
+      return [];
+    }
+  });
+
 
 useEffect(() => {
   if (!ejercicioPendiente) return;
@@ -556,6 +563,29 @@ useEffect(() => {
 
   const valido = nombre.trim() && elegidos.length > 0;
 
+
+  const empezarEntrenamientoTemporal = () => {
+    if (!elegidos.length) return;
+
+    sessionStorage.removeItem(claveBorrador);
+
+    onCerrar();
+
+    navigate("/rutinas/entrenamiento", {
+      state: {
+        nombre: "Entrenamiento vacío",
+        ejerciciosTemporales: elegidos.map((item) => ({
+          ejercicio: item.ejercicio,
+          series: item.series,
+          repeticiones: item.repeticiones,
+          descanso_segundos: item.descanso_segundos,
+          configuracion_series: item.configuracion_series,
+        })),
+      },
+    });
+  };
+
+
   const guardar = async () => {
     setEstado({ guardando: true, error: "" });
     try {
@@ -583,15 +613,36 @@ useEffect(() => {
     <Panel
       titulo="Nueva rutina"
       onCerrar={onCerrar}
+
       pie={
         <>
           {estado.error && <p className="rt-error">{estado.error}</p>}
-          <button type="button" className="rt-btn" onClick={onCerrar}>Cancelar</button>
-          <button type="button" className="rt-btn primario" onClick={guardar} disabled={!valido || estado.guardando}>
-            {estado.guardando ? "Guardando…" : "Guardar rutina"}
+          <button type="button" className="rt-btn" onClick={onCerrar}>
+            Cancelar
           </button>
+
+          {modoEntrenamiento ? (
+            <button
+              type="button"
+              className="rt-btn primario"
+              onClick={empezarEntrenamientoTemporal}
+              disabled={elegidos.length === 0}
+            >
+              Empezar entrenamiento
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rt-btn primario"
+              onClick={guardar}
+              disabled={!valido || estado.guardando}
+            >
+              {estado.guardando ? "Guardando…" : "Guardar rutina"}
+            </button>
+          )}
         </>
       }
+
     >
       <label className="rt-campo">
         <span>Nombre</span>
@@ -638,14 +689,18 @@ useEffect(() => {
         type="button"
         className="rt-btn rt-btn-ancho"
         onClick={() => {
-          sessionStorage.setItem(
-            "bodyRhythmBorradorRutina",
-            JSON.stringify({ nombre, elegidos })
-          );
+        sessionStorage.setItem(
+          claveBorrador,
+          JSON.stringify({ nombre, elegidos })
+        );
+
 
           navigate("/ejercicios", {
-            state: { desdeCrearRutina: true },
+            state: modoEntrenamiento
+              ? { desdeEntrenamientoVacio: true }
+              : { desdeCrearRutina: true },
           });
+
         }}
       >
         + Agregar ejercicio
@@ -795,7 +850,9 @@ export default function RutinasPage() {
   const [estado, setEstado] = useState({ cargando: true, error: "" });
   const [abiertaId, setAbiertaId] = useState(null);
   const [creando, setCreando] = useState(false);
+  const [modoEntrenamiento, setModoEntrenamiento] = useState(false);
   const [ejercicioPendiente, setEjercicioPendiente] = useState(null);
+
   const [semana, setSemana] = useState(null);
   const [filtro, setFiltro] = useState("todas");
 
@@ -868,13 +925,17 @@ useEffect(() => {
         console.error("Error al agregar ejercicio:", error);
         Swal.fire("Error", "No se pudo agregar el ejercicio a la rutina.", "error");
       }
-    } else {
-      setEjercicioPendiente(ejercicio);
+      } else {
+        setEjercicioPendiente(ejercicio);
 
-      if (location.state?.desdeCrearRutina) {
-        setCreando(true);
+        if (location.state?.desdeEntrenamientoVacio) {
+          setModoEntrenamiento(true);
+          setCreando(true);
+        } else if (location.state?.desdeCrearRutina) {
+          setModoEntrenamiento(false);
+          setCreando(true);
+        }
       }
-    }
 
     navigate("/rutinas", { replace: true, state: null });
   };
@@ -938,13 +999,32 @@ useEffect(() => {
               <p>Elige una rutina y empieza, o crea la tuya.</p>
             </div>
             <div className="rt-acciones">
-              <button type="button" className="rt-btn" onClick={() => navigate("/rutinas/entrenamiento")}>
+              <button
+                type="button"
+                className="rt-btn"
+                onClick={() => {
+                  sessionStorage.removeItem("bodyRhythmBorradorEntrenamiento");
+                  setEjercicioPendiente(null);
+                  setModoEntrenamiento(true);
+                  setCreando(true);
+                }}
+              >
                 Entrenamiento vacío
               </button>
-              <button type="button" className="rt-btn primario" onClick={() => setCreando(true)} disabled={!usuarioId}>
+
+              <button
+                type="button"
+                className="rt-btn primario"
+                onClick={() => {
+                  setModoEntrenamiento(false);
+                  setCreando(true);
+                }}
+                disabled={!usuarioId}
+              >
                 + Nueva rutina
               </button>
             </div>
+
           </header>
 
           {estado.cargando && <p className="rt-vacio">Cargando…</p>}
@@ -1028,6 +1108,7 @@ useEffect(() => {
     onCerrar={() => setCreando(false)}
     ejercicioPendiente={ejercicioPendiente}
     setEjercicioPendiente={setEjercicioPendiente}
+    modoEntrenamiento={modoEntrenamiento}
   />
 )}
 

@@ -1185,3 +1185,8 @@
   background: #292433;
   font-weight: 700;
 }
+
+/* Confirmaciones siempre por encima de los paneles de rutinas */
+body > .swal2-container {
+  z-index: 20000 !important;
+}

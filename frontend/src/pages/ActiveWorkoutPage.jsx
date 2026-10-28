@@ -162,6 +162,7 @@ export default function ActiveWorkoutPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const rutina = state?.rutina || null;
+  const ejerciciosTemporales = state?.ejerciciosTemporales || [];
 
   const [nombre, setNombre] = useState(rutina?.nombre || "Entrenamiento vacío");
   const [catalogo, setCatalogo] = useState([]);
@@ -184,9 +185,13 @@ export default function ActiveWorkoutPage() {
   const [ejercicioAEliminar, setEjercicioAEliminar] = useState(null);
 
   const [ejercicios, setEjercicios] = useState(() => {
-    if (!rutina?.ejercicios_detalle) return progresoInicial?.ejercicios || [];
+  const detalles = rutina?.ejercicios_detalle?.length
+    ? rutina.ejercicios_detalle
+    : ejerciciosTemporales;
 
-    return rutina.ejercicios_detalle.map((detalle) => {
+  if (!detalles.length) return progresoInicial?.ejercicios || [];
+
+  return detalles.map((detalle) => {
       const info = detalle.ejercicio || {};
       const porTiempo = esEjercicioPorTiempo(info);
       const guardado = progresoInicial?.ejercicios?.find(
