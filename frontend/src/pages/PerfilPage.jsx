@@ -91,13 +91,29 @@ export default function PerfilPage() {
                         {perfil.te_sigue && <em className="social-te-sigue">Te sigue</em>}
                       </p>
                     </div>
+
                     {perfil.relacion === "yo" ? (
-                      <button type="button" className="social-btn-secundario" onClick={() => navigate("/configuracion")}>
-                        Editar perfil
-                      </button>
+                      <div className="social-acciones">
+                        <button
+                          type="button"
+                          className="social-btn-primario"
+                          onClick={() => navigate("/progreso")}
+                        >
+                          Mi progreso
+                        </button>
+
+                        <button
+                          type="button"
+                          className="social-btn-secundario"
+                          onClick={() => navigate("/configuracion")}
+                        >
+                          Editar perfil
+                        </button>
+                      </div>
                     ) : (
                       <BotonSeguir usuario={perfil} onCambio={recargar} />
                     )}
+
                   </div>
 
                   <ul className="social-perfil-contadores">
