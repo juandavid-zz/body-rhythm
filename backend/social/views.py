@@ -1,5 +1,7 @@
 from django.db import IntegrityError
-from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Value, When
+from datetime import datetime, time, timedelta
+
+from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Sum, Value, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -8,9 +10,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from entrenamientos.models import RegistroEntrenamiento
+from entrenamientos.records import _clave, mejor_marca
+from progreso.views import dia_local, insignias_publicas, totales_entrenamiento
 from users.models import Usuario
 
-from .models import Comentario, Fuerza, Seguimiento
+from .models import Comentario, Fuerza, Notificacion, Seguimiento
+from .notificaciones import notificar, notificar_comentario
 from .permisos import ids_visibles_en_feed, puede_interactuar, puede_ver_contenido
 from .serializers import (
     ComentarioSerializer,
@@ -122,6 +127,13 @@ class PerfilView(APIView):
         if perfil.id != yo.id:
             entrenamientos = entrenamientos.filter(compartido=True)
 
+        # Insignias calculadas solo con lo que el visitante puede ver
+        insignias = []
+        if visible:
+            insignias = insignias_publicas(totales_entrenamiento(list(
+                entrenamientos.only('fecha', 'duracion_segundos', 'series_completadas', 'volumen_kg', 'records')
+            )))
+
         return Response({
             'id': perfil.id,
             'username': perfil.username,
@@ -133,6 +145,7 @@ class PerfilView(APIView):
             'entrenamientos': entrenamientos.count(),
             'cuenta_privada': perfil.cuenta_privada,
             'puede_ver': visible,
+            'insignias': insignias,
             **relacion_con(yo, perfil, enviados, recibidos),
         })
 
@@ -205,6 +218,9 @@ class SeguirView(APIView):
         except IntegrityError:
             seguimiento, creado = Seguimiento.objects.get(seguidor=yo, seguido=perfil), False
 
+        if creado:
+            notificar(perfil, yo, Notificacion.SEGUIDOR if publica else Notificacion.SOLICITUD)
+
         return Response(
             {'estado': seguimiento.estado},
             status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK,
@@ -215,6 +231,8 @@ class SeguirView(APIView):
         yo = usuario_actual(request)
         perfil = usuario_por_username(username)
         Seguimiento.objects.filter(seguidor=yo, seguido=perfil).delete()
+        # Si era una solicitud sin responder, su aviso ya no tiene sentido
+        Notificacion.objects.filter(destinatario=perfil, actor=yo, tipo=Notificacion.SOLICITUD).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -263,11 +281,19 @@ class SolicitudDetalleView(APIView):
         solicitud.estado = Seguimiento.ACEPTADO
         solicitud.aceptado_at = timezone.now()
         solicitud.save(update_fields=['estado', 'aceptado_at'])
+        Notificacion.objects.filter(
+            destinatario=solicitud.seguido, actor=solicitud.seguidor, tipo=Notificacion.SOLICITUD,
+        ).update(leida=True)
+        notificar(solicitud.seguidor, solicitud.seguido, Notificacion.SOLICITUD_ACEPTADA)
         return Response({'estado': solicitud.estado})
 
     def delete(self, request, id):
         """Rechaza la solicitud."""
-        self._solicitud(request, id).delete()
+        solicitud = self._solicitud(request, id)
+        Notificacion.objects.filter(
+            destinatario=solicitud.seguido, actor=solicitud.seguidor, tipo=Notificacion.SOLICITUD,
+        ).delete()
+        solicitud.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -302,9 +328,11 @@ class FuerzaView(APIView):
         if registro is None:
             return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            Fuerza.objects.get_or_create(usuario=yo, registro=registro)
+            _, creada = Fuerza.objects.get_or_create(usuario=yo, registro=registro)
         except IntegrityError:
-            pass  # doble clic: ya existía
+            creada = False  # doble clic: ya existía
+        if creada:
+            notificar(registro.usuario, yo, Notificacion.FUERZA, registro=registro)
         return self._respuesta(yo, registro)
 
     def delete(self, request, id):
@@ -312,6 +340,7 @@ class FuerzaView(APIView):
         if registro is None:
             return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         Fuerza.objects.filter(usuario=yo, registro=registro).delete()
+        Notificacion.objects.filter(actor=yo, registro=registro, tipo=Notificacion.FUERZA).delete()
         return self._respuesta(yo, registro)
 
 
@@ -331,7 +360,8 @@ class ComentariosView(APIView):
             return Response({'error': 'Entrenamiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = ComentarioSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(usuario=yo, registro=registro)
+        comentario = serializer.save(usuario=yo, registro=registro)
+        notificar_comentario(comentario)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -380,3 +410,167 @@ class SugerenciasView(APIView):
             .order_by('-en_comun', '-created_at')[:MAX_SUGERENCIAS]
         )
         return Response(serializar_usuarios(yo, candidatos))
+
+
+# ---------------------------------------------------------------------
+# Notificaciones
+# ---------------------------------------------------------------------
+MAX_NOTIFICACIONES = 30
+
+
+def serializar_notificacion(n):
+    return {
+        'id': n.id,
+        'tipo': n.tipo,
+        'actor': {'id': n.actor.id, 'username': n.actor.username, 'nombre': n.actor.nombre},
+        'registro': {
+            'id': n.registro.id, 'nombre': n.registro.nombre, 'usuario': n.registro.usuario.username,
+        } if n.registro_id else None,
+        'comentario': n.comentario.texto[:120] if n.comentario_id else None,
+        'leida': n.leida,
+        'created_at': n.created_at,
+    }
+
+
+class NotificacionesView(APIView):
+    """GET: los avisos más recientes y cuántos faltan por leer. POST: marca todos como leídos."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        yo = usuario_actual(request)
+        avisos = (
+            Notificacion.objects
+            .filter(destinatario=yo)
+            .select_related('actor', 'registro__usuario', 'comentario')
+            .order_by('-created_at')[:MAX_NOTIFICACIONES]
+        )
+        return Response({
+            'no_leidas': Notificacion.objects.filter(destinatario=yo, leida=False).count(),
+            'resultados': [serializar_notificacion(n) for n in avisos],
+        })
+
+    def post(self, request):
+        yo = usuario_actual(request)
+        Notificacion.objects.filter(destinatario=yo, leida=False).update(leida=True)
+        return Response({'no_leidas': 0})
+
+
+class ContadorNotificacionesView(APIView):
+    """Solo el número de avisos sin leer (lo consulta la campana de la navbar)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        yo = usuario_actual(request)
+        return Response({'no_leidas': Notificacion.objects.filter(destinatario=yo, leida=False).count()})
+
+
+# ---------------------------------------------------------------------
+# Clasificación semanal entre la gente que sigo
+# ---------------------------------------------------------------------
+class ClasificacionView(APIView):
+    """
+    Esta semana (de lunes a hoy): yo y las cuentas que sigo, ordenados por
+    entrenamientos, minutos y kg. De los demás solo cuenta lo que compartieron.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        yo = usuario_actual(request)
+        hoy = dia_local(timezone.now())
+        lunes = hoy - timedelta(days=hoy.weekday())
+        desde = datetime.combine(lunes, time.min)
+
+        ids = ids_visibles_en_feed(yo)
+        totales = {
+            fila['usuario']: fila
+            for fila in (
+                RegistroEntrenamiento.objects
+                .filter(usuario_id__in=ids, fecha__gte=desde)
+                .filter(Q(compartido=True) | Q(usuario=yo))
+                .values('usuario')
+                .annotate(
+                    entrenamientos=Count('id'),
+                    segundos=Sum('duracion_segundos'),
+                    volumen=Sum('volumen_kg'),
+                )
+            )
+        }
+
+        filas = []
+        for usuario in Usuario.objects.filter(id__in=ids).only('id', 'username', 'nombre'):
+            datos = totales.get(usuario.id, {})
+            filas.append({
+                'usuario': {'id': usuario.id, 'username': usuario.username, 'nombre': usuario.nombre},
+                'soy_yo': usuario.id == yo.id,
+                'entrenamientos': datos.get('entrenamientos', 0),
+                'minutos': round((datos.get('segundos') or 0) / 60),
+                'volumen': round(datos.get('volumen') or 0),
+            })
+
+        filas.sort(key=lambda f: (-f['entrenamientos'], -f['minutos'], -f['volumen'], f['usuario']['username']))
+        for posicion, fila in enumerate(filas, start=1):
+            fila['posicion'] = posicion
+
+        return Response({'desde': lunes, 'resultados': filas})
+
+
+# ---------------------------------------------------------------------
+# Comparar mis números con los de otra persona
+# ---------------------------------------------------------------------
+MAX_EJERCICIOS_EN_COMUN = 6
+
+
+def _mejores_marcas(registros):
+    """{clave del ejercicio: {'nombre', 'tipo', 'valor'}} con la mejor marca de cada uno."""
+    mejores = {}
+    for registro in registros:
+        for ejercicio in registro.ejercicios or []:
+            marca = mejor_marca(ejercicio)
+            if marca is None:
+                continue
+            tipo, valor = marca
+            clave = _clave(ejercicio.get('nombre'))
+            actual = mejores.get(clave)
+            if actual is None or (actual['tipo'] == tipo and valor > actual['valor']):
+                mejores[clave] = {'nombre': ejercicio.get('nombre'), 'tipo': tipo, 'valor': valor}
+    return mejores
+
+
+class CompararView(APIView):
+    """Mis totales frente a los de otra cuenta y la mejor marca de cada uno en ejercicios que ambos hicieron."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, username):
+        yo = usuario_actual(request)
+        otro = usuario_por_username(username)
+
+        if otro.id == yo.id:
+            return Response({'error': 'Elige a otra persona para comparar.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not puede_ver_contenido(yo, otro):
+            return respuesta_privada()
+
+        campos = ('fecha', 'duracion_segundos', 'series_completadas', 'volumen_kg', 'records', 'ejercicios')
+        mios = list(yo.registros_entrenamiento.only(*campos))
+        suyos = list(otro.registros_entrenamiento.filter(compartido=True).only(*campos))
+
+        mis_marcas, sus_marcas = _mejores_marcas(mios), _mejores_marcas(suyos)
+        en_comun = [
+            {
+                'nombre': mis_marcas[clave]['nombre'],
+                'tipo': mis_marcas[clave]['tipo'],
+                'yo': mis_marcas[clave]['valor'],
+                'otro': sus_marcas[clave]['valor'],
+            }
+            for clave in sorted(set(mis_marcas) & set(sus_marcas))
+            if mis_marcas[clave]['tipo'] == sus_marcas[clave]['tipo']
+        ][:MAX_EJERCICIOS_EN_COMUN]
+
+        return Response({
+            'yo': {'username': yo.username, 'nombre': yo.nombre, **totales_entrenamiento(mios)},
+            'otro': {'username': otro.username, 'nombre': otro.nombre, **totales_entrenamiento(suyos)},
+            'ejercicios_en_comun': en_comun,
+        })

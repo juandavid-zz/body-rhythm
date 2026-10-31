@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 import Avatar from "../components/social/Avatar";
+import Clasificacion from "../components/social/Clasificacion";
 import TarjetaEntrenamiento from "../components/social/TarjetaEntrenamiento";
 import UsuarioFila from "../components/social/UsuarioFila";
 import { tiempoRelativo } from "../utils/formato";
@@ -311,6 +312,9 @@ export default function ComunidadPage() {
           <aside className="social-col">
             <div className="social-area-buscar">
               <Buscar />
+            </div>
+            <div className="social-area-clasificacion">
+              <Clasificacion />
             </div>
             <div className="social-area-sugerencias">
               <Sugerencias />

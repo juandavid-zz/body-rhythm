@@ -4,6 +4,7 @@ import api from "../api/api";
 import Navbar from "../components/Navbar";
 import Avatar from "../components/social/Avatar";
 import BotonSeguir from "../components/social/BotonSeguir";
+import CompararModal from "../components/social/CompararModal";
 import ListaUsuariosModal from "../components/social/ListaUsuariosModal";
 import TarjetaEntrenamiento from "../components/social/TarjetaEntrenamiento";
 import "../css/social.css";
@@ -14,6 +15,7 @@ export default function PerfilPage() {
   const [version, setVersion] = useState(0);
   const [datos, setDatos] = useState({ clave: null, perfil: null, entrenamientos: [], error: "" });
   const [lista, setLista] = useState(null); // 'seguidores' | 'seguidos' | null
+  const [comparando, setComparando] = useState(false);
 
   const clave = `${username}:${version}`;
 
@@ -111,7 +113,14 @@ export default function PerfilPage() {
                         </button>
                       </div>
                     ) : (
-                      <BotonSeguir usuario={perfil} onCambio={recargar} />
+                      <div className="social-acciones">
+                        {perfil.puede_ver && (
+                          <button type="button" className="social-btn-secundario" onClick={() => setComparando(true)}>
+                            Comparar
+                          </button>
+                        )}
+                        <BotonSeguir usuario={perfil} onCambio={recargar} />
+                      </div>
                     )}
 
                   </div>
@@ -133,6 +142,16 @@ export default function PerfilPage() {
                   </ul>
 
                   {perfil.meta && <p className="social-perfil-meta">🎯 {perfil.meta}</p>}
+
+                  {perfil.insignias?.length > 0 && (
+                    <ul className="social-insignias" aria-label="Insignias">
+                      {perfil.insignias.map((insignia) => (
+                        <li key={insignia.id} title={insignia.descripcion}>
+                          {insignia.titulo}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </header>
 
@@ -188,6 +207,8 @@ export default function PerfilPage() {
           )}
         </div>
       </main>
+
+      {comparando && perfil && <CompararModal username={perfil.username} onCerrar={() => setComparando(false)} />}
 
       {lista && perfil && (
         <ListaUsuariosModal
