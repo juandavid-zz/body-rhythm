@@ -117,11 +117,13 @@ export default function NutricionPage() {
         setCargando(true)
         setError('')
 
+        // Tu registro de comidas no depende de los planes: se pide al mismo tiempo
+        const registros = cargarRegistros()
         await Promise.all([
           api.post('/nutricion/planes/generar-catalogo/'),
           generarPlanPersonalizado(),
         ])
-        await Promise.all([cargarPlanes(), cargarRegistros()])
+        await Promise.all([cargarPlanes(), registros])
       } catch (err) {
         console.error('Error cargando nutrición:', err)
 

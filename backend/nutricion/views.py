@@ -112,29 +112,38 @@ def _marcar_recomendados(datos_planes, usuario):
     return datos_planes
 
 
-def _agregar_comidas_base(plan, bloques, factor_porcion=1.0):
+def _alimentos_por_categoria():
+    """Alimentos activos agrupados por categoría (en minúsculas), en una sola consulta."""
+    por_categoria = {}
+    for alimento in (
+        Alimento.objects
+        .filter(activo=True)
+        .select_related("categoria")
+        .order_by("id")
+    ):
+        if alimento.categoria_id:
+            por_categoria.setdefault(alimento.categoria.nombre.lower(), []).append(alimento)
+    return por_categoria
+
+
+def _agregar_comidas_base(plan, bloques, factor_porcion=1.0, alimentos_por_categoria=None):
     if plan.comidas.exists():
         return
 
-    orden = 0
+    if alimentos_por_categoria is None:
+        alimentos_por_categoria = _alimentos_por_categoria()
+
+    comidas = []
     alimentos_usados = set()
 
     for tipo, categorias in bloques.items():
         for categoria_nombre in categorias:
-            alimentos = (
-                Alimento.objects
-                .filter(
-                    categoria__nombre__iexact=categoria_nombre,
-                    activo=True,
-                )
-                .order_by("id")[:2]
-            )
-
-            for alimento in alimentos:
+            # Los dos primeros alimentos de cada categoría
+            for alimento in alimentos_por_categoria.get(categoria_nombre.lower(), [])[:2]:
                 if alimento.id in alimentos_usados:
                     continue
 
-                Comida.objects.create(
+                comidas.append(Comida(
                     plan=plan,
                     alimento=alimento,
                     tipo=tipo,
@@ -144,10 +153,12 @@ def _agregar_comidas_base(plan, bloques, factor_porcion=1.0):
                     proteinas_g=round(alimento.proteinas_100g * factor_porcion, 1),
                     carbohidratos_g=round(alimento.carbohidratos_100g * factor_porcion, 1),
                     grasas_g=round(alimento.grasas_100g * factor_porcion, 1),
-                    orden=orden,
-                )
+                    orden=len(comidas),
+                ))
                 alimentos_usados.add(alimento.id)
-                orden += 1
+
+    # Todas las comidas en un solo INSERT en lugar de uno por comida
+    Comida.objects.bulk_create(comidas)
 
 
 class CategoriaAlimentoListView(APIView):
@@ -191,7 +202,7 @@ class PlanNutricionalListView(APIView):
         planes = (
             PlanNutricional.objects
             .filter(usuario=usuario)
-            .prefetch_related("comidas__alimento")
+            .prefetch_related("comidas__alimento__categoria")
         )
 
         datos = PlanNutricionalSerializer(planes, many=True).data
@@ -222,7 +233,21 @@ class GenerarCatalogoPlanesView(APIView):
     def post(self, request):
         usuario = usuario_actual(request)
 
-        for plantilla in PLANES_BASE:
+        # Normalmente el catálogo ya existe: se revisa con una sola consulta
+        # y solo se crean los planes que falten (o que quedaron sin comidas)
+        completos = set(
+            PlanNutricional.objects
+            .filter(
+                usuario=usuario,
+                nombre__in=[p["nombre"] for p in PLANES_BASE],
+                comidas__isnull=False,
+            )
+            .values_list("nombre", flat=True)
+        )
+        pendientes = [p for p in PLANES_BASE if p["nombre"] not in completos]
+        alimentos = _alimentos_por_categoria() if pendientes else None
+
+        for plantilla in pendientes:
             plan, creado = PlanNutricional.objects.get_or_create(
                 usuario=usuario,
                 nombre=plantilla["nombre"],
@@ -240,12 +265,13 @@ class GenerarCatalogoPlanesView(APIView):
                 _agregar_comidas_base(
                     plan,
                     plantilla["bloques"],
+                    alimentos_por_categoria=alimentos,
                 )
 
         planes = (
             PlanNutricional.objects
             .filter(usuario=usuario)
-            .prefetch_related("comidas__alimento")
+            .prefetch_related("comidas__alimento__categoria")
         )
 
         datos = PlanNutricionalSerializer(planes, many=True).data
@@ -463,6 +489,27 @@ class GenerarPlanPersonalizadoView(APIView):
             PLANES_BASE[0],
         )
 
+        # Si el objetivo no cambió desde la última vez (mismo peso, altura,
+        # edad y meta), el plan ya está al día: se devuelve sin rehacerlo.
+        existente = (
+            PlanNutricional.objects
+            .filter(usuario=usuario, nombre=NOMBRE_PLAN_PERSONALIZADO)
+            .prefetch_related('comidas__alimento__categoria')
+            .first()
+        )
+        if existente and existente.comidas.all() and all(
+            float(getattr(existente, campo) or 0) == float(objetivo[clave])
+            for campo, clave in (
+                ('calorias_diarias', 'calorias'),
+                ('proteinas_g', 'proteinas_g'),
+                ('carbohidratos_g', 'carbohidratos_g'),
+                ('grasas_g', 'grasas_g'),
+            )
+        ):
+            plan_datos = PlanNutricionalSerializer(existente).data
+            plan_datos['recomendado'] = False
+            return Response({'plan': plan_datos, 'objetivo': objetivo}, status=status.HTTP_200_OK)
+
         plan, _creado = PlanNutricional.objects.update_or_create(
             usuario=usuario,
             nombre=NOMBRE_PLAN_PERSONALIZADO,
@@ -497,7 +544,7 @@ class GenerarPlanPersonalizadoView(APIView):
             factor_porcion=factor_porcion,
         )
 
-        plan.refresh_from_db()
+        plan = PlanNutricional.objects.prefetch_related('comidas__alimento__categoria').get(pk=plan.pk)
         plan_datos = PlanNutricionalSerializer(plan).data
         plan_datos['recomendado'] = False  # es "el tuyo", no hace falta la etiqueta
 

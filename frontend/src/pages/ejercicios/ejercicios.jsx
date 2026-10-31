@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import ExerciseCard from "../../components/exerciseCard";
 import Navbar from "../../components/Navbar";
 import "../../css/ejercicios.css";
-import { API_URL } from "../../api/api";
+import { obtenerEjercicios } from "../../utils/ejercicios";
 
 const grupos = {
   Todos: null,
@@ -28,16 +28,7 @@ function Ejercicios() {
         setCargando(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/api/ejercicios/`
-        );
-
-        if (!response.ok) {
-          throw new Error("No se pudieron cargar los ejercicios");
-        }
-
-        const data = await response.json();
-        setEjercicios(data);
+        setEjercicios(await obtenerEjercicios());
       } catch (error) {
         console.error("Error al cargar ejercicios:", error);
         setError("No se pudieron cargar los ejercicios.");
