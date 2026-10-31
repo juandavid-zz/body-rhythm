@@ -1,7 +1,10 @@
 import axios from 'axios'
 
+// Dirección del backend: se toma de VITE_API_URL (frontend/.env) y, si no está, la local
+export const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: `${API_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 45000, // 45s — evita que el chat se quede "escribiendo..." para siempre
 })
@@ -67,7 +70,7 @@ api.interceptors.response.use(
 
     renovando = true
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/token/refresh/', { refresh })
+      const res = await axios.post(`${API_URL}/api/token/refresh/`, { refresh })
       const nuevoAccess = res.data.access
       localStorage.setItem('token', nuevoAccess)
       resolverCola(nuevoAccess)

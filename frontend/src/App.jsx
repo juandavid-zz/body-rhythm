@@ -1,26 +1,32 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-
+// Inicio y login se cargan de una; el resto de páginas se descarga al visitarlas
+// para que la primera carga no traiga todo el JS (gráficas, chat, etc.)
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
-import RutinasPage from "./pages/RutinasPage";
-import ActiveWorkoutPage from "./pages/ActiveWorkoutPage";
-import AdminPage from "./pages/AdminPage";
-import NutricionPage from "./pages/NutricionPage";
-import VerificarPage from "./pages/VerificarPage";
-import Dashboard from "./pages/Dashboard";
-import ChatbotRutina from "./pages/ChatbotRutina";
-import Progreso from "./pages/Progreso";
-import Ejercicios from "./pages/ejercicios/ejercicios";
-import EjercicioDetalle from "./pages/ejercicios/ejercicioDetalle";
-import Planes from "./pages/Planes";
-import FormularioPago from "./pages/FormularioPago";
-import PagoExitoso from "./pages/PagoExitoso";
-import EsperandoVerificacion from './pages/EsperandoVerificacion'
-import ComunidadPage from "./pages/ComunidadPage";
-import PerfilPage from "./pages/PerfilPage";
-import MiPerfil from "./pages/MiPerfil";
-import ConfiguracionPage from "./pages/ConfiguracionPage";
+const RutinasPage = lazy(() => import("./pages/RutinasPage"));
+const ActiveWorkoutPage = lazy(() => import("./pages/ActiveWorkoutPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const NutricionPage = lazy(() => import("./pages/NutricionPage"));
+const VerificarPage = lazy(() => import("./pages/VerificarPage"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ChatbotRutina = lazy(() => import("./pages/ChatbotRutina"));
+const Progreso = lazy(() => import("./pages/Progreso"));
+const Ejercicios = lazy(() => import("./pages/ejercicios/ejercicios"));
+const EjercicioDetalle = lazy(() => import("./pages/ejercicios/ejercicioDetalle"));
+const Planes = lazy(() => import("./pages/Planes"));
+const FormularioPago = lazy(() => import("./pages/FormularioPago"));
+const PagoExitoso = lazy(() => import("./pages/PagoExitoso"));
+const EsperandoVerificacion = lazy(() => import("./pages/EsperandoVerificacion"));
+const ComunidadPage = lazy(() => import("./pages/ComunidadPage"));
+const PerfilPage = lazy(() => import("./pages/PerfilPage"));
+const MiPerfil = lazy(() => import("./pages/MiPerfil"));
+const ConfiguracionPage = lazy(() => import("./pages/ConfiguracionPage"));
+
+// Mientras llega una página: fondo oscuro, sin parpadeo blanco
+const Cargando = () => <div style={{ minHeight: "100vh", background: "#07060d" }} aria-busy="true" />;
+
 function RutaProtegida({ children }) {
   const token = localStorage.getItem("token");
 
@@ -32,7 +38,7 @@ function RutaProtegida({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-
+      <Suspense fallback={<Cargando />}>
       <Routes>
 
         <Route path="/" element={<Home />} />
@@ -180,7 +186,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
-
+      </Suspense>
     </BrowserRouter>
   );
 }

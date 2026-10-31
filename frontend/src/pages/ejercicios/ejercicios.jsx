@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ExerciseCard from "../../components/exerciseCard";
 import Navbar from "../../components/Navbar";
 import "../../css/ejercicios.css";
+import { API_URL } from "../../api/api";
 
 const grupos = {
   Todos: null,
@@ -28,7 +29,7 @@ function Ejercicios() {
         setError("");
 
         const response = await fetch(
-          "http://127.0.0.1:8000/api/ejercicios/"
+          `${API_URL}/api/ejercicios/`
         );
 
         if (!response.ok) {
