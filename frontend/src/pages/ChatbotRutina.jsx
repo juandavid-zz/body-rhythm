@@ -249,7 +249,7 @@ export default function ChatbotRutina() {
       )
     } catch (err) {
       const mensajeError =
-        err.response?.data?.error || 'No se pudo generar la rutina, intenta de nuevo.'
+        err.response?.data?.error || err.response?.data?.detail || 'No se pudo generar la rutina, intenta de nuevo.'
       setChats((prev) =>
         prev.map((c) => {
           if (c.id !== chatActualId) return c
@@ -349,7 +349,7 @@ export default function ChatbotRutina() {
       )
     } catch (err) {
       const mensajeError =
-        err.response?.data?.error || 'No pude procesar tu pregunta, intenta de nuevo.'
+        err.response?.data?.error || err.response?.data?.detail || 'No pude procesar tu pregunta, intenta de nuevo.'
       setChats((prev) =>
         prev.map((c) => {
           if (c.id !== chatActualId) return c

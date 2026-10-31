@@ -1,6 +1,8 @@
 from unittest import mock
 
+from django.core.cache import cache
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from rutinas.models import Rutina
@@ -105,6 +107,18 @@ class GenerarRutinaTests(BaseChatbotTest):
         self.assertEqual(respuesta.data['rango_imc'], 'normal')
         ids = {e['ejercicio_id'] for e in respuesta.data['rutina']['ejercicios']}
         self.assertEqual(ids, {self.press.id, self.remo.id})  # solo tren superior
+
+    def test_limita_las_llamadas_a_la_ia_por_usuario(self):
+        cache.clear()
+        datos = {'lugar': 'casa', 'equipo': 'ninguno'}
+        with mock.patch.dict(ScopedRateThrottle.THROTTLE_RATES, {'ia_rutina': '2/hour'}), \
+                mock.patch.object(chatbot_service, 'generar_rutina_ia', side_effect=RuntimeError('sin IA')):
+            codigos = [self.client.post('/api/entrenamientos/chatbot/', datos, format='json').status_code for _ in range(3)]
+            ultima = self.client.post('/api/entrenamientos/chatbot/', datos, format='json')
+
+        self.assertEqual(codigos, [200, 200, 429])
+        self.assertIn('Intenta de nuevo', str(ultima.data['detail']))
+        cache.clear()
 
 
 def serie(peso, reps, hecho=True):

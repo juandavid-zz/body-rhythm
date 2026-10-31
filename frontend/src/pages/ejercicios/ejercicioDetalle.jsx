@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
-import api from "../../api/api";
+import api, { API_URL } from "../../api/api";
 import { getHistorial } from "../../utils/rutinasStorage";
 
 // Convierte las sesiones del backend al formato que usa construirEstadisticas
@@ -370,7 +370,7 @@ export default function EjercicioDetalle() {
         setCargando(true);
         setError("");
 
-        const response = await fetch("http://127.0.0.1:8000/api/ejercicios/");
+        const response = await fetch(`${API_URL}/api/ejercicios/`);
 
         if (!response.ok) {
           throw new Error("No se pudieron cargar los ejercicios");

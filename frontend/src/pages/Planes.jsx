@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import "../css/planes.css";
+import { API_URL } from "../api/api";
 import { useNavigate } from "react-router-dom";
 
 const planes = [
@@ -67,7 +68,7 @@ function Planes() {
 
       try {
         const respuesta = await fetch(
-          "http://127.0.0.1:8000/api/usuarios/me/",
+          `${API_URL}/api/usuarios/me/`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
