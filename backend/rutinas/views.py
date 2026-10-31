@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
@@ -850,9 +852,16 @@ EJERCICIOS_BASE_POR_GRUPO = {
 
 
 def _normalizar_valor(valor):
+    # Se llama decenas de miles de veces con los mismos textos al armar el
+    # catálogo; se recuerda el resultado de cada texto
+    return _normalizar_texto(str(valor or ""))
+
+
+@lru_cache(maxsize=4096)
+def _normalizar_texto(valor):
     import unicodedata
 
-    valor = str(valor or "").strip().casefold()
+    valor = valor.strip().casefold()
     valor = unicodedata.normalize("NFKD", valor)
     valor = "".join(
         caracter for caracter in valor
@@ -1220,8 +1229,22 @@ class GenerarCatalogoRutinasView(APIView):
         # doble render de React en desarrollo), la segunda espera y ya no duplica las rutinas
         usuario = get_object_or_404(Usuario.objects.select_for_update(), auth=request.user)
 
+        # Normalmente ya existen todas: se revisa con una sola consulta y solo se
+        # crean las que falten (o que quedaron sin ejercicios)
+        completas = set(
+            Rutina.objects
+            .filter(
+                usuario=usuario,
+                nombre__in=[r['nombre'] for r in RUTINAS_BASE],
+                rutinaejercicio__isnull=False,
+            )
+            .values_list('nombre', flat=True)
+        )
+
         for configuracion in RUTINAS_BASE:
             nombre = configuracion['nombre']
+            if nombre in completas:
+                continue
 
             rutina, creada = Rutina.objects.get_or_create(
                 usuario=usuario,
@@ -1236,8 +1259,8 @@ class GenerarCatalogoRutinasView(APIView):
                 if not creada:
                     rutina.rutinaejercicio_set.all().delete()
 
-                orden = 1
                 seleccionados = set()
+                nuevos = []
 
                 for grupo, cantidad in configuracion['grupos']:
                     ejercicios = _seleccionar_ejercicios(
@@ -1247,15 +1270,17 @@ class GenerarCatalogoRutinasView(APIView):
                     )
 
                     for ejercicio in ejercicios:
-                        RutinaEjercicio.objects.create(
+                        nuevos.append(RutinaEjercicio(
                             rutina=rutina,
                             ejercicio=ejercicio,
                             series=configuracion['series'],
                             repeticiones=configuracion['repeticiones'],
                             descanso_segundos=configuracion['descanso'],
-                            orden=orden,
-                        )
-                        orden += 1
+                            orden=len(nuevos) + 1,
+                        ))
+
+                # Todos los ejercicios de la rutina en un solo INSERT
+                RutinaEjercicio.objects.bulk_create(nuevos)
 
         rutinas = (
             Rutina.objects

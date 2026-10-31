@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import logoBodyRhythm from '../assets/logo.png'
+import logoBodyRhythm from '../assets/logo.webp'
 export default function Hero() {
   const navigate = useNavigate()
 

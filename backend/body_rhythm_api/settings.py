@@ -29,7 +29,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "card-alike-albuquerque-viewpicture.trycloudflare.com"]
+def _lista_env(nombre, por_defecto):
+    """Lee una lista separada por comas del .env (ej. "a.com,b.com")."""
+    valor = os.getenv(nombre, '')
+    return [item.strip() for item in valor.split(',') if item.strip()] or por_defecto
+
+
+# Para un túnel o un servidor, agrega su dominio en ALLOWED_HOSTS del .env
+ALLOWED_HOSTS = _lista_env('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
 
 # Application definition
@@ -54,6 +61,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    # Comprime las respuestas (el catálogo de ejercicios pasa de ~205 KB a una fracción)
+    'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -145,14 +154,13 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = _lista_env('CORS_ALLOWED_ORIGINS', [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
-]
+])
 
-# REST FRAMEWORK
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -161,6 +169,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Límite por usuario para las vistas que llaman a Gemini (cada llamada cuesta)
+    'DEFAULT_THROTTLE_RATES': {
+        'ia_rutina': os.getenv('LIMITE_IA_RUTINAS', '20/hour'),
+        'ia_chat': os.getenv('LIMITE_IA_CHAT', '60/hour'),
+    },
 }
 AUTH_USER_MODEL = 'users.AuthUsuario'
 
