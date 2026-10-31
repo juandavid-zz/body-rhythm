@@ -158,6 +158,93 @@ class LoginSeguridadTests(APITestCase):
         self.assertEqual(self.login('Clave12345').status_code, 403)
 
 
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class RecuperarPasswordTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # el límite por IP se guarda en la caché
+        self.auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.auth.verificado = True
+        self.auth.save()
+        from .models import Usuario
+        Usuario.objects.create(auth=self.auth, nombre='Ana', username='ana')
+
+    def pedir(self, email='ana@test.com'):
+        return self.client.post('/api/recuperar-password/', {'email': email}, format='json')
+
+    def restablecer(self, codigo, password='NuevaClave123'):
+        return self.client.post('/api/restablecer-password/', {
+            'email': 'ana@test.com', 'codigo': codigo, 'password': password,
+        }, format='json')
+
+    def codigo(self):
+        self.auth.refresh_from_db()
+        return self.auth.codigo_recuperacion
+
+    def test_envia_el_codigo_por_correo(self):
+        from django.core import mail
+        respuesta = self.pedir()
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.codigo(), mail.outbox[0].body)
+
+    def test_no_revela_si_el_correo_existe(self):
+        from django.core import mail
+        existe, no_existe = self.pedir(), self.pedir('nadie@test.com')
+        self.assertEqual(existe.data, no_existe.data)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_con_el_codigo_cambia_la_contrasena_y_desbloquea(self):
+        from django.utils import timezone
+        self.pedir()
+        self.auth.refresh_from_db()
+        self.auth.intentos_fallidos = 5
+        self.auth.bloqueado_hasta = timezone.now() + timezone.timedelta(minutes=10)
+        self.auth.save()
+
+        self.assertEqual(self.restablecer(self.codigo()).status_code, 200)
+        self.auth.refresh_from_db()
+        self.assertTrue(self.auth.check_password('NuevaClave123'))
+        self.assertIsNone(self.auth.bloqueado_hasta)
+        self.assertIsNone(self.auth.codigo_recuperacion)
+        # El código solo sirve una vez
+        self.assertEqual(self.restablecer('000000').status_code, 400)
+        login = self.client.post('/api/login/', {'email': 'ana', 'password': 'NuevaClave123'}, format='json')
+        self.assertEqual(login.status_code, 200)
+
+    def test_codigo_incorrecto_cuenta_intentos_y_se_invalida(self):
+        self.pedir()
+        correcto = self.codigo()
+        malo = '000000' if correcto != '000000' else '111111'
+        for _ in range(4):
+            self.assertIn('intentos_restantes', self.restablecer(malo).data)
+        self.assertTrue(self.restablecer(malo).data['expirado'])
+        # Ya ni el correcto sirve: hay que pedir otro
+        self.assertEqual(self.restablecer(correcto).status_code, 400)
+        self.auth.refresh_from_db()
+        self.assertTrue(self.auth.check_password('Clave12345'))
+
+    def test_codigo_vencido_no_sirve(self):
+        from django.utils import timezone
+        self.pedir()
+        codigo = self.codigo()
+        self.auth.recuperacion_expira = timezone.now() - timezone.timedelta(minutes=1)
+        self.auth.save()
+        self.assertTrue(self.restablecer(codigo).data['expirado'])
+
+    def test_contrasena_corta_se_rechaza(self):
+        self.pedir()
+        self.assertEqual(self.restablecer(self.codigo(), password='corta').status_code, 400)
+
+    def test_no_reenvia_antes_de_un_minuto(self):
+        from django.core import mail
+        self.pedir()
+        primero = self.codigo()
+        self.pedir()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(self.codigo(), primero)
+
+
 @override_settings(WOMPI_EVENTS_SECRET='secreto_de_prueba')
 class PlanPagadoTests(APITestCase):
     def setUp(self):

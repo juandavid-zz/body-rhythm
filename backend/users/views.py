@@ -27,11 +27,16 @@ from .serializers import (
 )
 import secrets
 
+from rest_framework.throttling import AnonRateThrottle
+
 from .emails import (
     MAX_INTENTOS_CODIGO,
     datos_envio,
+    enviar_correo_recuperacion,
     enviar_correo_verificacion,
+    recuperacion_vigente,
     segundos_para_reenviar,
+    segundos_para_reenviar_recuperacion,
     token_vigente,
 )
 
@@ -729,6 +734,96 @@ def activar_cuenta(auth):
         'nombre': usuario.nombre if usuario else '',
         'username': usuario.username if usuario else '',
     }
+
+
+# ---------------------------------------------------------------------
+# RECUPERAR CONTRASEÑA: se pide un código al correo y con él se crea otra
+# ---------------------------------------------------------------------
+class RecuperacionThrottle(AnonRateThrottle):
+    """Pocas solicitudes por IP: evita usar el formulario para mandar correos en masa."""
+    scope = 'recuperacion'
+    rate = '10/hour'
+
+
+# Respuesta igual exista o no el correo, para no revelar quién tiene cuenta
+MENSAJE_RECUPERACION = 'Si el correo está registrado, te enviamos un código para cambiar tu contraseña.'
+ERROR_CODIGO_RECUPERACION = 'El código no es válido o ya venció. Pide uno nuevo.'
+
+
+class SolicitarRecuperacionView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [RecuperacionThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        if not email or '@' not in email:
+            return Response({'error': 'Escribe el correo de tu cuenta.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        # Si ya se pidió hace menos de un minuto, no se manda otro (sin decirlo, por privacidad)
+        if auth is not None and auth.is_active and not segundos_para_reenviar_recuperacion(auth):
+            usuario = Usuario.objects.filter(auth=auth).first()
+            enviar_correo_recuperacion(auth, nombre=usuario.nombre if usuario else '')
+
+        return Response({'mensaje': MENSAJE_RECUPERACION})
+
+
+class RestablecerPasswordView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [RecuperacionThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        codigo = ''.join(c for c in str(request.data.get('codigo') or '') if c.isdigit())
+        password = request.data.get('password') or ''
+
+        if not email or len(codigo) != 6:
+            return Response(
+                {'error': 'Escribe el código de 6 dígitos que te llegó al correo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(password) < 8:
+            return Response(
+                {'error': 'La nueva contraseña debe tener al menos 8 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        if auth is None or not auth.codigo_recuperacion or not recuperacion_vigente(auth):
+            return Response({'error': ERROR_CODIGO_RECUPERACION, 'expirado': True}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not secrets.compare_digest(codigo, auth.codigo_recuperacion):
+            auth.intentos_recuperacion += 1
+            restantes = MAX_INTENTOS_CODIGO - auth.intentos_recuperacion
+            if restantes <= 0:
+                # Demasiados intentos: el código deja de servir y hay que pedir otro
+                auth.codigo_recuperacion = None
+                auth.save(update_fields=['intentos_recuperacion', 'codigo_recuperacion'])
+                return Response(
+                    {'error': 'Demasiados intentos. Pide un código nuevo.', 'expirado': True},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            auth.save(update_fields=['intentos_recuperacion'])
+            return Response(
+                {'error': f'Código incorrecto. Te quedan {restantes} intentos.', 'intentos_restantes': restantes},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth.set_password(password)
+        auth.codigo_recuperacion = None
+        auth.recuperacion_expira = None
+        auth.intentos_recuperacion = 0
+        # Quien recibió el código es dueño del correo: se desbloquea el login y queda verificada
+        auth.intentos_fallidos = 0
+        auth.bloqueado_hasta = None
+        auth.verificado = True
+        auth.save(update_fields=[
+            'password', 'codigo_recuperacion', 'recuperacion_expira', 'intentos_recuperacion',
+            'intentos_fallidos', 'bloqueado_hasta', 'verificado',
+        ])
+        return Response({'mensaje': 'Listo, tu contraseña cambió. Ya puedes iniciar sesión.'})
 
 
 # REENVIAR CORREO DE VERIFICACIÓN
