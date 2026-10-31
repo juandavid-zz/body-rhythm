@@ -4,6 +4,29 @@ import api from "../../api/api";
 import { tiempoRelativo } from "../../utils/formato";
 import Avatar from "./Avatar";
 
+// Igual que en el backend: @ seguido de 3 a 30 letras, números, punto o guion bajo
+const MENCION = /(^|[^\w.])@([a-z0-9._]{3,30})/gi;
+
+/** El texto del comentario con cada @usuario convertido en enlace a su perfil. */
+function TextoConMenciones({ texto, onIr }) {
+  const partes = [];
+  let ultimo = 0;
+  for (const coincidencia of texto.matchAll(MENCION)) {
+    const [completo, antes, username] = coincidencia;
+    const inicio = coincidencia.index + antes.length;
+    partes.push(texto.slice(ultimo, inicio));
+    const limpio = username.replace(/\.+$/, "");
+    partes.push(
+      <button key={inicio} type="button" className="social-mencion" onClick={() => onIr(limpio)}>
+        @{limpio}
+      </button>
+    );
+    ultimo = coincidencia.index + completo.length - (username.length - limpio.length);
+  }
+  partes.push(texto.slice(ultimo));
+  return partes;
+}
+
 /** Comentarios de un entrenamiento: lista, nuevo comentario y borrar los propios. */
 export default function Comentarios({ registroId, esDuenoDelEntrenamiento, onCambioTotal }) {
   const navigate = useNavigate();
@@ -66,7 +89,8 @@ export default function Comentarios({ registroId, esDuenoDelEntrenamiento, onCam
             </button>
             <div className="social-comentario-cuerpo">
               <p>
-                <strong>@{comentario.usuario.username}</strong> {comentario.texto}
+                <strong>@{comentario.usuario.username}</strong>{" "}
+                <TextoConMenciones texto={comentario.texto} onIr={(u) => navigate(`/perfil/${u}`)} />
               </p>
               <span>
                 {tiempoRelativo(comentario.created_at)}
@@ -84,7 +108,7 @@ export default function Comentarios({ registroId, esDuenoDelEntrenamiento, onCam
       <form className="social-comentar" onSubmit={enviar}>
         <input
           type="text"
-          placeholder="Escribe un comentario…"
+          placeholder="Escribe un comentario… (usa @ para mencionar)"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           maxLength={500}

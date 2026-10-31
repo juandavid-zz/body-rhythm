@@ -213,6 +213,167 @@ nav {
   margin-left: 0;
 }
 
+/* ── Campana de notificaciones (a la izquierda del engranaje) ── */
+.nav-notificaciones {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 0.5rem;
+}
+
+.nav-notificaciones + .btn-configuracion {
+  margin-left: 0;
+}
+
+.btn-campana {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-campana:hover,
+.btn-campana[aria-expanded="true"] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.campana-contador {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ec4899;
+  box-shadow: 0 0 0 2px #0b0a12;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -60px;
+  z-index: 6000;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  padding: 0.8rem 0.5rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(24, 19, 36, 0.96);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 24px 60px rgba(0, 0, 0, 0.55);
+  color: #f5f3ff;
+  text-align: left;
+}
+
+.notif-titulo {
+  margin: 0 0.6rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.notif-vacio {
+  margin: 0.4rem 0.6rem 0.8rem;
+  color: rgba(240, 235, 255, 0.55);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.notif-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notif-panel li button {
+  display: flex;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notif-panel li button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.notif-panel li button.nueva {
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.notif-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.notif-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.notif-texto > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: rgba(240, 235, 255, 0.82);
+}
+
+.notif-texto strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.notif-texto small {
+  color: rgba(240, 235, 255, 0.45);
+  font-size: 0.75rem;
+}
+
+/* En el teléfono el panel ocupa el ancho de la pantalla bajo la barra */
+@media (max-width: 700px) {
+  .notif-panel {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
 /* ── HERO ── */
 
 .hero {
