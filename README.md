@@ -63,6 +63,7 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 cp .env.example .env           # completa tus propias credenciales
 python manage.py migrate
+python manage.py collectstatic --noinput   # genera backend/staticfiles (no está en git)
 python manage.py runserver
 ```
 
