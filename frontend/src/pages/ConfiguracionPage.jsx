@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 import { cumpleMinimoBackend } from "../components/Auth/passwordUtils";
 import { normalizarUsername, useDisponibilidadUsername } from "../components/Auth/usernameUtils";
+import { iniciales } from "../utils/formato";
+import { urlFoto } from "../utils/foto";
 import "../css/configuracion.css";
 
 const METAS = [
@@ -56,6 +58,94 @@ function Interruptor({ id, activo, onCambio, titulo, descripcion, deshabilitado 
         <span />
       </button>
     </div>
+  );
+}
+
+// ── Foto de perfil ──
+const MAX_FOTO_MB = 5;
+
+function SeccionFoto({ cuenta, onGuardado }) {
+  const entrada = useRef(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: "", texto: "" });
+  const foto = urlFoto(cuenta.foto);
+
+  const elegir = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    evento.target.value = ""; // permite volver a elegir el mismo archivo
+    if (!archivo) return;
+
+    if (!archivo.type.startsWith("image/")) {
+      setMensaje({ tipo: "error", texto: "Elige una imagen (JPG, PNG o WebP)." });
+      return;
+    }
+    if (archivo.size > MAX_FOTO_MB * 1024 * 1024) {
+      setMensaje({ tipo: "error", texto: `La foto pesa más de ${MAX_FOTO_MB} MB.` });
+      return;
+    }
+
+    setSubiendo(true);
+    setMensaje({ tipo: "", texto: "" });
+    try {
+      const datos = new FormData();
+      datos.append("foto", archivo);
+      // La API manda JSON por defecto; para el archivo hay que avisar que es un formulario
+      const res = await api.post("/usuarios/me/foto/", datos, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      onGuardado({ ...cuenta, foto: res.data.foto });
+      setMensaje({ tipo: "exito", texto: "Foto actualizada." });
+    } catch (error) {
+      setMensaje({ tipo: "error", texto: primerError(error.response?.data, "No se pudo subir la foto.") });
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const quitar = async () => {
+    setSubiendo(true);
+    try {
+      await api.delete("/usuarios/me/foto/");
+      onGuardado({ ...cuenta, foto: null });
+      setMensaje({ tipo: "exito", texto: "Foto quitada." });
+    } catch {
+      setMensaje({ tipo: "error", texto: "No se pudo quitar la foto." });
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  return (
+    <section className="cfg-panel">
+      <h2>Foto de perfil</h2>
+      <div className="cfg-foto">
+        <span className="cfg-foto-vista" aria-hidden="true">
+          {foto ? <img src={foto} alt="" /> : iniciales(cuenta.nombre)}
+        </span>
+        <div className="cfg-foto-texto">
+          <p>Se ve en tu perfil, en tus entrenamientos y en tus comentarios.</p>
+          <p className="cfg-nota">JPG, PNG o WebP de hasta {MAX_FOTO_MB} MB. La recortamos en cuadrado.</p>
+          <div className="cfg-foto-acciones">
+            <button type="button" className="cfg-btn primario" onClick={() => entrada.current?.click()} disabled={subiendo}>
+              {subiendo ? "Guardando…" : foto ? "Cambiar foto" : "Subir foto"}
+            </button>
+            {foto && (
+              <button type="button" className="cfg-btn" onClick={quitar} disabled={subiendo}>
+                Quitar
+              </button>
+            )}
+          </div>
+        </div>
+        <input
+          ref={entrada}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={elegir}
+          hidden
+        />
+      </div>
+      {mensaje.texto && <p className={`cfg-mensaje ${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </section>
   );
 }
 
@@ -378,6 +468,7 @@ export default function ConfiguracionPage() {
           {!cuenta && !error && <p className="cfg-nota">Cargando…</p>}
           {cuenta && (
             <>
+              <SeccionFoto cuenta={cuenta} onGuardado={setCuenta} />
               <SeccionPerfil cuenta={cuenta} onGuardado={setCuenta} />
               <SeccionPrivacidad cuenta={cuenta} onGuardado={setCuenta} />
               <SeccionSeguridad />

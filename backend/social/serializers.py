@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from users.fotos import url_foto
+
 from entrenamientos.serializers import RegistroEntrenamientoSerializer
 from users.models import Usuario
 
@@ -54,6 +56,7 @@ class UsuarioResumenSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        data['foto'] = url_foto(instance)
         visitante = self.context['visitante']
         enviados, recibidos = self.context['relaciones']
         data.update(relacion_con(visitante, instance, enviados, recibidos))
@@ -74,11 +77,11 @@ class SolicitudSerializer(serializers.ModelSerializer):
         fields = ['id', 'usuario', 'created_at']
 
     def get_usuario(self, obj):
-        return {'id': obj.seguidor.id, 'username': obj.seguidor.username, 'nombre': obj.seguidor.nombre}
+        return resumen_usuario(obj.seguidor)
 
 
 def resumen_usuario(usuario):
-    return {'id': usuario.id, 'username': usuario.username, 'nombre': usuario.nombre}
+    return {'id': usuario.id, 'username': usuario.username, 'nombre': usuario.nombre, 'foto': url_foto(usuario)}
 
 
 class PublicacionFeedSerializer(RegistroEntrenamientoSerializer):

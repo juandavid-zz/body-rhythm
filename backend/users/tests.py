@@ -221,3 +221,86 @@ class PlanPagadoTests(APITestCase):
         with self.assertLogs('django.request', level='ERROR'):
             respuesta = self.client.post('/api/pagos/webhook/', self.evento(), format='json')
         self.assertEqual(respuesta.status_code, 503)
+
+
+class FotoPerfilTests(APITestCase):
+    def setUp(self):
+        import tempfile
+        from django.test import override_settings
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from .models import Usuario
+
+        self.carpeta = tempfile.mkdtemp()
+        self.ajuste = override_settings(MEDIA_ROOT=self.carpeta)
+        self.ajuste.enable()
+        self.auth = AuthUsuario.objects.create_user(email='foto@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=self.auth, nombre='Foto', username='foto')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(self.auth).access_token}')
+
+    def tearDown(self):
+        import shutil
+        self.ajuste.disable()
+        shutil.rmtree(self.carpeta, ignore_errors=True)
+
+    def imagen(self, ancho=800, alto=600, formato='PNG', nombre='foto.png'):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        datos = io.BytesIO()
+        Image.new('RGB', (ancho, alto), (120, 40, 200)).save(datos, formato)
+        return SimpleUploadedFile(nombre, datos.getvalue(), content_type=f'image/{formato.lower()}')
+
+    def subir(self, archivo):
+        return self.client.post('/api/usuarios/me/foto/', {'foto': archivo}, format='multipart')
+
+    def test_sube_la_foto_cuadrada_en_webp(self):
+        from PIL import Image
+        respuesta = self.subir(self.imagen())
+        self.assertEqual(respuesta.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.foto.name.endswith('.webp'))
+        with Image.open(self.usuario.foto.path) as guardada:
+            self.assertEqual(guardada.size, (400, 400))
+        self.assertEqual(self.client.get('/api/usuarios/me/').data['foto'], respuesta.data['foto'])
+
+    def test_cambiar_la_foto_borra_la_anterior(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        anterior = self.usuario.foto.path
+        self.subir(self.imagen(formato='JPEG', nombre='otra.jpg'))
+        self.assertFalse(os.path.exists(anterior))
+
+    def test_quitar_la_foto(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        ruta = self.usuario.foto.path
+        self.assertIsNone(self.client.delete('/api/usuarios/me/foto/').data['foto'])
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.foto)
+        self.assertFalse(os.path.exists(ruta))
+
+    def test_rechaza_archivos_que_no_son_imagen(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        respuesta = self.subir(SimpleUploadedFile('virus.png', b'esto no es una imagen', content_type='image/png'))
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn('imagen', respuesta.data['error'])
+
+    def test_rechaza_fotos_de_mas_de_5_mb(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        grande = SimpleUploadedFile('grande.png', b'0' * (5 * 1024 * 1024 + 1), content_type='image/png')
+        self.assertIn('5 MB', self.subir(grande).data['error'])
+
+    def test_la_foto_aparece_en_la_comunidad(self):
+        respuesta = self.subir(self.imagen())
+        perfil = self.client.get('/api/social/perfiles/foto/').data
+        self.assertEqual(perfil['foto'], respuesta.data['foto'])
+
+    def test_eliminar_la_cuenta_borra_la_foto(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        ruta = self.usuario.foto.path
+        self.auth.delete()
+        self.assertFalse(os.path.exists(ruta))

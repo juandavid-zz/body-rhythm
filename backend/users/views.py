@@ -1,4 +1,5 @@
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
@@ -13,6 +14,7 @@ from django.conf import settings
 from progreso.views import registrar_peso
 from social.models import Seguimiento
 
+from .fotos import FotoInvalida, borrar_foto, procesar_foto, url_foto
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
 from rest_framework.exceptions import ValidationError
 
@@ -308,6 +310,34 @@ class CambiarPasswordView(APIView):
         auth.set_password(serializer.validated_data['nueva'])
         auth.save(update_fields=['password'])
         return Response({'mensaje': 'Contraseña actualizada.'})
+
+
+# FOTO DE PERFIL: subir (POST, campo "foto") o quitar (DELETE)
+class FotoPerfilView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        archivo = request.FILES.get('foto')
+        if archivo is None:
+            return Response({'error': 'Elige una foto.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            foto = procesar_foto(archivo)
+        except FotoInvalida as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        borrar_foto(usuario)  # la anterior no se queda ocupando espacio
+        usuario.foto.save(foto.name, foto, save=False)
+        usuario.save(update_fields=['foto'])
+        return Response({'foto': url_foto(usuario)})
+
+    def delete(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        borrar_foto(usuario)
+        usuario.save(update_fields=['foto'])
+        return Response({'foto': None})
 
 
 # Comprobar si un @username está libre (se usa en el registro)

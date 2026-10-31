@@ -1,6 +1,7 @@
 import re
 
 from rest_framework import serializers
+from .fotos import url_foto
 from .models import AuthUsuario, Usuario, Ejercicio, USERNAME_REGEX
 
 
@@ -105,6 +106,8 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='auth.email', read_only=True)
     es_admin = serializers.BooleanField(source='auth.is_staff', read_only=True)
     username = serializers.CharField(max_length=31)
+    # La foto se cambia con /usuarios/me/foto/; aquí solo se lee
+    foto = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
@@ -114,6 +117,7 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
             'es_admin',
             'nombre',
             'username',
+            'foto',
             'peso',
             'altura',
             'fecha_nacimiento',
@@ -131,6 +135,9 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
             'genero': {'allow_null': True, 'allow_blank': True},
             'meta': {'allow_null': True, 'allow_blank': True},
         }
+
+    def get_foto(self, obj):
+        return url_foto(obj)
 
     def validate_username(self, value):
         return validar_username(value, excluir_id=self.instance.id if self.instance else None)
