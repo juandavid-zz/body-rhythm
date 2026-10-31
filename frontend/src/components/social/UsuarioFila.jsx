@@ -13,7 +13,7 @@ export default function UsuarioFila({ usuario, onCambio, accion }) {
         className="social-usuario-info"
         onClick={() => navigate(`/perfil/${usuario.username}`)}
       >
-        <Avatar nombre={usuario.nombre} />
+        <Avatar nombre={usuario.nombre} foto={usuario.foto} />
         <span className="social-usuario-textos">
           <strong>{usuario.nombre}</strong>
           <span>

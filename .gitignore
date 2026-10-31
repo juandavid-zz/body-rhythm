@@ -40,3 +40,5 @@ diferencias.txt
 
 # Configuración local de Claude Code
 .claude/
+# Fotos que suben los usuarios (no van al repositorio)
+backend/media/

@@ -40,7 +40,7 @@ function MiTarjeta() {
   return (
     <section className="social-panel social-mi-tarjeta">
       <button type="button" className="social-mi-identidad" onClick={() => navigate(`/perfil/${perfil.username}`)}>
-        <Avatar nombre={perfil.nombre} grande />
+        <Avatar nombre={perfil.nombre} foto={perfil.foto} grande />
         <strong>{perfil.nombre}</strong>
         <span>@{perfil.username}</span>
       </button>
@@ -99,7 +99,7 @@ function Solicitudes() {
         {solicitudes.map((s) => (
           <li key={s.id}>
             <button type="button" className="social-usuario-info" onClick={() => navigate(`/perfil/${s.usuario.username}`)}>
-              <Avatar nombre={s.usuario.nombre} />
+              <Avatar nombre={s.usuario.nombre} foto={s.usuario.foto} />
               <span className="social-usuario-textos">
                 <strong>{s.usuario.nombre}</strong>
                 <span>@{s.usuario.username} · {tiempoRelativo(s.created_at)}</span>

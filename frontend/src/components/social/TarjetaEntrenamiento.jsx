@@ -110,7 +110,7 @@ export default function TarjetaEntrenamiento({ registro, mostrarAutor = false, e
       <header className="social-tarjeta-cabecera">
         {mostrarAutor && autor ? (
           <button type="button" className="social-tarjeta-autor" onClick={() => navigate(`/perfil/${autor.username}`)}>
-            <Avatar nombre={autor.nombre} />
+            <Avatar nombre={autor.nombre} foto={autor.foto} />
             <span>
               <strong>{autor.nombre}</strong>
               <span>
