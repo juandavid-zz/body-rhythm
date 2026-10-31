@@ -18,3 +18,25 @@ dist/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Archivos generados por Django (python manage.py collectstatic)
+backend/staticfiles/
+
+# Respaldos y comprimidos: no van en el repositorio
+*.zip
+*.sql
+backend/nutricion_backup/
+
+# Scripts sueltos de prueba o mantenimiento local
+backend/probar_*.py
+backend/revisar_*.py
+backend/estructura_completa.py
+backend/agregar_*.py
+backend/arreglar_*.py
+diferencias.txt
+
+# Raíz: el proyecto de Node vive en frontend/
+/package-lock.json
+
+# Configuración local de Claude Code
+.claude/
