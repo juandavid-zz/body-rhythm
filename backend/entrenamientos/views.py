@@ -7,8 +7,9 @@ from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
 from .records import _clave, calcular_records, mejor_marca
+from .progresion import proxima_carga, sesiones_por_ejercicio
 from .rutina_ia import guardar_rutina, rutina_respaldo
-from users.models import Usuario
+from users.models import Ejercicio, Usuario
 from .models import RegistroEntrenamiento
 from .serializers import RegistroEntrenamientoSerializer
 
@@ -240,6 +241,55 @@ class AnteriorView(APIView):
 
         # Se responde con el nombre tal como lo pidió el frontend
         return Response({pedidos[clave]: datos for clave, datos in encontrados.items()})
+
+
+MAX_EJERCICIOS_PROXIMA = 30
+
+
+class ProximaCargaView(APIView):
+    """
+    Cuánto levantar la próxima vez en cada ejercicio, según tus últimas sesiones
+    (ver progresion.py). POST {"ejercicios": [{"nombre": "Press de banca", "reps_objetivo": 10}]}
+    → {"Press de banca": {"tendencia": "sube", "peso_kg": 62.5, "reps": 10, "motivo": "..."}}
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        pedidos = request.data.get('ejercicios')
+        if not isinstance(pedidos, list):
+            return Response({'error': 'Manda la lista de ejercicios.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        objetivos = {}
+        for pedido in pedidos[:MAX_EJERCICIOS_PROXIMA]:
+            if isinstance(pedido, dict) and str(pedido.get('nombre') or '').strip():
+                try:
+                    reps = int(pedido.get('reps_objetivo') or 0)
+                except (TypeError, ValueError):
+                    reps = 0
+                objetivos[pedido['nombre']] = reps if 0 < reps <= 100 else None
+        if not objetivos:
+            return Response({})
+
+        registros = usuario.registros_entrenamiento.order_by('-fecha', '-id').only('ejercicios').iterator()
+        sesiones = sesiones_por_ejercicio(registros, list(objetivos))
+
+        # El grupo muscular decide cuánto se sube (más en piernas)
+        claves = {_clave(nombre) for nombre in objetivos}
+        grupos = {
+            _clave(nombre): grupo
+            for nombre, grupo in Ejercicio.objects.values_list('nombre', 'grupo')
+            if _clave(nombre) in claves
+        }
+
+        respuesta = {}
+        for nombre, reps in objetivos.items():
+            sugerencia = proxima_carga(sesiones.get(nombre, []), reps, grupos.get(_clave(nombre)))
+            if sugerencia:
+                respuesta[nombre] = sugerencia
+        return Response(respuesta)
 
 
 class HistorialEjercicioView(APIView):

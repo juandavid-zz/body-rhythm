@@ -225,3 +225,108 @@ class FechaLocalTests(BaseChatbotTest):
 
         esperada = datetime.fromisoformat('2026-10-18T23:48:55+00:00').astimezone().replace(tzinfo=None)
         self.assertEqual(RegistroEntrenamiento.objects.get().fecha, esperada)
+
+
+# ---------------------------------------------------------------------
+# Próxima carga (progresion.py)
+# ---------------------------------------------------------------------
+from unittest import TestCase as _TestCaseSimple
+
+from .progresion import proxima_carga
+
+
+def sesion(*series, por_tiempo=False):
+    """series: (peso_kg, reps, hecho) o, por tiempo, (segundos, hecho)."""
+    if por_tiempo:
+        return {'por_tiempo': True, 'series': [
+            {'tipo': 'normal', 'duracion_segundos': s, 'hecho': h} for s, h in series
+        ]}
+    return {'por_tiempo': False, 'series': [
+        {'tipo': 'normal', 'peso_kg': p, 'reps': r, 'hecho': h} for p, r, h in series
+    ]}
+
+
+class ProximaCargaReglasTests(_TestCaseSimple):
+    def test_sin_historial_no_sugiere(self):
+        self.assertIsNone(proxima_carga([], 10))
+
+    def test_completo_con_las_reps_sube_25_kg(self):
+        s = proxima_carga([sesion((60, 10, True), (60, 10, True), (60, 11, True))], 10, 'chest')
+        self.assertEqual((s['tendencia'], s['peso_kg'], s['reps']), ('sube', 62.5, 10))
+
+    def test_en_piernas_sube_5_kg(self):
+        s = proxima_carga([sesion((80, 8, True), (80, 8, True))], 8, 'upper_legs')
+        self.assertEqual(s['peso_kg'], 85)
+
+    def test_un_poco_corto_mantiene_el_peso(self):
+        s = proxima_carga([sesion((60, 10, True), (60, 9, True), (60, 8, True))], 10, 'chest')
+        self.assertEqual((s['tendencia'], s['peso_kg']), ('igual', 60))
+
+    def test_corto_una_sola_vez_no_baja(self):
+        s = proxima_carga([sesion((60, 6, True), (60, 5, False))], 10, 'chest')
+        self.assertEqual(s['tendencia'], 'igual')
+
+    def test_corto_dos_veces_con_el_mismo_peso_baja_10(self):
+        mal = sesion((60, 6, True), (60, 5, False))
+        s = proxima_carga([mal, mal], 10, 'chest')
+        self.assertEqual((s['tendencia'], s['peso_kg']), ('baja', 55))  # 54 → al disco de 2,5 más cercano
+
+    def test_el_calentamiento_no_cuenta(self):
+        datos = sesion((60, 10, True), (60, 10, True))
+        datos['series'].insert(0, {'tipo': 'calentamiento', 'peso_kg': 20, 'reps': 5, 'hecho': False})
+        self.assertEqual(proxima_carga([datos], 10)['tendencia'], 'sube')
+
+    def test_peso_corporal_sube_una_rep(self):
+        s = proxima_carga([sesion((0, 12, True), (0, 12, True))], 12)
+        self.assertEqual((s['tipo'], s['tendencia'], s['reps']), ('reps', 'sube', 13))
+
+    def test_por_tiempo_suma_5_segundos(self):
+        s = proxima_carga([sesion((45, True), (40, True), por_tiempo=True)])
+        self.assertEqual((s['tipo'], s['duracion_segundos']), ('tiempo', 50))
+
+    def test_sin_objetivo_usa_las_reps_que_hizo(self):
+        s = proxima_carga([sesion((40, 8, True), (40, 8, True))], None, 'chest')
+        self.assertEqual((s['tendencia'], s['reps']), ('sube', 8))
+
+    def test_peso_absurdo_no_sugiere(self):
+        self.assertIsNone(proxima_carga([sesion((6000, 10, True))], 10))
+
+
+class ProximaCargaApiTests(APITestCase):
+    def setUp(self):
+        auth = AuthUsuario.objects.create_user(email='carga@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Carga', username='carga')
+        Ejercicio.objects.create(nombre='Sentadilla con Barra', grupo='upper_legs', repdb_id='9')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def entrenar(self, peso, reps):
+        self.client.post('/api/entrenamientos/registros/', {
+            'nombre': 'Pierna', 'duracion_segundos': 1200,
+            'ejercicios': [{'nombre': 'Sentadilla con Barra', 'porTiempo': False, 'unidadPeso': 'kg', 'sets': [
+                {'tipo': 'normal', 'reps': reps, 'peso': peso, 'pesoKg': peso, 'hecho': True},
+                {'tipo': 'normal', 'reps': reps, 'peso': peso, 'pesoKg': peso, 'hecho': True},
+            ]}],
+        }, format='json')
+
+    def pedir(self, *ejercicios):
+        return self.client.post('/api/entrenamientos/proxima-carga/', {'ejercicios': list(ejercicios)}, format='json')
+
+    def test_sugiere_segun_el_ultimo_entrenamiento(self):
+        self.entrenar(70, 6)
+        self.entrenar(80, 8)  # el más reciente manda
+        datos = self.pedir({'nombre': 'sentadilla con barra', 'reps_objetivo': 8}).data
+        self.assertEqual(datos['sentadilla con barra']['peso_kg'], 85)  # piernas: +5 kg
+
+    def test_ejercicio_sin_historial_no_aparece(self):
+        self.entrenar(80, 8)
+        self.assertEqual(self.pedir({'nombre': 'Remo', 'reps_objetivo': 10}).data, {})
+
+    def test_solo_usa_mis_entrenamientos(self):
+        otro = AuthUsuario.objects.create_user(email='otro@test.com', password='Clave12345')
+        Usuario.objects.create(auth=otro, nombre='Otro', username='otro')
+        self.entrenar(80, 8)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(otro).access_token}')
+        self.assertEqual(self.pedir({'nombre': 'Sentadilla con Barra'}).data, {})
+
+    def test_formato_invalido(self):
+        self.assertEqual(self.client.post('/api/entrenamientos/proxima-carga/', {'ejercicios': 'x'}, format='json').status_code, 400)
