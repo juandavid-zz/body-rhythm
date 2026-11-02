@@ -4,6 +4,7 @@ from .views import (
     ChatbotMensajeView,
     GuardarRutinaChatbotView,
     AnteriorView,
+    ProximaCargaView,
     HistorialEjercicioView,
     RegistroEntrenamientoListView,
     RegistroEntrenamientoDetailView,
@@ -15,6 +16,7 @@ urlpatterns = [
     path("chatbot/guardar/", GuardarRutinaChatbotView.as_view(), name="chatbot-guardar"),
     path("registros/", RegistroEntrenamientoListView.as_view(), name="registros-entrenamiento"),
     path("anterior/", AnteriorView.as_view(), name="anterior"),
+    path("proxima-carga/", ProximaCargaView.as_view(), name="proxima-carga"),
     path("ejercicio-historial/", HistorialEjercicioView.as_view(), name="ejercicio-historial"),
     path("registros/<int:id>/", RegistroEntrenamientoDetailView.as_view(), name="registro-entrenamiento"),
 ]
