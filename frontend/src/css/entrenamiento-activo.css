@@ -1041,3 +1041,14 @@
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* Semana de descarga del programa */
+.aw-sugerencia.tendencia-descarga {
+  border-color: rgba(100, 210, 255, 0.3);
+  background: rgba(100, 210, 255, 0.08);
+}
+
+.tendencia-descarga .aw-sugerencia-flecha,
+.aw-proxima-fila.tendencia-descarga strong span {
+  color: #64d2ff;
+}

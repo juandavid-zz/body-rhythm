@@ -126,3 +126,51 @@ class RegistroEntrenamiento(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.nombre} - {self.fecha:%Y-%m-%d}"
+
+
+def hoy():
+    """Fecha de hoy en la hora del servidor (el proyecto usa USE_TZ = False)."""
+    return timezone.now().date()
+
+
+class Programa(models.Model):
+    """
+    Programa de varias semanas: un orden de rutinas que se repite cada semana.
+    "Hoy toca" es la siguiente sesión pendiente de la semana (si faltas un día,
+    no se atrasa: sigues con la que viene). Cada `descarga_cada` semanas hay una
+    semana de descarga con cargas más suaves para recuperar.
+    """
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='programas')
+    nombre = models.CharField(max_length=100)
+    semanas = models.PositiveSmallIntegerField(default=6)
+    descarga_cada = models.PositiveSmallIntegerField(default=4, help_text='0 = sin semanas de descarga')
+    inicio = models.DateField(default=hoy)
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'programas'
+        ordering = ['-created_at']
+        verbose_name = 'Programa'
+        verbose_name_plural = 'Programas'
+
+    def __str__(self):
+        return f"{self.usuario} - {self.nombre} ({self.semanas} semanas)"
+
+
+class ProgramaSesion(models.Model):
+    """Una sesión de la semana del programa: qué rutina toca y en qué orden."""
+
+    programa = models.ForeignKey(Programa, on_delete=models.CASCADE, related_name='sesiones')
+    rutina = models.ForeignKey(Rutina, on_delete=models.CASCADE, related_name='sesiones_programa')
+    orden = models.PositiveSmallIntegerField()
+
+    class Meta:
+        db_table = 'programa_sesiones'
+        ordering = ['orden']
+        verbose_name = 'Sesión del programa'
+        verbose_name_plural = 'Sesiones del programa'
+
+    def __str__(self):
+        return f"{self.programa.nombre} #{self.orden}: {self.rutina.nombre}"

@@ -137,7 +137,7 @@ function cargarAnterior(nombres, alCargar) {
 }
 
 // ── Próxima carga: cuánto levantar hoy según tus últimas sesiones ──
-const FLECHAS = { sube: "↑", igual: "=", baja: "↓" };
+const FLECHAS = { sube: "↑", igual: "=", baja: "↓", descarga: "↓" };
 
 // Reps objetivo del ejercicio: las de sus series de trabajo (no las de calentamiento)
 function repsObjetivo(ejercicio) {

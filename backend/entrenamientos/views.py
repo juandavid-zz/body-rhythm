@@ -9,10 +9,15 @@ from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
 from .records import _clave, calcular_records, mejor_marca
+from .programas import descarga_activa, estado_programa
 from .progresion import proxima_carga, sesiones_por_ejercicio
 from .rutina_ia import guardar_rutina, rutina_respaldo
 from users.models import Ejercicio, Usuario
-from .models import RegistroEntrenamiento
+from django.db import transaction
+
+from rutinas.models import Rutina
+from rutinas.serializers import RutinaSerializer
+from .models import Programa, ProgramaSesion, RegistroEntrenamiento
 from .serializers import RegistroEntrenamientoSerializer
 
 # Ajusta este import al modelo real de tu app chatbot_ia
@@ -297,12 +302,110 @@ class ProximaCargaView(APIView):
             if _clave(nombre) in claves
         }
 
+        descarga = descarga_activa(usuario)
         respuesta = {}
         for nombre, reps in objetivos.items():
-            sugerencia = proxima_carga(sesiones.get(nombre, []), reps, grupos.get(_clave(nombre)))
+            sugerencia = proxima_carga(sesiones.get(nombre, []), reps, grupos.get(_clave(nombre)), descarga)
             if sugerencia:
                 respuesta[nombre] = sugerencia
         return Response(respuesta)
+
+
+SEMANAS_PERMITIDAS = range(2, 17)          # de 2 a 16 semanas
+DESCARGAS_PERMITIDAS = {0, 3, 4, 5, 6}     # cada cuántas semanas hay descarga (0 = nunca)
+MAX_SESIONES_SEMANA = 7
+
+
+def respuesta_programa(programa):
+    """El programa activo tal como lo muestra la tarjeta de Entrenamientos."""
+    if programa is None:
+        return {'programa': None}
+    estado = estado_programa(programa)
+    siguiente = estado['siguiente']
+    if siguiente is not None:
+        siguiente = Rutina.objects.prefetch_related('rutinaejercicio_set__ejercicio').get(pk=siguiente.rutina_id)
+    return {
+        'programa': {
+            'id': programa.id,
+            'nombre': programa.nombre,
+            'semanas': programa.semanas,
+            'descarga_cada': programa.descarga_cada,
+            'inicio': programa.inicio,
+        },
+        'semana': estado['semana'],
+        'terminado': estado['terminado'],
+        'descarga': estado['descarga'],
+        'semana_completa': estado['semana_completa'],
+        'sesiones': [
+            {'orden': f['sesion'].orden, 'rutina': {'id': f['sesion'].rutina_id, 'nombre': f['sesion'].rutina.nombre}, 'hecha': f['hecha']}
+            for f in estado['sesiones']
+        ],
+        # La rutina completa: con ella se abre directamente el entrenamiento
+        'hoy_toca': RutinaSerializer(siguiente).data if siguiente is not None else None,
+    }
+
+
+class ProgramaView(APIView):
+    """
+    GET: tu programa en curso (semana, sesiones de la semana y qué toca hoy).
+    POST: crea uno nuevo con tus rutinas, en orden (reemplaza al que tenías).
+    DELETE: termina el programa en curso.
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _activo(self, usuario):
+        return usuario.programas.filter(activo=True).prefetch_related('sesiones__rutina').first()
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        return Response(respuesta_programa(self._activo(usuario)))
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        datos = request.data
+        nombre = str(datos.get('nombre') or '').strip()[:100] or 'Mi programa'
+
+        try:
+            semanas = int(datos.get('semanas'))
+            descarga_cada = int(datos.get('descarga_cada', 4))
+        except (TypeError, ValueError):
+            return Response({'error': 'Elige cuántas semanas dura el programa.'}, status=status.HTTP_400_BAD_REQUEST)
+        if semanas not in SEMANAS_PERMITIDAS:
+            return Response({'error': 'El programa puede durar de 2 a 16 semanas.'}, status=status.HTTP_400_BAD_REQUEST)
+        if descarga_cada not in DESCARGAS_PERMITIDAS:
+            return Response({'error': 'La descarga puede ser cada 3, 4, 5 o 6 semanas, o ninguna.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ids = datos.get('rutinas')
+        if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_SESIONES_SEMANA:
+            return Response({'error': 'Elige de 1 a 7 rutinas para la semana.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ids = [int(i) for i in ids]
+        except (TypeError, ValueError):
+            return Response({'error': 'Rutina no válida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Solo rutinas propias (una rutina puede repetirse en la semana)
+        propias = set(Rutina.objects.filter(usuario=usuario, id__in=ids).values_list('id', flat=True))
+        if set(ids) - propias:
+            return Response({'error': 'Alguna de esas rutinas no es tuya.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            usuario.programas.filter(activo=True).update(activo=False)
+            programa = Programa.objects.create(
+                usuario=usuario, nombre=nombre, semanas=semanas, descarga_cada=descarga_cada,
+            )
+            ProgramaSesion.objects.bulk_create([
+                ProgramaSesion(programa=programa, rutina_id=rutina_id, orden=orden)
+                for orden, rutina_id in enumerate(ids, start=1)
+            ])
+
+        return Response(respuesta_programa(self._activo(usuario)), status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        usuario.programas.filter(activo=True).update(activo=False)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class HistorialEjercicioView(APIView):
