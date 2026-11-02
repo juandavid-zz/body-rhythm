@@ -330,3 +330,118 @@ class ProximaCargaApiTests(APITestCase):
 
     def test_formato_invalido(self):
         self.assertEqual(self.client.post('/api/entrenamientos/proxima-carga/', {'ejercicios': 'x'}, format='json').status_code, 400)
+
+
+# ---------------------------------------------------------------------
+# Programas de varias semanas
+# ---------------------------------------------------------------------
+from datetime import date, datetime, timedelta
+
+from .models import Programa, RegistroEntrenamiento
+from .programas import es_descarga, semana_actual
+
+
+class ProgramaReglasTests(_TestCaseSimple):
+    def programa(self, inicio, descarga_cada=4):
+        return Programa(inicio=inicio, semanas=6, descarga_cada=descarga_cada)
+
+    def test_semana_cuenta_desde_el_lunes_del_inicio(self):
+        p = self.programa(date(2026, 11, 4))  # miércoles
+        self.assertEqual(semana_actual(p, date(2026, 11, 8)), 1)   # domingo de esa semana
+        self.assertEqual(semana_actual(p, date(2026, 11, 9)), 2)   # lunes siguiente
+
+    def test_semana_de_descarga(self):
+        p = self.programa(date(2026, 11, 2), descarga_cada=4)
+        self.assertEqual([es_descarga(p, s) for s in range(1, 9)], [False, False, False, True, False, False, False, True])
+        self.assertFalse(es_descarga(self.programa(date(2026, 11, 2), descarga_cada=0), 4))
+
+    def test_descarga_baja_10_por_ciento(self):
+        s = proxima_carga([sesion((60, 10, True), (60, 10, True))], 10, 'chest', descarga=True)
+        self.assertEqual((s['tendencia'], s['peso_kg']), ('descarga', 55))  # 54 → disco de 2,5
+
+
+class ProgramaApiTests(APITestCase):
+    def setUp(self):
+        auth = AuthUsuario.objects.create_user(email='programa@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Prog', username='prog')
+        self.superior = Rutina.objects.create(usuario=self.usuario, nombre='Tren superior')
+        self.pierna = Rutina.objects.create(usuario=self.usuario, nombre='Pierna')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def crear(self, **extra):
+        datos = {'nombre': 'Fuerza', 'semanas': 6, 'descarga_cada': 4, 'rutinas': [self.superior.id, self.pierna.id], **extra}
+        return self.client.post('/api/entrenamientos/programa/', datos, format='json')
+
+    def entrenar(self, rutina, cuando=None):
+        RegistroEntrenamiento.objects.create(usuario=self.usuario, rutina=rutina, nombre=rutina.nombre, fecha=cuando or datetime.now())
+
+    def test_sin_programa(self):
+        self.assertIsNone(self.client.get('/api/entrenamientos/programa/').data['programa'])
+
+    def test_crear_y_hoy_toca_la_primera(self):
+        datos = self.crear().data
+        self.assertEqual(datos['semana'], 1)
+        self.assertEqual([s['rutina']['nombre'] for s in datos['sesiones']], ['Tren superior', 'Pierna'])
+        self.assertEqual(datos['hoy_toca']['nombre'], 'Tren superior')
+        self.assertIn('ejercicios_detalle', datos['hoy_toca'])  # lista para empezar el entrenamiento
+
+    def test_al_hacer_una_toca_la_siguiente_y_al_final_semana_completa(self):
+        self.crear()
+        self.entrenar(self.superior)
+        datos = self.client.get('/api/entrenamientos/programa/').data
+        self.assertEqual([s['hecha'] for s in datos['sesiones']], [True, False])
+        self.assertEqual(datos['hoy_toca']['nombre'], 'Pierna')
+
+        self.entrenar(self.pierna)
+        datos = self.client.get('/api/entrenamientos/programa/').data
+        self.assertTrue(datos['semana_completa'])
+        self.assertIsNone(datos['hoy_toca'])
+
+    def test_si_falto_no_se_atrasa(self):
+        # Hizo Pierna (la segunda) sin hacer la primera: hoy toca la que falta
+        self.crear()
+        self.entrenar(self.pierna)
+        self.assertEqual(self.client.get('/api/entrenamientos/programa/').data['hoy_toca']['nombre'], 'Tren superior')
+
+    def test_entrenamientos_de_la_semana_pasada_no_cuentan(self):
+        self.crear()
+        self.entrenar(self.superior, datetime.now() - timedelta(days=8))
+        self.assertEqual(self.client.get('/api/entrenamientos/programa/').data['hoy_toca']['nombre'], 'Tren superior')
+
+    def test_rutina_repetida_en_la_semana(self):
+        self.crear(rutinas=[self.superior.id, self.pierna.id, self.superior.id])
+        self.entrenar(self.superior)
+        datos = self.client.get('/api/entrenamientos/programa/').data
+        self.assertEqual([s['hecha'] for s in datos['sesiones']], [True, False, False])
+
+    def test_crear_otro_reemplaza_al_anterior(self):
+        self.crear()
+        self.crear(nombre='Nuevo', rutinas=[self.pierna.id])
+        self.assertEqual(Programa.objects.filter(usuario=self.usuario, activo=True).count(), 1)
+        self.assertEqual(self.client.get('/api/entrenamientos/programa/').data['programa']['nombre'], 'Nuevo')
+
+    def test_terminar_programa(self):
+        self.crear()
+        self.assertEqual(self.client.delete('/api/entrenamientos/programa/').status_code, 204)
+        self.assertIsNone(self.client.get('/api/entrenamientos/programa/').data['programa'])
+
+    def test_no_acepta_rutinas_ajenas_ni_datos_invalidos(self):
+        otro = AuthUsuario.objects.create_user(email='otro2@test.com', password='Clave12345')
+        ajena = Rutina.objects.create(usuario=Usuario.objects.create(auth=otro, nombre='O', username='otro2'), nombre='X')
+        self.assertEqual(self.crear(rutinas=[ajena.id]).status_code, 400)
+        self.assertEqual(self.crear(semanas=30).status_code, 400)
+        self.assertEqual(self.crear(rutinas=[]).status_code, 400)
+
+    def test_semana_de_descarga_cambia_la_proxima_carga(self):
+        self.client.post('/api/entrenamientos/registros/', {
+            'nombre': 'Pecho', 'duracion_segundos': 600,
+            'ejercicios': [{'nombre': 'Press', 'porTiempo': False, 'unidadPeso': 'kg', 'sets': [
+                {'tipo': 'normal', 'reps': 10, 'peso': 60, 'pesoKg': 60, 'hecho': True}]}],
+        }, format='json')
+        self.crear()
+        programa = Programa.objects.get(usuario=self.usuario, activo=True)
+        programa.inicio = date.today() - timedelta(weeks=3)  # estamos en la semana 4: descarga
+        programa.save()
+        datos = self.client.post('/api/entrenamientos/proxima-carga/', {'ejercicios': [{'nombre': 'Press', 'reps_objetivo': 10}]}, format='json').data
+        self.assertEqual(datos['Press']['tendencia'], 'descarga')
+        self.assertEqual(self.client.get('/api/entrenamientos/programa/').data['descarga'], True)

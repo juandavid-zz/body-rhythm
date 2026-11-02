@@ -60,10 +60,14 @@ def _evaluar(ejercicio, reps_objetivo):
     return peso, reps_minimas, completo, corto
 
 
-def proxima_carga(sesiones, reps_objetivo=None, grupo=None):
+MOTIVO_DESCARGA = 'Semana de descarga: más suave para recuperar. La próxima semana vuelves a subir.'
+
+
+def proxima_carga(sesiones, reps_objetivo=None, grupo=None, descarga=False):
     """
     `sesiones`: el mismo ejercicio en los entrenamientos anteriores, del más
     reciente al más viejo (como se guardan en RegistroEntrenamiento.ejercicios).
+    `descarga`: semana de descarga del programa (10 % menos de carga).
     Devuelve la sugerencia o None si todavía no hay con qué calcular.
     """
     if not sesiones:
@@ -77,6 +81,11 @@ def proxima_carga(sesiones, reps_objetivo=None, grupo=None):
         if not hechas:
             return None
         duracion = max(s['duracion_segundos'] for s in hechas)
+        if descarga:
+            return {
+                'tipo': 'tiempo', 'tendencia': 'descarga',
+                'duracion_segundos': max(int(round(duracion * DESCARGA / 5) * 5), 5), 'motivo': MOTIVO_DESCARGA,
+            }
         if len(hechas) == len(trabajo):
             return {
                 'tipo': 'tiempo', 'tendencia': 'sube', 'duracion_segundos': duracion + SEGUNDOS_EXTRA,
@@ -94,6 +103,19 @@ def proxima_carga(sesiones, reps_objetivo=None, grupo=None):
         return None
     peso, reps_minimas, completo, corto = evaluacion
 
+    if peso > PESO_MAXIMO:
+        return None  # dato mal escrito: mejor no sugerir nada
+
+    if descarga and peso:
+        return {
+            'tipo': 'peso', 'tendencia': 'descarga', 'peso_kg': max(_redondear(peso * DESCARGA), 0),
+            'reps': objetivo, 'motivo': MOTIVO_DESCARGA,
+        }
+    if descarga:
+        return {
+            'tipo': 'reps', 'tendencia': 'descarga', 'reps': max(objetivo - MARGEN_REPS, 1), 'motivo': MOTIVO_DESCARGA,
+        }
+
     # Peso corporal: se progresa en repeticiones
     if not peso:
         if completo and reps_minimas >= objetivo:
@@ -105,9 +127,6 @@ def proxima_carga(sesiones, reps_objetivo=None, grupo=None):
             'tipo': 'reps', 'tendencia': 'igual', 'reps': objetivo,
             'motivo': f'Busca llegar a {objetivo} reps en todas las series.',
         }
-
-    if peso > PESO_MAXIMO:
-        return None  # dato mal escrito: mejor no sugerir nada
 
     incremento = INCREMENTO_PIERNA if grupo in GRUPOS_PIERNA else INCREMENTO_SUPERIOR
 
