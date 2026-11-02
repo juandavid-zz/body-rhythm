@@ -147,6 +147,11 @@ class Programa(models.Model):
     descarga_cada = models.PositiveSmallIntegerField(default=4, help_text='0 = sin semanas de descarga')
     inicio = models.DateField(default=hoy)
     activo = models.BooleanField(default=True)
+    # Diseñado por la IA (o por la división de respaldo) en vez de con rutinas propias
+    creado_por_ia = models.BooleanField(default=False)
+    # Resumen de la semana anterior: se guarda para no llamar a la IA en cada visita
+    resumen_semana = models.PositiveSmallIntegerField(null=True, blank=True)
+    resumen_texto = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

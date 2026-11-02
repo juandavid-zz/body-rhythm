@@ -1,15 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import Throttled
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import UserRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
 from .records import _clave, calcular_records, mejor_marca
-from .programas import descarga_activa, estado_programa
+from .programas import datos_semana_anterior, descarga_activa, estado_programa, resumen_sin_ia
 from .progresion import proxima_carga, sesiones_por_ejercicio
-from .rutina_ia import guardar_rutina, rutina_respaldo
+from .rutina_ia import guardar_rutina, programa_respaldo, rutina_respaldo
 from users.models import Ejercicio, Usuario
 from django.db import transaction
 
@@ -332,6 +334,35 @@ def respuesta_programa(programa):
     }
 
 
+@transaction.atomic
+def crear_programa(usuario, nombre, semanas, descarga_cada, rutina_ids, creado_por_ia=False):
+    """Crea el programa con esas rutinas en orden y deja de lado el que estaba activo."""
+    usuario.programas.filter(activo=True).update(activo=False)
+    programa = Programa.objects.create(
+        usuario=usuario, nombre=nombre, semanas=semanas, descarga_cada=descarga_cada,
+        creado_por_ia=creado_por_ia,
+    )
+    ProgramaSesion.objects.bulk_create([
+        ProgramaSesion(programa=programa, rutina_id=rutina_id, orden=orden)
+        for orden, rutina_id in enumerate(rutina_ids, start=1)
+    ])
+    return programa
+
+
+def _validar_duracion(datos):
+    """(semanas, descarga_cada, error) a partir de lo que mandó el frontend."""
+    try:
+        semanas = int(datos.get('semanas'))
+        descarga_cada = int(datos.get('descarga_cada', 4))
+    except (TypeError, ValueError):
+        return None, None, 'Elige cuántas semanas dura el programa.'
+    if semanas not in SEMANAS_PERMITIDAS:
+        return None, None, 'El programa puede durar de 2 a 16 semanas.'
+    if descarga_cada not in DESCARGAS_PERMITIDAS:
+        return None, None, 'La descarga puede ser cada 3, 4, 5 o 6 semanas, o ninguna.'
+    return semanas, descarga_cada, None
+
+
 class ProgramaView(APIView):
     """
     GET: tu programa en curso (semana, sesiones de la semana y qué toca hoy).
@@ -354,15 +385,9 @@ class ProgramaView(APIView):
         datos = request.data
         nombre = str(datos.get('nombre') or '').strip()[:100] or 'Mi programa'
 
-        try:
-            semanas = int(datos.get('semanas'))
-            descarga_cada = int(datos.get('descarga_cada', 4))
-        except (TypeError, ValueError):
-            return Response({'error': 'Elige cuántas semanas dura el programa.'}, status=status.HTTP_400_BAD_REQUEST)
-        if semanas not in SEMANAS_PERMITIDAS:
-            return Response({'error': 'El programa puede durar de 2 a 16 semanas.'}, status=status.HTTP_400_BAD_REQUEST)
-        if descarga_cada not in DESCARGAS_PERMITIDAS:
-            return Response({'error': 'La descarga puede ser cada 3, 4, 5 o 6 semanas, o ninguna.'}, status=status.HTTP_400_BAD_REQUEST)
+        semanas, descarga_cada, error = _validar_duracion(datos)
+        if error:
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
 
         ids = datos.get('rutinas')
         if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_SESIONES_SEMANA:
@@ -377,22 +402,121 @@ class ProgramaView(APIView):
         if set(ids) - propias:
             return Response({'error': 'Alguna de esas rutinas no es tuya.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        with transaction.atomic():
-            usuario.programas.filter(activo=True).update(activo=False)
-            programa = Programa.objects.create(
-                usuario=usuario, nombre=nombre, semanas=semanas, descarga_cada=descarga_cada,
-            )
-            ProgramaSesion.objects.bulk_create([
-                ProgramaSesion(programa=programa, rutina_id=rutina_id, orden=orden)
-                for orden, rutina_id in enumerate(ids, start=1)
-            ])
-
+        crear_programa(usuario, nombre, semanas, descarga_cada, ids)
         return Response(respuesta_programa(self._activo(usuario)), status=status.HTTP_201_CREATED)
 
     def delete(self, request):
         usuario = get_object_or_404(Usuario, auth=request.user)
         usuario.programas.filter(activo=True).update(activo=False)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProgramaIAThrottle(UserRateThrottle):
+    """Diseñar un programa usa Gemini (cuesta): pocas veces por hora por usuario."""
+    scope = 'programa_ia'
+    rate = '5/hour'
+
+
+LUGARES = {'gimnasio', 'casa'}
+NIVELES_PROGRAMA = {'principiante', 'intermedio', 'avanzado'}
+MINUTOS_PERMITIDOS = range(20, 121)
+
+
+class ProgramaIAView(APIView):
+    """
+    La IA diseña el programa a partir de unas preguntas: crea una rutina por
+    día de la semana y arma el programa con ellas. Si Gemini falla, usa una
+    división clásica con la biblioteca (respaldo).
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ProgramaIAThrottle]
+
+    def throttled(self, request, wait):
+        minutos = max(1, round((wait or 60) / 60))
+        raise Throttled(wait, detail=f'Ya diseñaste varios programas. Intenta de nuevo en {minutos} min.')
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        datos = request.data
+
+        semanas, descarga_cada, error = _validar_duracion(datos)
+        try:
+            dias = int(datos.get('dias'))
+            minutos = int(datos.get('minutos', 60))
+        except (TypeError, ValueError):
+            dias, minutos = 0, 0
+        lugar = str(datos.get('lugar') or '').strip().lower()
+        nivel = str(datos.get('nivel') or '').strip().lower()
+        equipo = str(datos.get('equipo') or '').strip()[:120] or 'el disponible en un gimnasio común'
+        lesiones = str(datos.get('lesiones') or '').strip()[:300]
+
+        if not error and not 2 <= dias <= 6:
+            error = 'Elige de 2 a 6 días por semana.'
+        if not error and lugar not in LUGARES:
+            error = 'Elige dónde entrenas.'
+        if not error and nivel not in NIVELES_PROGRAMA:
+            error = 'Elige tu nivel.'
+        if not error and minutos not in MINUTOS_PERMITIDOS:
+            error = 'La sesión puede durar de 20 a 120 minutos.'
+        if error:
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            diseno = chatbot_service.generar_programa_ia(usuario, dias, lugar, equipo, nivel, minutos, lesiones)
+            fuente = 'ia'
+        except Exception as e:
+            print(f"[programa_ia] La IA no respondió, se usa el respaldo: {e}")
+            diseno = programa_respaldo(dias, nivel)
+            fuente = 'respaldo'
+
+        if not diseno:
+            return Response({'error': 'No hay ejercicios en la biblioteca para armar el programa.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        nombre = str(diseno.get('nombre') or 'Mi programa').strip()[:60]
+        rutinas, _omitidos = guardar_rutina(usuario, diseno)
+        if not rutinas:
+            return Response({'error': 'No se pudo armar el programa. Intenta de nuevo.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        crear_programa(usuario, nombre, semanas, descarga_cada, [r['id'] for r in rutinas], creado_por_ia=True)
+        programa = usuario.programas.filter(activo=True).prefetch_related('sesiones__rutina').first()
+        respuesta = respuesta_programa(programa)
+        respuesta['fuente'] = fuente
+        respuesta['descripcion'] = str(diseno.get('descripcion') or '')[:300]
+        return Response(respuesta, status=status.HTTP_201_CREATED)
+
+
+class ResumenSemanaView(APIView):
+    """
+    Resumen de la semana pasada del programa: números (sesiones, volumen frente
+    a la semana anterior, récords) y 2-3 frases de la IA. El texto se guarda en
+    el programa para no llamar a la IA en cada visita.
+    """
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        programa = usuario.programas.filter(activo=True).first()
+        datos = datos_semana_anterior(programa) if programa else None
+        if datos is None:
+            return Response({'resumen': None})
+
+        if programa.resumen_semana != datos['semana'] or not programa.resumen_texto:
+            try:
+                texto = chatbot_service.resumen_semana_ia(usuario, datos)
+            except Exception as e:
+                print(f"[resumen_semana] La IA no respondió, se usa el resumen simple: {e}")
+                texto = resumen_sin_ia(datos)
+            programa.resumen_semana = datos['semana']
+            programa.resumen_texto = texto
+            programa.save(update_fields=['resumen_semana', 'resumen_texto'])
+
+        return Response({'resumen': {**datos, 'texto': programa.resumen_texto}})
 
 
 class HistorialEjercicioView(APIView):

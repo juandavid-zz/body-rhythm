@@ -712,3 +712,97 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Fase 3: programa con IA y resumen semanal ---------- */
+.lg-segmentado {
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lg-segmentado button {
+  flex: 1;
+  margin: 0;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: rgba(240, 235, 255, 0.55);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lg-segmentado button.activo {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.lg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lg-chips button {
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 235, 255, 0.75);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.lg-chips button.activo {
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  color: #fff;
+}
+
+.lg-resumen {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lg-resumen-datos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+.lg-resumen-datos dt {
+  color: var(--lg-texto-3);
+  font-size: 0.75rem;
+}
+
+.lg-resumen-datos dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-resumen-datos small {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lg-resumen-datos small.sube { color: #30d158; }
+.lg-resumen-datos small.baja { color: #ff9f0a; }
+
+.lg-resumen-texto {
+  margin: 0.7rem 0 0;
+  color: var(--lg-texto-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
