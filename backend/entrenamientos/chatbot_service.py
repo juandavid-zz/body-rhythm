@@ -128,11 +128,16 @@ Instrucciones:
     inicio = time.time()
     respuesta = modelo.generate_content(prompt)
     print(f"[chatbot_service] Gemini (generar_rutina_ia) tardó {time.time() - inicio:.2f}s")
-    texto = respuesta.text.strip()
+    return vincular_ejercicios(_json_de(respuesta.text))
 
-    # Por si Gemini igual envuelve el JSON en ```json ... ``` o le agrega
-    # texto antes/después: nos quedamos solo con lo que hay entre el primer
-    # '{' y el último '}'.
+
+def _json_de(texto):
+    """
+    El JSON que devolvió Gemini. Por si igual lo envuelve en ```json ... ```
+    o le agrega texto antes/después, se toma lo que hay entre el primer '{'
+    y el último '}'. Lanza json.JSONDecodeError si no es válido.
+    """
+    texto = texto.strip()
     if texto.startswith("```"):
         texto = texto.strip("`")
         texto = texto.replace("json\n", "", 1)
@@ -143,7 +148,7 @@ Instrucciones:
         texto = texto[inicio_json:fin_json + 1]
 
     try:
-        return vincular_ejercicios(json.loads(texto))
+        return json.loads(texto)
     except json.JSONDecodeError as e:
         print(f"[chatbot_service] Gemini devolvió JSON inválido: {e}")
         print(f"[chatbot_service] Texto recibido (primeros 800 caracteres):\n{texto[:800]}")
@@ -189,3 +194,100 @@ Contexto del usuario:
     respuesta = chat.send_message(mensaje)
     print(f"[chatbot_service] Gemini (responder_pregunta_ia) tardó {time.time() - inicio:.2f}s")
     return respuesta.text.strip()
+
+# ── 3) Programa de varias semanas diseñado por la IA ──
+NIVELES = {"principiante", "intermedio", "avanzado"}
+
+
+def generar_programa_ia(usuario, dias, lugar, equipo, nivel, minutos, lesiones=""):
+    """
+    Diseña la semana tipo de un programa: qué entrenar cada día y con qué
+    ejercicios de la biblioteca. Devuelve el mismo formato de rutina que
+    generar_rutina_ia (ejercicios con "dia"), listo para guardar_rutina.
+    Lanza excepción si Gemini falla: la vista usa el programa de respaldo.
+    """
+    ejercicios_por_dia = max(4, min(8, round(minutos / 9)))
+    linea_lesiones = (
+        f"Lesiones o molestias que indicó: {lesiones}. EVITA los ejercicios que las carguen "
+        "y prefiere variantes seguras."
+        if lesiones else "No indicó lesiones."
+    )
+
+    prompt = f"""
+Eres un entrenador personal experto en programación del entrenamiento.
+Diseña la SEMANA TIPO de un programa que se repetirá varias semanas con
+sobrecarga progresiva. Responde en JSON puro (sin texto adicional) con esta
+forma exacta:
+
+{{
+  "nombre": "string corto para el programa (máx. 40 caracteres), ej: 'Fuerza en 4 días'",
+  "descripcion": "string (1-2 frases) explicando la lógica del programa",
+  "ejercicios": [
+    {{
+      "dia": "Día 1 · Empuje",
+      "ejercicio_id": number,
+      "nombre": "string",
+      "series": number,
+      "repeticiones": number,
+      "descanso_segundos": number
+    }}
+  ]
+}}
+
+Catálogo de ejercicios disponibles (id | nombre | grupo):
+{catalogo_para_prompt()}
+
+Datos del usuario:
+{_contexto_usuario(usuario)}
+Días por semana: {dias}
+Lugar: {lugar}
+Equipo disponible: {equipo}
+Nivel: {nivel}
+Minutos por sesión: {minutos}
+{linea_lesiones}
+
+Instrucciones:
+- Exactamente {dias} días distintos. El campo "dia" es "Día N · Enfoque"
+  (máx. 25 caracteres), ej. "Día 1 · Superior", "Día 2 · Pierna", "Día 3 · Tirón".
+- Elige una división adecuada a los días: 2 días = cuerpo completo o
+  superior/inferior; 3 = empuje/tirón/pierna o cuerpo completo; 4 = superior/
+  inferior x2; 5-6 = empuje/tirón/pierna con repeticiones.
+- Que cada grupo muscular grande se entrene al menos una vez por semana y que
+  no se repita el mismo grupo en días seguidos si se puede evitar.
+- {ejercicios_por_dia} ejercicios por día, empezando por los compuestos
+  (sentadilla, peso muerto, press, remo, dominadas) y terminando con los de
+  aislamiento.
+- Series y repeticiones según el nivel: principiante 3 x 10-12, intermedio
+  3-4 x 8-12, avanzado 4-5 x 5-10 en compuestos. Descanso 60-180 s según el ejercicio.
+- Usa solo ejercicios posibles con el equipo y el lugar indicados.
+- Elige TODOS los ejercicios del catálogo: pon su número en "ejercicio_id" y
+  copia su "nombre" exactamente igual. No inventes ejercicios.
+"""
+
+    modelo = genai.GenerativeModel(
+        MODELO_RUTINA,
+        generation_config={"response_mime_type": "application/json"},
+    )
+    inicio = time.time()
+    respuesta = modelo.generate_content(prompt)
+    print(f"[chatbot_service] Gemini (generar_programa_ia) tardó {time.time() - inicio:.2f}s")
+    return vincular_ejercicios(_json_de(respuesta.text))
+
+
+def resumen_semana_ia(usuario, datos):
+    """
+    2-3 frases de entrenador sobre la semana que pasó, a partir de los números
+    ya calculados (no inventa datos). Lanza excepción si Gemini falla.
+    """
+    prompt = f"""
+Eres un entrenador personal cercano y directo. Escribe un resumen de la
+semana de entrenamiento QUE ACABA DE TERMINAR (la semana pasada; di "la semana
+{datos['semana']}" o "la semana pasada", nunca "esta semana") de tu cliente en 2 o 3
+frases cortas, en español, tuteando, sin emojis y sin títulos. Menciona un logro concreto y da UN
+consejo práctico para la semana que viene. Usa solo estos datos, no inventes:
+
+{json.dumps(datos, ensure_ascii=False, default=str)}
+"""
+    modelo = genai.GenerativeModel(MODELO_RUTINA)
+    respuesta = modelo.generate_content(prompt)
+    return respuesta.text.strip()[:600]

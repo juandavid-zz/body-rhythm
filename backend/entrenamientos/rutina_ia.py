@@ -3,6 +3,7 @@ Conecta las rutinas que genera el chatbot con la biblioteca de ejercicios
 (users.Ejercicio) para poder guardarlas como rutinas del usuario.
 """
 
+import random
 import unicodedata
 
 from django.db import transaction
@@ -130,7 +131,7 @@ def guardar_rutina(usuario, rutina):
         if not ejercicio.get("ejercicio_id"):
             omitidos.append(str(ejercicio.get("nombre") or "Ejercicio"))
             continue
-        dia = str(ejercicio.get("dia") or "Día 1").strip()[:15]
+        dia = str(ejercicio.get("dia") or "Día 1").strip()[:25]
         dias.setdefault(dia, []).append(ejercicio)
 
     varios_dias = len(dias) > 1
@@ -153,3 +154,68 @@ def guardar_rutina(usuario, rutina):
         creadas.append({"id": nueva.id, "nombre": nueva.nombre, "ejercicios": min(len(ejercicios), MAX_EJERCICIOS_POR_DIA)})
 
     return list(reversed(creadas)), omitidos
+
+
+# ── Programa de respaldo: divisiones clásicas cuando la IA no responde ──
+EMPUJE = ("Empuje", ["chest", "shoulders", "upper_arms"])
+TIRON = ("Tirón", ["back", "upper_arms", "lower_arms"])
+PIERNA = ("Pierna", ["upper_legs", "lower_legs", "core"])
+SUPERIOR = ("Superior", ["chest", "back", "shoulders", "upper_arms"])
+INFERIOR = ("Inferior", ["upper_legs", "lower_legs", "core"])
+COMPLETO = ("Completo", ["upper_legs", "chest", "back", "shoulders", "core"])
+
+DIVISIONES = {
+    1: [COMPLETO],
+    2: [SUPERIOR, INFERIOR],
+    3: [EMPUJE, TIRON, PIERNA],
+    4: [SUPERIOR, INFERIOR, SUPERIOR, INFERIOR],
+    5: [EMPUJE, TIRON, PIERNA, SUPERIOR, INFERIOR],
+    6: [EMPUJE, TIRON, PIERNA, EMPUJE, TIRON, PIERNA],
+}
+
+VOLUMEN_POR_NIVEL = {
+    "principiante": (3, 12, 75),
+    "intermedio": (4, 10, 90),
+    "avanzado": (4, 8, 120),
+}
+
+
+def programa_respaldo(dias, nivel="principiante", ejercicios_por_dia=5):
+    """Semana tipo armada con la biblioteca (mismo formato que la de la IA)."""
+    division = DIVISIONES.get(dias) or DIVISIONES[3]
+    series, reps, descanso = VOLUMEN_POR_NIVEL.get(nivel, VOLUMEN_POR_NIVEL["principiante"])
+    biblioteca = list(ejercicios_disponibles().only("id", "nombre", "grupo", "imagen_inicio"))
+    if not biblioteca:
+        return None
+
+    por_grupo = {}
+    for ejercicio in biblioteca:
+        por_grupo.setdefault(ejercicio.grupo, []).append(ejercicio)
+
+    ejercicios = []
+    for numero, (enfoque, grupos) in enumerate(division, start=1):
+        elegidos = []
+        # Uno de cada grupo por turnos, hasta completar el día
+        while len(elegidos) < ejercicios_por_dia and any(por_grupo.get(g) for g in grupos):
+            for grupo in grupos:
+                candidatos = [e for e in por_grupo.get(grupo, []) if e not in elegidos]
+                if candidatos and len(elegidos) < ejercicios_por_dia:
+                    elegidos.append(random.choice(candidatos))
+            if all(not [e for e in por_grupo.get(g, []) if e not in elegidos] for g in grupos):
+                break
+        for e in elegidos:
+            ejercicios.append({
+                "dia": f"Día {numero} · {enfoque}"[:25],
+                "ejercicio_id": e.id,
+                "nombre": e.nombre,
+                "imagen": e.imagen_inicio or None,
+                "series": series,
+                "repeticiones": reps,
+                "descanso_segundos": descanso,
+            })
+
+    return {
+        "nombre": f"Programa {len(division)} días",
+        "descripcion": "Programa básico armado con la biblioteca de ejercicios.",
+        "ejercicios": ejercicios,
+    }

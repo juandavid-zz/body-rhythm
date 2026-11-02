@@ -459,3 +459,97 @@ class ProgramaApiTests(APITestCase):
         datos = self.client.post('/api/entrenamientos/proxima-carga/', {'ejercicios': [{'nombre': 'Press', 'reps_objetivo': 10}]}, format='json').data
         self.assertEqual(datos['Press']['tendencia'], 'descarga')
         self.assertEqual(self.client.get('/api/entrenamientos/programa/').data['descarga'], True)
+
+
+# ---------------------------------------------------------------------
+# Fase 3: la IA diseña el programa y escribe el resumen semanal
+# ---------------------------------------------------------------------
+class ProgramaIATests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # el límite de uso de la IA se guarda en la caché
+        auth = AuthUsuario.objects.create_user(email='ia@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='IA', username='ia')
+        self.press = Ejercicio.objects.create(nombre='Press de Banca', grupo='chest', repdb_id='11')
+        self.remo = Ejercicio.objects.create(nombre='Remo con Barra', grupo='back', repdb_id='12')
+        self.sentadilla = Ejercicio.objects.create(nombre='Sentadilla', grupo='upper_legs', repdb_id='13')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def pedir(self, **extra):
+        datos = {'dias': 3, 'lugar': 'gimnasio', 'equipo': 'barras', 'nivel': 'intermedio',
+                 'minutos': 60, 'semanas': 6, 'descarga_cada': 4, **extra}
+        return self.client.post('/api/entrenamientos/programa/ia/', datos, format='json')
+
+    def diseno(self):
+        return {'nombre': 'Fuerza 3 días', 'descripcion': 'Empuje, tirón y pierna.', 'ejercicios': [
+            {'dia': 'Día 1 · Empuje', 'ejercicio_id': self.press.id, 'nombre': 'Press de Banca', 'series': 4, 'repeticiones': 8},
+            {'dia': 'Día 2 · Tirón', 'ejercicio_id': self.remo.id, 'nombre': 'Remo con Barra', 'series': 4, 'repeticiones': 10},
+            {'dia': 'Día 3 · Pierna', 'ejercicio_id': self.sentadilla.id, 'nombre': 'Sentadilla', 'series': 4, 'repeticiones': 6},
+        ]}
+
+    def test_la_ia_disena_el_programa_con_una_rutina_por_dia(self):
+        with mock.patch.object(chatbot_service, 'generar_programa_ia', return_value=self.diseno()):
+            datos = self.pedir().data
+        self.assertEqual(datos['fuente'], 'ia')
+        self.assertEqual(datos['programa']['nombre'], 'Fuerza 3 días')
+        self.assertEqual([s['rutina']['nombre'] for s in datos['sesiones']],
+                         ['Fuerza 3 días · Día 1 · Empuje', 'Fuerza 3 días · Día 2 · Tirón', 'Fuerza 3 días · Día 3 · Pierna'])
+        self.assertEqual(datos['hoy_toca']['ejercicios_detalle'][0]['series'], 4)
+        self.assertTrue(Programa.objects.get(usuario=self.usuario, activo=True).creado_por_ia)
+
+    def test_si_la_ia_falla_usa_la_division_de_respaldo(self):
+        with mock.patch.object(chatbot_service, 'generar_programa_ia', side_effect=RuntimeError('sin IA')):
+            datos = self.pedir(dias=2).data
+        self.assertEqual(datos['fuente'], 'respaldo')
+        self.assertEqual(len(datos['sesiones']), 2)  # superior / inferior
+
+    def test_valida_las_respuestas(self):
+        self.assertEqual(self.pedir(dias=9).status_code, 400)
+        self.assertEqual(self.pedir(lugar='luna').status_code, 400)
+        self.assertEqual(self.pedir(nivel='experto').status_code, 400)
+        self.assertEqual(self.pedir(minutos=5).status_code, 400)
+
+    def test_limite_de_uso(self):
+        with mock.patch.object(chatbot_service, 'generar_programa_ia', side_effect=RuntimeError('sin IA')):
+            codigos = [self.pedir().status_code for _ in range(6)]
+        self.assertEqual(codigos[-1], 429)
+
+    def test_resumen_de_la_semana_pasada_se_guarda(self):
+        with mock.patch.object(chatbot_service, 'generar_programa_ia', return_value=self.diseno()):
+            self.pedir()
+        programa = Programa.objects.get(usuario=self.usuario, activo=True)
+        # Sin semana pasada todavía: no hay resumen
+        self.assertIsNone(self.client.get('/api/entrenamientos/programa/resumen/').data['resumen'])
+
+        programa.inicio = date.today() - timedelta(weeks=1)
+        programa.save()
+        rutina = programa.sesiones.first().rutina
+        RegistroEntrenamiento.objects.create(usuario=self.usuario, rutina=rutina, nombre=rutina.nombre,
+                                             fecha=datetime.now() - timedelta(days=7), volumen_kg=1000)
+        with mock.patch.object(chatbot_service, 'resumen_semana_ia', return_value='Gran semana.') as ia:
+            primero = self.client.get('/api/entrenamientos/programa/resumen/').data['resumen']
+            self.client.get('/api/entrenamientos/programa/resumen/')
+        self.assertEqual(primero['texto'], 'Gran semana.')
+        self.assertEqual((primero['semana'], primero['sesiones_hechas'], primero['sesiones_planeadas']), (1, 1, 3))
+        self.assertEqual(ia.call_count, 1)  # la segunda vez se usa el guardado
+
+    def test_resumen_sin_ia(self):
+        with mock.patch.object(chatbot_service, 'generar_programa_ia', return_value=self.diseno()):
+            self.pedir()
+        programa = Programa.objects.get(usuario=self.usuario, activo=True)
+        programa.inicio = date.today() - timedelta(weeks=1)
+        programa.save()
+        with mock.patch.object(chatbot_service, 'resumen_semana_ia', side_effect=RuntimeError('sin IA')):
+            texto = self.client.get('/api/entrenamientos/programa/resumen/').data['resumen']['texto']
+        self.assertIn('Completaste 0 de 3 sesiones', texto)
+
+
+class ProgramaRespaldoTests(APITestCase):
+    def test_divisiones_segun_los_dias(self):
+        from .rutina_ia import programa_respaldo
+        for i, grupo in enumerate(['chest', 'back', 'shoulders', 'upper_arms', 'upper_legs', 'lower_legs', 'core']):
+            Ejercicio.objects.create(nombre=f'E{i}', grupo=grupo, repdb_id=str(100 + i))
+        for dias, esperados in [(2, 2), (3, 3), (4, 4), (6, 6)]:
+            diseno = programa_respaldo(dias, 'principiante')
+            self.assertEqual(len({e['dia'] for e in diseno['ejercicios']}), esperados)
+            self.assertTrue(all(e['series'] == 3 and e['repeticiones'] == 12 for e in diseno['ejercicios']))

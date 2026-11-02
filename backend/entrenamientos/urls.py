@@ -6,6 +6,8 @@ from .views import (
     AnteriorView,
     ProximaCargaView,
     ProgramaView,
+    ProgramaIAView,
+    ResumenSemanaView,
     HistorialEjercicioView,
     RegistroEntrenamientoListView,
     RegistroEntrenamientoDetailView,
@@ -19,6 +21,8 @@ urlpatterns = [
     path("anterior/", AnteriorView.as_view(), name="anterior"),
     path("proxima-carga/", ProximaCargaView.as_view(), name="proxima-carga"),
     path("programa/", ProgramaView.as_view(), name="programa"),
+    path("programa/ia/", ProgramaIAView.as_view(), name="programa-ia"),
+    path("programa/resumen/", ResumenSemanaView.as_view(), name="programa-resumen"),
     path("ejercicio-historial/", HistorialEjercicioView.as_view(), name="ejercicio-historial"),
     path("registros/<int:id>/", RegistroEntrenamientoDetailView.as_view(), name="registro-entrenamiento"),
 ]
