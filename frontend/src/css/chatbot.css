@@ -252,6 +252,77 @@
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+/* ---------- Bienvenida (al entrar, sin conversación abierta) ---------- */
+.chatbot-page .chat-bienvenida {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 720px;
+  padding: 2rem 1rem 4rem;
+  text-align: center;
+}
+
+.chatbot-page .chat-bienvenida h1 {
+  margin: 0 0 0.6rem;
+  background: linear-gradient(135deg, #f5f3ff 30%, #c084fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  animation: cb-aparecer 0.5s ease both;
+}
+
+.chatbot-page .chat-bienvenida > p {
+  margin: 0 0 1.8rem;
+  color: var(--cb-texto-2);
+  font-size: 1rem;
+  animation: cb-aparecer 0.5s 0.08s ease both;
+}
+
+.chatbot-page .chat-bienvenida-input {
+  width: 100%;
+  margin-top: 0;
+  padding: 0.45rem 0.45rem 0.45rem 1.3rem;
+  animation: cb-aparecer 0.5s 0.16s ease both;
+}
+
+.chatbot-page .chat-bienvenida-input input {
+  padding: 0.75rem 0;
+  font-size: 1rem;
+}
+
+.chatbot-page .chat-bienvenida-atajos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.2rem;
+  animation: cb-aparecer 0.5s 0.24s ease both;
+}
+
+.chatbot-page .chat-bienvenida-atajos .chat-option-btn.destacado {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.18);
+  color: #fff;
+}
+
+@keyframes cb-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-page .chat-bienvenida * {
+    animation: none;
+  }
+}
+
 /* ---------- Burbujas ---------- */
 /* Los mensajes van en una columna centrada más angosta que el panel, para leer mejor */
 .chatbot-page .msg {

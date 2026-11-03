@@ -66,6 +66,21 @@ const PASOS = {
   CARGANDO: 'cargando',
   RESULTADO: 'resultado',
   ERROR: 'error',
+  LIBRE: 'libre', // conversación de preguntas, empezada desde la bienvenida
+}
+
+// Atajos de la pantalla de bienvenida
+const SUGERENCIAS = [
+  '¿Cuántas series debo hacer para ganar músculo?',
+  '¿Qué como antes de entrenar?',
+  '¿Cómo calentar antes de piernas?',
+]
+
+const saludo = () => {
+  const hora = new Date().getHours()
+  const momento = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const nombre = (localStorage.getItem('nombre') || '').trim().split(/\s+/)[0]
+  return nombre ? `${momento}, ${nombre}` : momento
 }
 
 const OPCIONES_LUGAR = [
@@ -140,13 +155,11 @@ function crearChatNuevo() {
 export default function ChatbotRutina() {
   const navigate = useNavigate()
 
-  const [chats, setChats] = useState(() => {
-    const guardados = cargarChats()
-    return guardados.length ? guardados : [crearChatNuevo()]
-  })
-  const [chatActualId, setChatActualId] = useState(() => chats[0].id)
+  // Al entrar no se abre ninguna conversación: se ve la bienvenida (chatActualId = null)
+  const [chats, setChats] = useState(() => cargarChats().filter((c) => !esVacio(c)))
+  const [chatActualId, setChatActualId] = useState(null)
 
-  const chatActual = chats.find((c) => c.id === chatActualId) || chats[0]
+  const chatActual = chats.find((c) => c.id === chatActualId) || null
 
   const [textoLibre, setTextoLibre] = useState('')
   const [enviandoLibre, setEnviandoLibre] = useState(false)
@@ -160,7 +173,7 @@ export default function ChatbotRutina() {
   // La primera vez que se entra a una conversación (o al cambiar de una
   // a otra), los mensajes que ya existían no se vuelven a "escribir":
   // solo animamos los mensajes que se agreguen de aquí en adelante.
-  if (umbrales[chatActualId] === undefined) {
+  if (chatActual && umbrales[chatActualId] === undefined) {
     setUmbrales((u) => ({ ...u, [chatActualId]: chatActual.mensajes.length }))
   }
   const umbralAnimacion = umbrales[chatActualId] ?? Infinity
@@ -183,7 +196,7 @@ export default function ChatbotRutina() {
       return
     }
     finChat.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatActual.mensajes, chatActual.paso, chatActualId])
+  }, [chatActual?.mensajes, chatActual?.paso, chatActualId])
 
   useEffect(() => {
     guardarChats(chats)
@@ -216,13 +229,7 @@ export default function ChatbotRutina() {
           const remoto = porId.get(local.id)
           if (!remoto || local.mensajes.length > remoto.mensajes.length) porId.set(local.id, local)
         })
-        const juntos = [...porId.values()]
-        setChats(juntos)
-        setChatActualId((actual) =>
-          juntos.some((c) => c.id === actual)
-            ? actual
-            : juntos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0].id
-        )
+        setChats([...porId.values()])
       })
       .catch(() => {})
       .finally(() => activo && setServidorListo(true))
@@ -267,11 +274,35 @@ export default function ChatbotRutina() {
     )
   }
 
+  // "Nuevo chat": vuelve a la bienvenida (y descarta la conversación si quedó vacía)
   const nuevaConversacion = () => {
+    setChats((prev) => prev.filter((c) => !esVacio(c)))
+    setChatActualId(null)
+    setTextoLibre('')
+  }
+
+  // Desde la bienvenida: empieza el armado guiado de una rutina
+  const empezarRutina = () => {
     const nuevo = crearChatNuevo()
-    setChats((prev) => [nuevo, ...prev])
+    setChats((prev) => [nuevo, ...prev.filter((c) => !esVacio(c))])
     setChatActualId(nuevo.id)
     setTextoLibre('')
+  }
+
+  // Desde la bienvenida: una pregunta abre una conversación nueva con esa pregunta
+  const preguntarDesdeBienvenida = (texto) => {
+    const pregunta = texto.trim()
+    if (!pregunta || enviandoLibre) return
+    const nuevo = {
+      ...crearChatNuevo(),
+      titulo: pregunta.length > 60 ? `${pregunta.slice(0, 57)}…` : pregunta,
+      mensajes: [],
+      paso: PASOS.LIBRE,
+    }
+    setChats((prev) => [nuevo, ...prev.filter((c) => !esVacio(c))])
+    setChatActualId(nuevo.id)
+    setTextoLibre('')
+    preguntar(pregunta, nuevo)
   }
 
   const cargarConversacion = (id) => {
@@ -283,10 +314,8 @@ export default function ChatbotRutina() {
     if (!window.confirm(`¿Borrar la conversación "${chat.titulo}"?`)) return
     api.delete(`/entrenamientos/chatbot/chats/${encodeURIComponent(chat.id)}/`).catch(() => {})
     delete sincronizados.current[chat.id]
-    const quedan = chats.filter((c) => c.id !== chat.id)
-    const siguientes = quedan.length ? quedan : [crearChatNuevo()]
-    setChats(siguientes)
-    if (chat.id === chatActualId) setChatActualId(siguientes[0].id)
+    setChats((prev) => prev.filter((c) => c.id !== chat.id))
+    if (chat.id === chatActualId) setChatActualId(null)
     setTextoLibre('')
   }
 
@@ -400,29 +429,37 @@ export default function ChatbotRutina() {
   }
 
   // ── Chat libre: preguntas escritas, respondidas por Gemini ──
-  const enviarPreguntaLibre = async (e) => {
+  const enviarPreguntaLibre = (e) => {
     e.preventDefault()
     const texto = textoLibre.trim()
     if (!texto || enviandoLibre) return
+    setTextoLibre('')
+    preguntar(texto, chatActual)
+  }
 
-    const historialParaApi = chatActual.mensajes
+  const preguntar = async (texto, chat) => {
+    const historialParaApi = chat.mensajes
       .filter((m) => !m.typing && !m.rutina)
       .map((m) => ({ rol: m.from === 'user' ? 'user' : 'model', texto: m.text }))
 
-    agregarMensaje({ from: 'user', text: texto })
-    agregarMensaje({ from: 'bot', text: '', typing: true })
-    setTextoLibre('')
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === chat.id
+          ? { ...c, mensajes: [...c.mensajes, { from: 'user', text: texto }, { from: 'bot', text: '', typing: true }] }
+          : c
+      )
+    )
     setEnviandoLibre(true)
 
     try {
       const res = await api.post('/entrenamientos/chatbot/mensaje/', {
         mensaje: texto,
         historial: historialParaApi,
-        rutina_actual: chatActual.resultado?.rutina || null,
+        rutina_actual: chat.resultado?.rutina || null,
       })
       setChats((prev) =>
         prev.map((c) => {
-          if (c.id !== chatActualId) return c
+          if (c.id !== chat.id) return c
           const sinTyping = c.mensajes.filter((m) => !m.typing)
           return {
             ...c,
@@ -435,7 +472,7 @@ export default function ChatbotRutina() {
         err.response?.data?.error || err.response?.data?.detail || 'No pude procesar tu pregunta, intenta de nuevo.'
       setChats((prev) =>
         prev.map((c) => {
-          if (c.id !== chatActualId) return c
+          if (c.id !== chat.id) return c
           const sinTyping = c.mensajes.filter((m) => !m.typing)
           return { ...c, mensajes: [...sinTyping, { from: 'bot', text: mensajeError }] }
         })
@@ -451,8 +488,7 @@ export default function ChatbotRutina() {
       return dias
     }, {})
 
-  const chatActivo =
-    chatActual.paso === PASOS.RESULTADO || chatActual.paso === PASOS.ERROR
+  const chatActivo = [PASOS.RESULTADO, PASOS.ERROR, PASOS.LIBRE].includes(chatActual?.paso)
 
   const formatearFecha = (iso) => {
     const d = new Date(iso)
@@ -470,7 +506,7 @@ export default function ChatbotRutina() {
         </button>
 
         <button className="sidebar-nuevo" onClick={nuevaConversacion}>
-          + Nueva rutina
+          + Nuevo chat
         </button>
 
         <p className="sidebar-titulo">Conversaciones</p>
@@ -504,6 +540,43 @@ export default function ChatbotRutina() {
 
       {/* ── CHAT PRINCIPAL ── */}
       <div className="chatbot-main">
+        {!chatActual ? (
+          <div className="chat-bienvenida">
+            <h1>{saludo()}</h1>
+            <p>Soy tu asistente de entrenamiento. Pregúntame lo que quieras o armemos tu rutina.</p>
+
+            <form
+              className="chat-input-row chat-bienvenida-input"
+              onSubmit={(e) => {
+                e.preventDefault()
+                preguntarDesdeBienvenida(textoLibre)
+              }}
+            >
+              <input
+                type="text"
+                placeholder="¿En qué te ayudo hoy?"
+                value={textoLibre}
+                onChange={(e) => setTextoLibre(e.target.value)}
+                aria-label="Escribe tu pregunta"
+                autoFocus
+              />
+              <button type="submit" disabled={!textoLibre.trim() || enviandoLibre}>
+                Enviar
+              </button>
+            </form>
+
+            <div className="chat-bienvenida-atajos">
+              <button type="button" className="chat-option-btn destacado" onClick={empezarRutina}>
+                Armar una rutina
+              </button>
+              {SUGERENCIAS.map((texto) => (
+                <button key={texto} type="button" className="chat-option-btn" onClick={() => preguntarDesdeBienvenida(texto)}>
+                  {texto}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="chatbot-card">
 
           <div className="chat-messages">
@@ -726,6 +799,7 @@ export default function ChatbotRutina() {
             </form>
           )}
         </div>
+        )}
       </div>
     </div>
     </>
