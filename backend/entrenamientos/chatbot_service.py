@@ -1,17 +1,49 @@
 import json
+import logging
 import time
-import google.generativeai as genai
+from functools import lru_cache
 
 from django.conf import settings
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types
 
 from .rutina_ia import catalogo_para_prompt, vincular_ejercicios
 
+logger = logging.getLogger(__name__)
+
 # ── Configuración de Gemini ──────────────────────────────
-genai.configure(api_key=settings.GEMINI_API_KEY)
 MODELO = "gemini-flash-latest"  # alias que siempre apunta al Flash estable vigente
 # Para generar rutinas: con el catálogo en el prompt, Flash tarda más de un minuto y
 # Flash-Lite unos segundos, eligiendo igual ejercicios de la biblioteca.
 MODELO_RUTINA = "gemini-flash-lite-latest"
+
+
+@lru_cache(maxsize=1)
+def _cliente():
+    """Cliente de Gemini, creado la primera vez que se usa (sin clave, falla ahí y no al arrancar)."""
+    return genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=90_000,  # ms
+            # Gemini a veces responde 429/503 por picos de demanda: reintenta antes de rendirse
+            retry_options=types.HttpRetryOptions(attempts=3, initial_delay=1.0, max_delay=8.0),
+        ),
+    )
+
+
+def _generar(modelo, contenido, nombre, json_puro=False, sistema=None):
+    """Llama a Gemini y devuelve el texto de la respuesta. Lanza excepción si falla."""
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json" if json_puro else None,
+        system_instruction=sistema,
+    )
+    inicio = time.time()
+    respuesta = _cliente().models.generate_content(model=modelo, contents=contenido, config=config)
+    logger.info("Gemini (%s) tardó %.2fs", nombre, time.time() - inicio)
+    if not respuesta.text:
+        raise ValueError(f"Gemini no devolvió texto ({nombre})")
+    return respuesta.text
 
 
 def calcular_imc(peso_kg, altura):
@@ -121,14 +153,8 @@ Instrucciones:
   "dias_por_semana", con 4 a 8 ejercicios por día.
 """
 
-    modelo = genai.GenerativeModel(
-        MODELO_RUTINA,
-        generation_config={"response_mime_type": "application/json"},
-    )
-    inicio = time.time()
-    respuesta = modelo.generate_content(prompt)
-    print(f"[chatbot_service] Gemini (generar_rutina_ia) tardó {time.time() - inicio:.2f}s")
-    return vincular_ejercicios(_json_de(respuesta.text))
+    texto = _generar(MODELO_RUTINA, prompt, "generar_rutina_ia", json_puro=True)
+    return vincular_ejercicios(_json_de(texto))
 
 
 def _json_de(texto):
@@ -150,8 +176,7 @@ def _json_de(texto):
     try:
         return json.loads(texto)
     except json.JSONDecodeError as e:
-        print(f"[chatbot_service] Gemini devolvió JSON inválido: {e}")
-        print(f"[chatbot_service] Texto recibido (primeros 800 caracteres):\n{texto[:800]}")
+        logger.warning("Gemini devolvió JSON inválido: %s. Texto recibido: %s", e, texto[:800])
         raise
 
 
@@ -179,21 +204,22 @@ Contexto del usuario:
     if rutina_actual:
         instrucciones_sistema += f"\nRutina actual del usuario: {json.dumps(rutina_actual, ensure_ascii=False)}\n"
 
-    # Reconstruir el historial en el formato que espera la SDK de Gemini
-    contenido_previo = []
+    # La conversación completa: los turnos anteriores y al final el mensaje nuevo
+    contenido = []
     for turno in (historial or []):
-        rol = "user" if turno.get("rol") == "user" else "model"
-        contenido_previo.append({"role": rol, "parts": [turno.get("texto", "")]})
+        texto = str(turno.get("texto") or "").strip()
+        if texto:
+            rol = "user" if turno.get("rol") == "user" else "model"
+            contenido.append(types.Content(role=rol, parts=[types.Part(text=texto)]))
+    contenido.append(types.Content(role="user", parts=[types.Part(text=mensaje)]))
 
-    modelo = genai.GenerativeModel(
-        MODELO,
-        system_instruction=instrucciones_sistema,
-    )
-    chat = modelo.start_chat(history=contenido_previo)
-    inicio = time.time()
-    respuesta = chat.send_message(mensaje)
-    print(f"[chatbot_service] Gemini (responder_pregunta_ia) tardó {time.time() - inicio:.2f}s")
-    return respuesta.text.strip()
+    try:
+        texto = _generar(MODELO, contenido, "responder_pregunta_ia", sistema=instrucciones_sistema)
+    except genai_errors.ServerError as e:
+        # Flash saturado (503): responde con Flash-Lite, que suele tener capacidad
+        logger.warning("Gemini Flash no respondió (%s), se usa Flash-Lite", e.code)
+        texto = _generar(MODELO_RUTINA, contenido, "responder_pregunta_ia", sistema=instrucciones_sistema)
+    return texto.strip()
 
 # ── 3) Programa de varias semanas diseñado por la IA ──
 NIVELES = {"principiante", "intermedio", "avanzado"}
@@ -264,14 +290,8 @@ Instrucciones:
   copia su "nombre" exactamente igual. No inventes ejercicios.
 """
 
-    modelo = genai.GenerativeModel(
-        MODELO_RUTINA,
-        generation_config={"response_mime_type": "application/json"},
-    )
-    inicio = time.time()
-    respuesta = modelo.generate_content(prompt)
-    print(f"[chatbot_service] Gemini (generar_programa_ia) tardó {time.time() - inicio:.2f}s")
-    return vincular_ejercicios(_json_de(respuesta.text))
+    texto = _generar(MODELO_RUTINA, prompt, "generar_programa_ia", json_puro=True)
+    return vincular_ejercicios(_json_de(texto))
 
 
 def resumen_semana_ia(usuario, datos):
@@ -288,6 +308,4 @@ consejo práctico para la semana que viene. Usa solo estos datos, no inventes:
 
 {json.dumps(datos, ensure_ascii=False, default=str)}
 """
-    modelo = genai.GenerativeModel(MODELO_RUTINA)
-    respuesta = modelo.generate_content(prompt)
-    return respuesta.text.strip()[:600]
+    return _generar(MODELO_RUTINA, prompt, "resumen_semana_ia").strip()[:600]
