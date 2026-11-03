@@ -69,12 +69,41 @@ const PASOS = {
   LIBRE: 'libre', // conversación de preguntas, empezada desde la bienvenida
 }
 
-// Atajos de la pantalla de bienvenida
+// Íconos de línea (estilo SF Symbols) para la bienvenida
+const ICONOS = {
+  rutina: (
+    <path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" />
+  ),
+  series: (
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  ),
+  comida: (
+    <path d="M7 3v8a2 2 0 0 0 2 2v8M7 3v5M11 3v5M7 8h4M17 3c-1.7 1.2-2.5 3.2-2.5 6 0 1.4.9 2.5 2.5 2.5V21" />
+  ),
+  calentar: (
+    <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1-.5-2-1-2.5 2 .5 4 3 4 5.5a5.5 5.5 0 0 1-11 0C6.5 9 11 7 12 3Z" />
+  ),
+  enviar: <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />,
+  chispa: (
+    <path d="M12 3.5 13.6 9a2 2 0 0 0 1.4 1.4l5.5 1.6-5.5 1.6a2 2 0 0 0-1.4 1.4L12 20.5 10.4 15A2 2 0 0 0 9 13.6L3.5 12 9 10.4A2 2 0 0 0 10.4 9Z" />
+  ),
+}
+
+const Icono = ({ nombre }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {ICONOS[nombre]}
+  </svg>
+)
+
+// Tarjetas de la bienvenida: la primera arma una rutina, las demás preguntan
 const SUGERENCIAS = [
-  '¿Cuántas series debo hacer para ganar músculo?',
-  '¿Qué como antes de entrenar?',
-  '¿Cómo calentar antes de piernas?',
+  { icono: 'series', tono: 'azul', titulo: 'Ganar músculo', detalle: 'Cuántas series hacer por semana', pregunta: '¿Cuántas series debo hacer para ganar músculo?' },
+  { icono: 'comida', tono: 'verde', titulo: 'Antes de entrenar', detalle: 'Qué comer y cuándo', pregunta: '¿Qué como antes de entrenar?' },
+  { icono: 'calentar', tono: 'naranja', titulo: 'Calentamiento', detalle: 'Cómo preparar las piernas', pregunta: '¿Cómo calentar antes de piernas?' },
 ]
+
+const fechaHoy = () =>
+  new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
 
 const saludo = () => {
   const hora = new Date().getHours()
@@ -542,36 +571,47 @@ export default function ChatbotRutina() {
       <div className="chatbot-main">
         {!chatActual ? (
           <div className="chat-bienvenida">
+            <div className="cb-orbe" aria-hidden="true" />
+            <p className="cb-fecha">{fechaHoy()}</p>
             <h1>{saludo()}</h1>
-            <p>Soy tu asistente de entrenamiento. Pregúntame lo que quieras o armemos tu rutina.</p>
+            <p className="cb-sub">¿Qué entrenamos hoy?</p>
 
             <form
-              className="chat-input-row chat-bienvenida-input"
+              className="cb-buscador"
               onSubmit={(e) => {
                 e.preventDefault()
                 preguntarDesdeBienvenida(textoLibre)
               }}
             >
+              <span className="cb-buscador-icono"><Icono nombre="chispa" /></span>
               <input
                 type="text"
-                placeholder="¿En qué te ayudo hoy?"
+                placeholder="Pregunta sobre entrenamiento, técnica o nutrición"
                 value={textoLibre}
                 onChange={(e) => setTextoLibre(e.target.value)}
                 aria-label="Escribe tu pregunta"
                 autoFocus
               />
-              <button type="submit" disabled={!textoLibre.trim() || enviandoLibre}>
-                Enviar
+              <button type="submit" disabled={!textoLibre.trim() || enviandoLibre} aria-label="Enviar">
+                <Icono nombre="enviar" />
               </button>
             </form>
 
-            <div className="chat-bienvenida-atajos">
-              <button type="button" className="chat-option-btn destacado" onClick={empezarRutina}>
-                Armar una rutina
+            <div className="cb-tarjetas">
+              <button type="button" className="cb-tarjeta principal" onClick={empezarRutina}>
+                <span className="cb-tarjeta-icono morado"><Icono nombre="rutina" /></span>
+                <span className="cb-tarjeta-texto">
+                  <strong>Armar una rutina</strong>
+                  <small>Hecha para ti en tres pasos</small>
+                </span>
               </button>
-              {SUGERENCIAS.map((texto) => (
-                <button key={texto} type="button" className="chat-option-btn" onClick={() => preguntarDesdeBienvenida(texto)}>
-                  {texto}
+              {SUGERENCIAS.map((sug) => (
+                <button key={sug.titulo} type="button" className="cb-tarjeta" onClick={() => preguntarDesdeBienvenida(sug.pregunta)}>
+                  <span className={`cb-tarjeta-icono ${sug.tono}`}><Icono nombre={sug.icono} /></span>
+                  <span className="cb-tarjeta-texto">
+                    <strong>{sug.titulo}</strong>
+                    <small>{sug.detalle}</small>
+                  </span>
                 </button>
               ))}
             </div>
