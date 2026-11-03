@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from entrenamientos.models import RegistroEntrenamiento
 from users.models import AuthUsuario, Usuario
 
-from .models import ImcHistorial
+from .models import ImcHistorial, MedidaCorporal
 
 
 class ProgresoTests(APITestCase):
@@ -65,3 +65,51 @@ class ProgresoTests(APITestCase):
         self.client.patch('/api/usuarios/me/', {'peso': 71}, format='json')
         self.client.patch('/api/usuarios/me/', {'nombre': 'Ana María'}, format='json')  # sin cambio de peso
         self.assertEqual(list(ImcHistorial.objects.values_list('peso', flat=True)), [71])
+
+
+class MedidasTests(APITestCase):
+    def setUp(self):
+        auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Ana', username='ana', peso=70, altura=1.75)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def test_registrar_y_listar(self):
+        respuesta = self.client.post('/api/progreso/medidas/', {'cintura': '82,5', 'grasa_corporal': 18}, format='json')
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.data['cintura'], 82.5)
+
+        medidas = self.client.get('/api/progreso/medidas/').data['medidas']
+        self.assertEqual(len(medidas), 1)
+        self.assertEqual(medidas[0]['grasa_corporal'], 18)
+        self.assertIsNone(medidas[0]['pecho'])
+
+    def test_el_mismo_dia_completa_el_registro(self):
+        self.client.post('/api/progreso/medidas/', {'cintura': 82}, format='json')
+        respuesta = self.client.post('/api/progreso/medidas/', {'pecho': 100, 'cintura': 81}, format='json')
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(MedidaCorporal.objects.count(), 1)
+        medida = MedidaCorporal.objects.get()
+        self.assertEqual((medida.pecho, medida.cintura), (100, 81))
+
+    def test_otro_dia_crea_otro_registro(self):
+        anterior = MedidaCorporal.objects.create(usuario=self.usuario, cintura=85)
+        MedidaCorporal.objects.filter(id=anterior.id).update(fecha=timezone.now() - timedelta(days=7))
+        self.client.post('/api/progreso/medidas/', {'cintura': 83}, format='json')
+        medidas = self.client.get('/api/progreso/medidas/').data['medidas']
+        self.assertEqual([m['cintura'] for m in medidas], [85, 83])
+
+    def test_validaciones(self):
+        self.assertEqual(self.client.post('/api/progreso/medidas/', {}, format='json').status_code, 400)
+        self.assertEqual(self.client.post('/api/progreso/medidas/', {'cintura': 800}, format='json').status_code, 400)
+        self.assertEqual(self.client.post('/api/progreso/medidas/', {'grasa_corporal': 90}, format='json').status_code, 400)
+        self.assertEqual(self.client.post('/api/progreso/medidas/', {'pecho': 'mucho'}, format='json').status_code, 400)
+
+    def test_borrar_solo_las_propias(self):
+        mia = MedidaCorporal.objects.create(usuario=self.usuario, cintura=80)
+        otro_auth = AuthUsuario.objects.create_user(email='beto@test.com', password='Clave12345')
+        otro = Usuario.objects.create(auth=otro_auth, nombre='Beto', username='beto')
+        ajena = MedidaCorporal.objects.create(usuario=otro, cintura=90)
+
+        self.assertEqual(self.client.delete(f'/api/progreso/medidas/{ajena.id}/').status_code, 404)
+        self.assertEqual(self.client.delete(f'/api/progreso/medidas/{mia.id}/').status_code, 204)
+        self.assertTrue(MedidaCorporal.objects.filter(id=ajena.id).exists())
