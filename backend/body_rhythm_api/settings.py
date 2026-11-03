@@ -29,6 +29,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
+# En producción no se arranca con una clave débil o vacía
+if not DEBUG and (not SECRET_KEY or len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure')):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'Con DEBUG=False la SECRET_KEY debe ser larga y aleatoria. Genera una con: '
+        'python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"'
+    )
+
 def _lista_env(nombre, por_defecto):
     """Lee una lista separada por comas del .env (ej. "a.com,b.com")."""
     valor = os.getenv(nombre, '')
@@ -215,3 +223,46 @@ MOSTRAR_ENLACE_VERIFICACION = (
     and DEBUG
     and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'
 )
+
+
+# ── Producción (DEBUG=False): solo HTTPS y cookies seguras ──
+if not DEBUG:
+    # Detrás de un proxy (Nginx, Render, Railway...) que atiende el HTTPS
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS = _lista_env('CSRF_TRUSTED_ORIGINS', [])
+    # HSTS: el navegador recuerda usar solo HTTPS. Empieza en 0 y súbelo (ej. 31536000)
+    # cuando confirmes que todo el sitio funciona con HTTPS.
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Fotos subidas: en desarrollo las sirve Django. En producción lo ideal es el servidor
+# web (Nginx); si no hay uno, SERVIR_MEDIA=True hace que las sirva Django.
+SERVIR_MEDIA = DEBUG or os.getenv('SERVIR_MEDIA', 'False') == 'True'
+
+# ── Registros (logs) ──
+# Todo va a la consola (la recogen Render, Railway, systemd, Docker...).
+# NIVEL_LOGS cambia el nivel de los módulos del proyecto.
+NIVEL_LOGS = os.getenv('NIVEL_LOGS', 'INFO')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '{asctime} {levelname} [{name}] {message}', 'style': '{'},
+    },
+    'handlers': {
+        'consola': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+    },
+    'root': {'handlers': ['consola'], 'level': 'WARNING'},
+    'loggers': {
+        'django': {'handlers': ['consola'], 'level': 'INFO', 'propagate': False},
+        **{
+            app: {'handlers': ['consola'], 'level': NIVEL_LOGS, 'propagate': False}
+            for app in ('users', 'rutinas', 'entrenamientos', 'nutricion', 'progreso', 'chatbot_ia', 'social')
+        },
+    },
+}

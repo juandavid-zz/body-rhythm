@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -23,6 +25,8 @@ from .serializers import RegistroEntrenamientoSerializer
 # Ajusta este import al modelo real de tu app chatbot_ia
 from chatbot_ia.models import ConversacionIa
 
+logger = logging.getLogger(__name__)
+
 
 def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
     """
@@ -38,7 +42,7 @@ def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
             fuente=fuente,
         )
     except Exception as e:
-        print(f"[conversaciones_ia] No se pudo guardar el registro: {e}")
+        logger.exception("No se pudo guardar la conversación con la IA")
 
 
 class LimiteIAMixin:
@@ -85,7 +89,7 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
             rutina = chatbot_service.generar_rutina_ia(usuario, lugar, equipo, grupo_muscular)
             fuente = "ia"
         except Exception as e:
-            print(f"[chatbot] Gemini falló, usando respaldo: {e}")
+            logger.warning("Gemini falló al generar la rutina, se usa el respaldo: %s", e)
             rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
             fuente = "respaldo"
 
@@ -166,7 +170,7 @@ class ChatbotMensajeView(LimiteIAMixin, APIView):
             )
             fuente = "ia"
         except Exception as e:
-            print(f"[chatbot] Error generando respuesta libre: {e}")
+            logger.warning("Gemini falló en el chat: %s", e)
             respuesta = (
                 "No pude conectarme con el asistente en este momento. "
                 "Intenta de nuevo en unos segundos."
@@ -478,7 +482,7 @@ class ProgramaIAView(APIView):
             diseno = chatbot_service.generar_programa_ia(usuario, dias, lugar, equipo, nivel, minutos, lesiones)
             fuente = 'ia'
         except Exception as e:
-            print(f"[programa_ia] La IA no respondió, se usa el respaldo: {e}")
+            logger.warning("Gemini falló al diseñar el programa, se usa el respaldo: %s", e)
             diseno = programa_respaldo(dias, nivel)
             fuente = 'respaldo'
 
@@ -521,7 +525,7 @@ class ResumenSemanaView(APIView):
             try:
                 texto = chatbot_service.resumen_semana_ia(usuario, datos)
             except Exception as e:
-                print(f"[resumen_semana] La IA no respondió, se usa el resumen simple: {e}")
+                logger.warning("Gemini falló en el resumen semanal, se usa el simple: %s", e)
                 texto = resumen_sin_ia(datos)
             programa.resumen_semana = datos['semana']
             programa.resumen_texto = texto
