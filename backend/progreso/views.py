@@ -1,14 +1,17 @@
 from datetime import timedelta
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.throttling import UserRateThrottle
 
 from users.models import Usuario
 
+from .exportar import libro_de_datos
 from .models import ImcHistorial, MedidaCorporal
 
 MAX_HISTORIAL = 60
@@ -251,3 +254,24 @@ class MedidaDetalleView(APIView):
         usuario = get_object_or_404(Usuario, auth=request.user)
         get_object_or_404(usuario.medidas_corporales, id=id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ExportarThrottle(UserRateThrottle):
+    scope = 'exportar_datos'
+    rate = '10/hour'
+
+
+class ExportarDatosView(APIView):
+    """Descarga todos los datos de entrenamiento del usuario en un Excel."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ExportarThrottle]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        nombre = f"body-rhythm-{usuario.username or 'datos'}-{dia_local(timezone.now()):%Y-%m-%d}.xlsx"
+        return HttpResponse(
+            libro_de_datos(usuario),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{nombre}"'},
+        )

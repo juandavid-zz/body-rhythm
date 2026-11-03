@@ -113,3 +113,44 @@ class MedidasTests(APITestCase):
         self.assertEqual(self.client.delete(f'/api/progreso/medidas/{ajena.id}/').status_code, 404)
         self.assertEqual(self.client.delete(f'/api/progreso/medidas/{mia.id}/').status_code, 204)
         self.assertTrue(MedidaCorporal.objects.filter(id=ajena.id).exists())
+
+
+class ExportarTests(APITestCase):
+    def setUp(self):
+        auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Ana', username='ana', peso=70, altura=1.75)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def test_excel_con_todas_las_hojas(self):
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        RegistroEntrenamiento.objects.create(
+            usuario=self.usuario, nombre='Pierna', duracion_segundos=1800, series_completadas=2, series_totales=2,
+            volumen_kg=1300, ejercicios=[
+                {'nombre': 'Sentadilla', 'por_tiempo': False, 'unidad_peso': 'kg', 'series': [
+                    {'tipo': 'calentamiento', 'reps': 10, 'peso': 40, 'peso_kg': 40, 'hecho': True},
+                    {'tipo': 'normal', 'reps': 8, 'peso': 70, 'peso_kg': 70, 'hecho': True},
+                ]},
+                # Formato viejo, con "sets" y nombres en camelCase
+                {'nombre': 'Plancha', 'porTiempo': True, 'sets': [{'duracion': 45, 'hecho': True}]},
+            ],
+        )
+        MedidaCorporal.objects.create(usuario=self.usuario, cintura=82)
+
+        respuesta = self.client.get('/api/progreso/exportar/')
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn('attachment; filename="body-rhythm-ana-', respuesta['Content-Disposition'])
+
+        libro = load_workbook(BytesIO(respuesta.content))
+        self.assertEqual(libro.sheetnames, ['Sesiones', 'Series', 'Peso', 'Medidas', 'Rutinas'])
+        series = list(libro['Series'].iter_rows(min_row=2, values_only=True))
+        self.assertEqual(len(series), 3)
+        self.assertEqual(series[0][2:8], ('Sentadilla', 1, 'Calentamiento', 10, 40, 'kg'))
+        self.assertEqual(series[2][8], 45)
+        self.assertEqual(libro['Medidas'].cell(2, 3).value, 82)
+
+    def test_requiere_sesion(self):
+        self.client.credentials()
+        self.assertEqual(self.client.get('/api/progreso/exportar/').status_code, 401)
