@@ -553,3 +553,41 @@ class ProgramaRespaldoTests(APITestCase):
             diseno = programa_respaldo(dias, 'principiante')
             self.assertEqual(len({e['dia'] for e in diseno['ejercicios']}), esperados)
             self.assertTrue(all(e['series'] == 3 and e['repeticiones'] == 12 for e in diseno['ejercicios']))
+
+
+class ChatsTests(BaseChatbotTest):
+    def chat(self, id_, mensajes=1, titulo='Rutina de pierna'):
+        return {'id': id_, 'titulo': titulo, 'fecha': '2026-11-01T10:00:00Z', 'paso': 'resultado',
+                'mensajes': [{'from': 'bot', 'text': f'hola {i}'} for i in range(mensajes)]}
+
+    def test_guardar_actualizar_y_listar(self):
+        self.assertEqual(self.client.put('/api/entrenamientos/chatbot/chats/chat_1/', self.chat('chat_1'), format='json').status_code, 200)
+        self.client.put('/api/entrenamientos/chatbot/chats/chat_1/', self.chat('chat_1', mensajes=3), format='json')
+        self.client.put('/api/entrenamientos/chatbot/chats/chat_2/', self.chat('chat_2', titulo='Otra'), format='json')
+
+        chats = self.client.get('/api/entrenamientos/chatbot/chats/').data['chats']
+        self.assertEqual([c['id'] for c in chats], ['chat_2', 'chat_1'])
+        self.assertEqual(len(chats[1]['mensajes']), 3)
+
+    def test_cada_usuario_ve_solo_sus_chats(self):
+        self.client.put('/api/entrenamientos/chatbot/chats/chat_1/', self.chat('chat_1'), format='json')
+        otro = AuthUsuario.objects.create_user(email='beto@test.com', password='Clave12345')
+        Usuario.objects.create(auth=otro, nombre='Beto', username='beto')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(otro).access_token}')
+
+        self.assertEqual(self.client.get('/api/entrenamientos/chatbot/chats/').data['chats'], [])
+        # Borrar el chat_1 de Beto no toca el de Ana
+        self.client.delete('/api/entrenamientos/chatbot/chats/chat_1/')
+        self.assertEqual(self.usuario.chats_ia.count(), 1)
+
+    def test_borrar_y_validar(self):
+        self.client.put('/api/entrenamientos/chatbot/chats/chat_1/', self.chat('chat_1'), format='json')
+        self.assertEqual(self.client.delete('/api/entrenamientos/chatbot/chats/chat_1/').status_code, 204)
+        self.assertEqual(self.usuario.chats_ia.count(), 0)
+        self.assertEqual(self.client.put('/api/entrenamientos/chatbot/chats/x/', {'titulo': 'sin mensajes'}, format='json').status_code, 400)
+
+    @mock.patch.object(chatbot_service, 'responder_pregunta_ia', return_value='Haz 3 series.')
+    def test_las_preguntas_quedan_registradas(self, _ia):
+        self.client.post('/api/entrenamientos/chatbot/mensaje/', {'mensaje': '¿Cuántas series?'}, format='json')
+        conversacion = self.usuario.conversaciones_ia.get()
+        self.assertEqual((conversacion.tipo, conversacion.respuesta_ia), ('general', 'Haz 3 series.'))

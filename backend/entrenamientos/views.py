@@ -1,3 +1,4 @@
+import json
 import logging
 
 from rest_framework.views import APIView
@@ -22,26 +23,31 @@ from rutinas.serializers import RutinaSerializer
 from .models import Programa, ProgramaSesion, RegistroEntrenamiento
 from .serializers import RegistroEntrenamientoSerializer
 
-# Ajusta este import al modelo real de tu app chatbot_ia
-from chatbot_ia.models import ConversacionIa
+from chatbot_ia.models import ChatIa, ConversacionIa
 
 logger = logging.getLogger(__name__)
 
 
-def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
+def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente, tipo="general"):
     """
-    Guarda cada intercambio en conversaciones_ia.
+    Guarda cada intercambio en conversaciones_ia (registro para el admin).
     Envuelto en try/except para que un problema de guardado NUNCA tumbe
     la respuesta al usuario (solo se pierde el registro histórico).
     """
+    if fuente == "error":
+        return
     try:
+        if not isinstance(usuario, Usuario):
+            usuario = Usuario.objects.get(auth=usuario)
+        if not isinstance(respuesta, str):
+            respuesta = json.dumps(respuesta, ensure_ascii=False, default=str)
         ConversacionIa.objects.create(
             usuario=usuario,
-            mensaje_usuario=mensaje_usuario,
-            respuesta=str(respuesta),
-            fuente=fuente,
+            tipo=tipo,
+            mensaje_usuario=str(mensaje_usuario)[:5000],
+            respuesta_ia=respuesta,
         )
-    except Exception as e:
+    except Exception:
         logger.exception("No se pudo guardar la conversación con la IA")
 
 
@@ -111,6 +117,7 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
             f"Generar rutina: lugar={lugar}, equipo={equipo}, grupo_muscular={grupo_muscular}",
             resultado,
             fuente,
+            tipo="rutina",
         )
 
         return Response(resultado, status=status.HTTP_200_OK)
@@ -180,6 +187,53 @@ class ChatbotMensajeView(LimiteIAMixin, APIView):
         _guardar_conversacion(usuario, mensaje, respuesta, fuente)
 
         return Response({"respuesta": respuesta, "fuente": fuente}, status=status.HTTP_200_OK)
+
+MAX_CHATS = 50
+MAX_TAMANO_CHAT = 300_000  # caracteres del JSON de una conversación
+
+
+class ChatsView(APIView):
+    """Conversaciones del asistente del usuario, de la más reciente a la más vieja."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        return Response({'chats': [c.datos for c in usuario.chats_ia.all()[:MAX_CHATS]]})
+
+
+class ChatDetalleView(APIView):
+    """Guarda (crea o reemplaza) o borra una conversación del asistente."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, cliente_id):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        datos = request.data
+        if not isinstance(datos, dict) or not isinstance(datos.get('mensajes'), list):
+            return Response({'error': 'Conversación inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(json.dumps(datos, default=str)) > MAX_TAMANO_CHAT:
+            return Response({'error': 'La conversación es demasiado larga para guardarla.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        datos = {**datos, 'id': cliente_id}
+        ChatIa.objects.update_or_create(
+            usuario=usuario, cliente_id=cliente_id,
+            defaults={'titulo': str(datos.get('titulo') or 'Nueva conversación')[:120], 'datos': datos},
+        )
+        # Solo se guardan las más recientes
+        viejos = list(usuario.chats_ia.values_list('id', flat=True)[MAX_CHATS:])
+        if viejos:
+            ChatIa.objects.filter(id__in=viejos).delete()
+        return Response({'ok': True})
+
+    def delete(self, request, cliente_id):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        usuario.chats_ia.filter(cliente_id=cliente_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class RegistroEntrenamientoListView(APIView):
     """Entrenamientos terminados del usuario: listar y guardar uno nuevo."""

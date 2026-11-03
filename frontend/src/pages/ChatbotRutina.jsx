@@ -94,12 +94,16 @@ const MENSAJES_INICIALES = [
   { from: 'bot', text: '¿Dónde vas a entrenar?' },
 ]
 
-// ── Persistencia local del historial de chats (por navegador, por ahora) ──
-const STORAGE_KEY = 'body_rhythm_chats'
+// ── Historial de chats ──
+// Se guarda en el servidor (se ve desde cualquier dispositivo) y queda una
+// copia en este navegador, separada por usuario, para abrir rápido.
+const CLAVE_VIEJA = 'body_rhythm_chats' // antes era una sola para todos los usuarios
+const claveLocal = () => `body_rhythm_chats_${localStorage.getItem('username') || 'sin-usuario'}`
 
 function cargarChats() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(claveLocal()) ?? localStorage.getItem(CLAVE_VIEJA)
+    localStorage.removeItem(CLAVE_VIEJA)
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -108,11 +112,16 @@ function cargarChats() {
 
 function guardarChats(chats) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats))
+    localStorage.setItem(claveLocal(), JSON.stringify(chats))
   } catch {
     // si falla el guardado (localStorage lleno, etc.) no rompemos el chat
   }
 }
+
+// Lo que se manda al servidor: sin el indicador de "escribiendo..."
+const paraGuardar = (chat) => ({ ...chat, mensajes: chat.mensajes.filter((m) => !m.typing) })
+// Conversación recién creada en la que aún no se ha hecho nada
+const esVacio = (chat) => chat.paso === PASOS.LUGAR && chat.mensajes.length <= MENSAJES_INICIALES.length
 
 function crearChatNuevo() {
   return {
@@ -180,6 +189,69 @@ export default function ChatbotRutina() {
     guardarChats(chats)
   }, [chats])
 
+  // Al abrir: trae las conversaciones del servidor y las junta con las de este
+  // navegador (si una está en los dos lados, gana la que tiene más mensajes).
+  const sincronizados = useRef({}) // id -> JSON de lo último guardado en el servidor
+  const chatsRef = useRef(chats)
+  useEffect(() => {
+    chatsRef.current = chats
+  })
+  const [servidorListo, setServidorListo] = useState(false)
+
+  useEffect(() => {
+    let activo = true
+    api
+      .get('/entrenamientos/chatbot/chats/')
+      .then((res) => {
+        if (!activo) return
+        const remotos = res.data.chats || []
+        remotos.forEach((c) => {
+          sincronizados.current[c.id] = JSON.stringify(c)
+        })
+        if (!remotos.length) return
+        // Las conversaciones vacías de este navegador sobran si ya hay del servidor
+        const locales = chatsRef.current.filter((c) => !esVacio(c))
+        const porId = new Map(remotos.map((c) => [c.id, c]))
+        locales.forEach((local) => {
+          const remoto = porId.get(local.id)
+          if (!remoto || local.mensajes.length > remoto.mensajes.length) porId.set(local.id, local)
+        })
+        const juntos = [...porId.values()]
+        setChats(juntos)
+        setChatActualId((actual) =>
+          juntos.some((c) => c.id === actual)
+            ? actual
+            : juntos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0].id
+        )
+      })
+      .catch(() => {})
+      .finally(() => activo && setServidorListo(true))
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  // Guarda en el servidor las conversaciones que cambiaron (un momento después
+  // del último cambio, para no mandar una petición por cada mensaje)
+  useEffect(() => {
+    if (!servidorListo) return
+    const espera = setTimeout(() => {
+      chats.forEach((chat) => {
+        if (esVacio(chat)) return
+        const datos = paraGuardar(chat)
+        const json = JSON.stringify(datos)
+        if (sincronizados.current[chat.id] === json) return
+        api
+          .put(`/entrenamientos/chatbot/chats/${encodeURIComponent(chat.id)}/`, datos)
+          .then(() => {
+            sincronizados.current[chat.id] = json
+          })
+          .catch(() => {})
+      })
+    }, 1200)
+    return () => clearTimeout(espera)
+  }, [chats, servidorListo])
+
   // Actualiza el chat activo dentro del array de chats (inmutable)
   const actualizarChatActual = (cambios) => {
     setChats((prev) =>
@@ -204,6 +276,17 @@ export default function ChatbotRutina() {
 
   const cargarConversacion = (id) => {
     setChatActualId(id)
+    setTextoLibre('')
+  }
+
+  const eliminarConversacion = (chat) => {
+    if (!window.confirm(`¿Borrar la conversación "${chat.titulo}"?`)) return
+    api.delete(`/entrenamientos/chatbot/chats/${encodeURIComponent(chat.id)}/`).catch(() => {})
+    delete sincronizados.current[chat.id]
+    const quedan = chats.filter((c) => c.id !== chat.id)
+    const siguientes = quedan.length ? quedan : [crearChatNuevo()]
+    setChats(siguientes)
+    if (chat.id === chatActualId) setChatActualId(siguientes[0].id)
     setTextoLibre('')
   }
 
@@ -397,14 +480,24 @@ export default function ChatbotRutina() {
             .slice()
             .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
             .map((c) => (
-              <button
-                key={c.id}
-                className={`sidebar-item ${c.id === chatActualId ? 'activo' : ''}`}
-                onClick={() => cargarConversacion(c.id)}
-              >
-                <span className="sidebar-item-titulo">{c.titulo}</span>
-                <span className="sidebar-item-fecha">{formatearFecha(c.fecha)}</span>
-              </button>
+              <div key={c.id} className={`sidebar-fila ${c.id === chatActualId ? 'activo' : ''}`}>
+                <button
+                  className={`sidebar-item ${c.id === chatActualId ? 'activo' : ''}`}
+                  onClick={() => cargarConversacion(c.id)}
+                >
+                  <span className="sidebar-item-titulo">{c.titulo}</span>
+                  <span className="sidebar-item-fecha">{formatearFecha(c.fecha)}</span>
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-borrar"
+                  onClick={() => eliminarConversacion(c)}
+                  aria-label={`Borrar la conversación ${c.titulo}`}
+                  title="Borrar"
+                >
+                  ×
+                </button>
+              </div>
             ))}
         </div>
       </aside>

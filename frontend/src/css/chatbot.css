@@ -175,6 +175,55 @@
   font-size: 0.74rem;
 }
 
+/* Fila de la lista: la conversación y el botón para borrarla */
+.chatbot-page .sidebar-fila {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatbot-page .sidebar-fila .sidebar-item {
+  padding-right: 2.2rem;
+}
+
+.chatbot-page .sidebar-borrar {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: var(--cb-texto-3);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.chatbot-page .sidebar-fila:hover .sidebar-borrar,
+.chatbot-page .sidebar-fila.activo .sidebar-borrar,
+.chatbot-page .sidebar-borrar:focus-visible {
+  opacity: 1;
+}
+
+.chatbot-page .sidebar-borrar:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+@media (hover: none) {
+  .chatbot-page .sidebar-borrar {
+    opacity: 1;
+  }
+}
+
 /* ---------- Columna del chat ---------- */
 .chatbot-page .chatbot-main {
   display: flex;
@@ -695,7 +744,7 @@
     overflow: visible;
   }
 
-  .chatbot-page .sidebar-item {
+  .chatbot-page .sidebar-fila {
     flex-shrink: 0;
     max-width: 170px;
   }
