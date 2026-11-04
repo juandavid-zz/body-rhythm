@@ -84,6 +84,23 @@ const ICONOS = {
     <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1-.5-2-1-2.5 2 .5 4 3 4 5.5a5.5 5.5 0 0 1-11 0C6.5 9 11 7 12 3Z" />
   ),
   enviar: <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />,
+  casa: <path d="M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5" />,
+  edificio: <path d="M5 20V5h9v15M14 9h5v11M3 20h18M8 8h3M8 12h3M8 16h3" />,
+  persona: (
+    <>
+      <circle cx="12" cy="5.5" r="2.2" />
+      <path d="M12 8.5v6M7.5 11l4.5-2 4.5 2M9 21l3-6.5 3 6.5" />
+    </>
+  ),
+  maquina: <path d="M5 21V4M5 6h9l3 3v12M9 10h5M9 14h5M3 21h16" />,
+  superior: (
+    <>
+      <circle cx="12" cy="5" r="2.2" />
+      <path d="M4.5 10.5 12 8.5l7.5 2M12 8.5V15M8 21l1-6h6l1 6" />
+    </>
+  ),
+  inferior: <path d="M8 4h8l1 6H7l1-6ZM9 10l-1.5 10.5M15 10l1.5 10.5M12 10v4" />,
+  atras: <path d="M15 5l-7 7 7 7" />,
   chispa: (
     <path d="M12 3.5 13.6 9a2 2 0 0 0 1.4 1.4l5.5 1.6-5.5 1.6a2 2 0 0 0-1.4 1.4L12 20.5 10.4 15A2 2 0 0 0 9 13.6L3.5 12 9 10.4A2 2 0 0 0 10.4 9Z" />
   ),
@@ -113,22 +130,30 @@ const saludo = () => {
 }
 
 const OPCIONES_LUGAR = [
-  { valor: 'casa', label: '🏠 En casa' },
-  { valor: 'gimnasio', label: '🏋️ En el gimnasio' },
+  { valor: 'casa', label: 'En casa', detalle: 'Con lo que tengas a mano', icono: 'casa', tono: 'verde' },
+  { valor: 'gimnasio', label: 'En el gimnasio', detalle: 'Máquinas y pesas', icono: 'edificio', tono: 'morado' },
 ]
 
 const OPCIONES_EQUIPO = [
-  { valor: 'ninguno', label: 'Ninguno (peso corporal)' },
-  { valor: 'basico', label: 'Básico (mancuernas, bandas)' },
-  { valor: 'completo', label: 'Completo (máquinas de gym)' },
+  { valor: 'ninguno', label: 'Ninguno', detalle: 'Solo tu peso corporal', icono: 'persona', tono: 'azul' },
+  { valor: 'basico', label: 'Básico', detalle: 'Mancuernas y bandas', icono: 'rutina', tono: 'morado' },
+  { valor: 'completo', label: 'Completo', detalle: 'Máquinas de gimnasio', icono: 'maquina', tono: 'naranja' },
 ]
 
 const OPCIONES_GRUPO_MUSCULAR = [
-  { valor: 'tren superior', label: '💪 Tren superior' },
-  { valor: 'tren inferior', label: '🦵 Tren inferior' },
-  { valor: 'cuerpo completo', label: '🔥 Cuerpo completo' },
-  { valor: 'recomendado', label: '✨ Recomiéndame tú' },
+  { valor: 'tren superior', label: 'Tren superior', detalle: 'Pecho, espalda y brazos', icono: 'superior', tono: 'azul' },
+  { valor: 'tren inferior', label: 'Tren inferior', detalle: 'Piernas y glúteos', icono: 'inferior', tono: 'verde' },
+  { valor: 'cuerpo completo', label: 'Cuerpo completo', detalle: 'Todo en cada sesión', icono: 'calentar', tono: 'naranja' },
+  { valor: 'recomendado', label: 'Recomiéndame tú', detalle: 'Según tu IMC y tu meta', icono: 'chispa', tono: 'morado' },
 ]
+
+// Los tres pasos del armado de una rutina: una pregunta por pantalla
+const PASOS_RUTINA = {
+  [PASOS.LUGAR]: { n: 1, titulo: '¿Dónde vas a entrenar?', detalle: 'Así elijo ejercicios que puedas hacer.', opciones: OPCIONES_LUGAR },
+  [PASOS.EQUIPO]: { n: 2, titulo: '¿Qué equipo tienes?', detalle: 'Solo usaré lo que tengas disponible.', opciones: OPCIONES_EQUIPO },
+  [PASOS.GRUPO_MUSCULAR]: { n: 3, titulo: '¿Qué quieres entrenar?', detalle: 'Elige una opción o escribe la tuya.', opciones: OPCIONES_GRUPO_MUSCULAR },
+}
+const etiqueta = (opciones, valor) => opciones.find((o) => o.valor === valor)?.label
 
 const MENSAJES_INICIALES = [
   {
@@ -170,7 +195,7 @@ const esVacio = (chat) => chat.paso === PASOS.LUGAR && chat.mensajes.length <= M
 function crearChatNuevo() {
   return {
     id: `chat_${Date.now()}`,
-    titulo: 'Nueva conversación',
+    titulo: 'Nueva rutina',
     fecha: new Date().toISOString(),
     mensajes: MENSAJES_INICIALES,
     lugar: null,
@@ -348,6 +373,24 @@ export default function ChatbotRutina() {
     setTextoLibre('')
   }
 
+  const pasoAtras = () => {
+    if (chatActual.paso === PASOS.LUGAR) {
+      nuevaConversacion()
+      return
+    }
+    const anterior = chatActual.paso === PASOS.EQUIPO
+      ? { paso: PASOS.LUGAR, lugar: null }
+      : { paso: PASOS.EQUIPO, equipo: null }
+    actualizarChatActual({ ...anterior, mensajes: chatActual.mensajes.slice(0, -2) })
+    setTextoLibre('')
+  }
+
+  const elegirPaso = (opcion) => {
+    if (chatActual.paso === PASOS.LUGAR) elegirLugar(opcion)
+    else if (chatActual.paso === PASOS.EQUIPO) elegirEquipo(opcion)
+    else elegirGrupoMuscular(opcion)
+  }
+
   const elegirLugar = (opcion) => {
     actualizarChatActual({ lugar: opcion.valor, paso: PASOS.EQUIPO })
     agregarMensaje({ from: 'user', text: opcion.label })
@@ -453,7 +496,7 @@ export default function ChatbotRutina() {
       grupoMuscular: null,
       resultado: null,
       paso: PASOS.LUGAR,
-      titulo: 'Nueva conversación',
+      titulo: 'Nueva rutina',
     })
   }
 
@@ -619,6 +662,69 @@ export default function ChatbotRutina() {
         ) : (
         <div className="chatbot-card">
 
+          {chatActual.paso === PASOS.CARGANDO ? (
+            <div className="cb-paso cb-paso-cargando" role="status">
+              <div className="cb-cargando-anillo" aria-hidden="true"><Icono nombre="chispa" /></div>
+              <h2 className="cb-paso-titulo">Armando tu rutina</h2>
+              <p className="cb-paso-detalle">Elijo los ejercicios según tu IMC, tu meta y tu equipo.</p>
+              <div className="cb-paso-respuestas">
+                {[etiqueta(OPCIONES_LUGAR, chatActual.lugar), etiqueta(OPCIONES_EQUIPO, chatActual.equipo), etiqueta(OPCIONES_GRUPO_MUSCULAR, chatActual.grupoMuscular) || chatActual.grupoMuscular]
+                  .filter(Boolean)
+                  .map((r) => <span key={r}>{r}</span>)}
+              </div>
+            </div>
+          ) : PASOS_RUTINA[chatActual.paso] ? (() => {
+            const paso = PASOS_RUTINA[chatActual.paso]
+            const respuestas = [etiqueta(OPCIONES_LUGAR, chatActual.lugar), etiqueta(OPCIONES_EQUIPO, chatActual.equipo)].filter(Boolean)
+            return (
+              <div className="cb-paso" key={chatActual.paso}>
+                <button type="button" className="cb-paso-atras" onClick={pasoAtras}>
+                  <Icono nombre="atras" />
+                  {paso.n === 1 ? 'Cancelar' : 'Atrás'}
+                </button>
+
+                <div className="cb-paso-progreso" aria-hidden="true">
+                  {[1, 2, 3].map((n) => <i key={n} className={n <= paso.n ? 'hecho' : ''} />)}
+                </div>
+                <p className="cb-paso-n">Paso {paso.n} de 3</p>
+                <h2 className="cb-paso-titulo">{paso.titulo}</h2>
+                <p className="cb-paso-detalle">{paso.detalle}</p>
+
+                <div className={`cb-paso-opciones de-${paso.opciones.length}`}>
+                  {paso.opciones.map((op) => (
+                    <button key={op.valor} type="button" className="cb-paso-opcion" onClick={() => elegirPaso(op)} disabled={enviandoLibre}>
+                      <span className={`cb-tarjeta-icono ${op.tono}`}><Icono nombre={op.icono} /></span>
+                      <strong>{op.label}</strong>
+                      <small>{op.detalle}</small>
+                    </button>
+                  ))}
+                </div>
+
+                {chatActual.paso === PASOS.GRUPO_MUSCULAR && (
+                  <form className="cb-buscador cb-paso-libre" onSubmit={enviarGrupoMuscular}>
+                    <input
+                      type="text"
+                      placeholder="O escribe algo específico, como espalda y hombros"
+                      value={textoLibre}
+                      onChange={(e) => setTextoLibre(e.target.value)}
+                      disabled={enviandoLibre}
+                      aria-label="Escribe qué quieres entrenar"
+                    />
+                    <button type="submit" disabled={enviandoLibre || !textoLibre.trim()} aria-label="Enviar">
+                      <Icono nombre="enviar" />
+                    </button>
+                  </form>
+                )}
+
+                {respuestas.length > 0 && (
+                  <div className="cb-paso-respuestas">
+                    {respuestas.map((r) => <span key={r}>{r}</span>)}
+                  </div>
+                )}
+              </div>
+            )
+          })() : (
+          <>
           <div className="chat-messages">
             {chatActual.mensajes.map((m, i) => (
               <div key={i} className={`msg ${m.from}`}>
@@ -765,56 +871,6 @@ export default function ChatbotRutina() {
             <div ref={finChat} />
           </div>
 
-          {chatActual.paso === PASOS.LUGAR && (
-            <div className="chat-options">
-              {OPCIONES_LUGAR.map((op) => (
-                <button key={op.valor} className="chat-option-btn" onClick={() => elegirLugar(op)}>
-                  {op.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {chatActual.paso === PASOS.EQUIPO && (
-            <div className="chat-options">
-              {OPCIONES_EQUIPO.map((op) => (
-                <button key={op.valor} className="chat-option-btn" onClick={() => elegirEquipo(op)}>
-                  {op.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {chatActual.paso === PASOS.GRUPO_MUSCULAR && (
-            <div className="chat-options">
-              {OPCIONES_GRUPO_MUSCULAR.map((op) => (
-                <button
-                  key={op.valor}
-                  className="chat-option-btn"
-                  onClick={() => elegirGrupoMuscular(op)}
-                  disabled={enviandoLibre}
-                >
-                  {op.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {chatActual.paso === PASOS.GRUPO_MUSCULAR && (
-            <form className="chat-input-row" onSubmit={enviarGrupoMuscular}>
-              <input
-                type="text"
-                placeholder="...o escribe algo específico (ej: espalda y hombros)"
-                value={textoLibre}
-                onChange={(e) => setTextoLibre(e.target.value)}
-                disabled={enviandoLibre}
-              />
-              <button type="submit" disabled={enviandoLibre || !textoLibre.trim()}>
-                Enviar
-              </button>
-            </form>
-          )}
-
           {chatActual.paso === PASOS.ERROR && (
             <div className="chat-actions">
               <button className="btn-primary" onClick={reiniciar}>
@@ -837,6 +893,8 @@ export default function ChatbotRutina() {
                 Enviar
               </button>
             </form>
+          )}
+          </>
           )}
         </div>
         )}
