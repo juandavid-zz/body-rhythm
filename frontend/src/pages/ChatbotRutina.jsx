@@ -675,7 +675,11 @@ export default function ChatbotRutina() {
             </div>
           ) : PASOS_RUTINA[chatActual.paso] ? (() => {
             const paso = PASOS_RUTINA[chatActual.paso]
-            const respuestas = [etiqueta(OPCIONES_LUGAR, chatActual.lugar), etiqueta(OPCIONES_EQUIPO, chatActual.equipo)].filter(Boolean)
+            const tramos = [
+              { nombre: 'Lugar', valor: etiqueta(OPCIONES_LUGAR, chatActual.lugar) },
+              { nombre: 'Equipo', valor: etiqueta(OPCIONES_EQUIPO, chatActual.equipo) },
+              { nombre: 'Enfoque', valor: null },
+            ]
             return (
               <div className="cb-paso" key={chatActual.paso}>
                 <button type="button" className="cb-paso-atras" onClick={pasoAtras}>
@@ -683,10 +687,14 @@ export default function ChatbotRutina() {
                   {paso.n === 1 ? 'Cancelar' : 'Atrás'}
                 </button>
 
-                <div className="cb-paso-progreso" aria-hidden="true">
-                  {[1, 2, 3].map((n) => <i key={n} className={n <= paso.n ? 'hecho' : ''} />)}
-                </div>
-                <p className="cb-paso-n">Paso {paso.n} de 3</p>
+                <ol className="cb-paso-progreso" aria-label={`Paso ${paso.n} de 3`}>
+                  {tramos.map((t, i) => (
+                    <li key={t.nombre} className={i + 1 < paso.n ? 'hecho' : i + 1 === paso.n ? 'actual' : ''}>
+                      <i aria-hidden="true" />
+                      <span>{t.valor || t.nombre}</span>
+                    </li>
+                  ))}
+                </ol>
                 <h2 className="cb-paso-titulo">{paso.titulo}</h2>
                 <p className="cb-paso-detalle">{paso.detalle}</p>
 
@@ -716,11 +724,6 @@ export default function ChatbotRutina() {
                   </form>
                 )}
 
-                {respuestas.length > 0 && (
-                  <div className="cb-paso-respuestas">
-                    {respuestas.map((r) => <span key={r}>{r}</span>)}
-                  </div>
-                )}
               </div>
             )
           })() : (
@@ -847,15 +850,18 @@ export default function ChatbotRutina() {
                       </div>
                     </div>
                   </div>
+                ) : m.markdown ? (
+                  <div className="msg-respuesta">
+                    <span className="msg-firma"><span className="msg-firma-icono"><Icono nombre="chispa" /></span>Asistente</span>
+                    <MarkdownAnimado
+                      text={m.text}
+                      enabled={m.from === 'bot' && i >= umbralAnimacion}
+                      onTick={nudgeScroll}
+                    />
+                  </div>
                 ) : (
                   <div className="msg-bubble">
-                    {m.markdown ? (
-                      <MarkdownAnimado
-                        text={m.text}
-                        enabled={m.from === 'bot' && i >= umbralAnimacion}
-                        onTick={nudgeScroll}
-                      />
-                    ) : m.from === 'bot' ? (
+                    {m.from === 'bot' ? (
                       <TextoAnimado
                         text={m.text}
                         enabled={i >= umbralAnimacion}
@@ -881,16 +887,17 @@ export default function ChatbotRutina() {
 
 
           {chatActivo && (
-            <form className="chat-input-row" onSubmit={enviarPreguntaLibre}>
+            <form className="cb-buscador cb-chat-entrada" onSubmit={enviarPreguntaLibre}>
               <input
                 type="text"
-                placeholder="Escribe tu pregunta... (ej: ¿qué hago si me duele la rodilla?)"
+                placeholder="Pregunta lo que quieras, como qué hacer si te duele la rodilla"
                 value={textoLibre}
                 onChange={(e) => setTextoLibre(e.target.value)}
                 disabled={enviandoLibre}
+                aria-label="Escribe tu pregunta"
               />
-              <button type="submit" disabled={enviandoLibre || !textoLibre.trim()}>
-                Enviar
+              <button type="submit" disabled={enviandoLibre || !textoLibre.trim()} aria-label="Enviar">
+                <Icono nombre="enviar" />
               </button>
             </form>
           )}

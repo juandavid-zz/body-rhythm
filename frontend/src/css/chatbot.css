@@ -7,8 +7,8 @@
 
 .chatbot-page {
   --cb-texto: #f5f3ff;
-  --cb-texto-2: rgba(240, 235, 255, 0.72);
-  --cb-texto-3: rgba(240, 235, 255, 0.5);
+  --cb-texto-2: rgba(244, 242, 255, 0.82);
+  --cb-texto-3: rgba(244, 242, 255, 0.6);
   --cb-separador: rgba(255, 255, 255, 0.09);
   --cb-acento: #a855f7;
   --cb-degradado: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
@@ -25,7 +25,7 @@
     radial-gradient(circle at 45% 105%, rgba(59, 130, 246, 0.12), transparent 40%),
     #07060d;
   color: var(--cb-texto);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -531,20 +531,41 @@
 
 .chatbot-page .cb-paso-progreso {
   display: flex;
-  gap: 6px;
-  margin-bottom: 1.2rem;
+  gap: 8px;
+  margin: 0 0 1.6rem;
+  padding: 0;
+  list-style: none;
 }
 
-.chatbot-page .cb-paso-progreso i {
-  width: 44px;
-  height: 5px;
-  border-radius: 3px;
+.chatbot-page .cb-paso-progreso li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 96px;
+  color: var(--cb-texto-3);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.chatbot-page .cb-paso-progreso li i {
+  height: 4px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.14);
   transition: background 0.3s;
 }
 
-.chatbot-page .cb-paso-progreso i.hecho {
+.chatbot-page .cb-paso-progreso li.hecho i,
+.chatbot-page .cb-paso-progreso li.actual i {
   background: var(--cb-degradado);
+}
+
+.chatbot-page .cb-paso-progreso li.hecho {
+  color: var(--cb-texto-2);
+}
+
+.chatbot-page .cb-paso-progreso li.actual {
+  color: #fff;
+  font-weight: 600;
 }
 
 .chatbot-page .cb-paso-n {
@@ -583,16 +604,17 @@
 .chatbot-page .cb-paso-opciones.de-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 520px; }
 
 .chatbot-page .cb-paso-opcion {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.25rem;
   margin: 0;
-  padding: 1.1rem;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 1.25rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 34px -18px rgba(0, 0, 0, 0.6);
   color: inherit;
   font-family: var(--cb-sf);
   text-align: left;
@@ -601,11 +623,32 @@
 }
 
 .chatbot-page .cb-paso-opcion .cb-tarjeta-icono {
-  width: 2.75rem;
-  height: 2.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 13px;
-  padding: 0.65rem;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.9rem;
+  border-radius: 14px;
+  padding: 0.7rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Flecha que aparece al pasar el mouse: "toca para seguir" */
+.chatbot-page .cb-paso-opcion::after {
+  content: '';
+  position: absolute;
+  top: 1.35rem;
+  right: 1.25rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.8);
+  border-right: 2px solid rgba(255, 255, 255, 0.8);
+  opacity: 0;
+  transform: translateX(-4px) rotate(45deg);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.chatbot-page .cb-paso-opcion:hover:not(:disabled)::after {
+  opacity: 1;
+  transform: translateX(0) rotate(45deg);
 }
 
 .chatbot-page .cb-paso-opcion strong {
@@ -616,8 +659,8 @@
 }
 
 .chatbot-page .cb-paso-opcion small {
-  color: var(--cb-texto-3);
-  font-size: 0.85rem;
+  color: var(--cb-texto-2);
+  font-size: 0.88rem;
 }
 
 .chatbot-page .cb-paso-opcion:hover:not(:disabled) {
@@ -770,7 +813,7 @@
   max-width: min(75%, 760px);
   padding: 0.7rem 1rem;
   border-radius: 20px;
-  font-size: 0.94rem;
+  font-size: 0.98rem;
   line-height: 1.5;
   overflow-wrap: break-word;
 }
@@ -819,6 +862,109 @@
 @keyframes cb-punto {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* ---------- Respuestas largas del asistente: sin burbuja, como un documento ---------- */
+.chatbot-page .msg-respuesta {
+  width: 100%;
+  max-width: 720px;
+  padding: 0.4rem 0.2rem 0.8rem;
+}
+
+.chatbot-page .msg-firma {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+  color: var(--cb-texto-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chatbot-page .msg-firma-icono {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0.32rem;
+  border-radius: 50%;
+  background: var(--cb-degradado);
+  color: #fff;
+}
+
+.chatbot-page .msg-firma-icono svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  line-height: 1.7;
+  letter-spacing: 0.002em;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble p,
+.chatbot-page .msg-respuesta .markdown-bubble ul,
+.chatbot-page .msg-respuesta .markdown-bubble ol {
+  margin: 0.7rem 0;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble li {
+  margin: 0.35rem 0;
+  padding-left: 0.2rem;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble li::marker {
+  color: #c084fc;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble h1,
+.chatbot-page .msg-respuesta .markdown-bubble h2,
+.chatbot-page .msg-respuesta .markdown-bubble h3,
+.chatbot-page .msg-respuesta .markdown-bubble h4 {
+  margin: 1.5rem 0 0.5rem;
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble strong {
+  color: #fff;
+  font-weight: 650;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble table {
+  width: fit-content;
+  margin: 1rem 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.92rem;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble th {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble th,
+.chatbot-page .msg-respuesta .markdown-bubble td {
+  padding: 0.65rem 0.85rem;
+}
+
+.chatbot-page .msg-respuesta .markdown-bubble tr:last-child td {
+  border-bottom: none;
+}
+
+/* Barra para escribir dentro de la conversación (mismo estilo que la bienvenida) */
+.chatbot-page .cb-chat-entrada {
+  width: 100%;
+  max-width: 780px;
+  margin: 0.8rem auto 0;
+  animation: none;
 }
 
 /* ---------- Respuestas en Markdown ---------- */
@@ -1025,8 +1171,8 @@
 
 .chatbot-page .ejercicio-consejo {
   margin: 0.25rem 0 0;
-  color: var(--cb-texto-3);
-  font-size: 0.82rem;
+  color: var(--cb-texto-2);
+  font-size: 0.86rem;
   line-height: 1.45;
 }
 
