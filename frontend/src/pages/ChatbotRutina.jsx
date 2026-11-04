@@ -660,7 +660,7 @@ export default function ChatbotRutina() {
             </div>
           </div>
         ) : (
-        <div className="chatbot-card">
+        <div className={`chatbot-card ${PASOS_RUTINA[chatActual.paso] || chatActual.paso === PASOS.CARGANDO ? 'sin-marco' : ''}`}>
 
           {chatActual.paso === PASOS.CARGANDO ? (
             <div className="cb-paso cb-paso-cargando" role="status">

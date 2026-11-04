@@ -487,6 +487,19 @@
 }
 
 /* ---------- Armado de rutina: una pregunta por pantalla ---------- */
+/* Sin recuadro de vidrio: como las pantallas de configuración del iPhone */
+.chatbot-page .chatbot-card.sin-marco {
+  border-color: transparent;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.chatbot-page .chatbot-card.sin-marco::before {
+  display: none;
+}
+
 .chatbot-page .cb-paso {
   --cb-sf: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
   position: relative;
