@@ -1,11 +1,14 @@
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from users.models import Usuario
+
 from .models import (
     PlanNutricional,
     Comida,
@@ -13,7 +16,9 @@ from .models import (
     CategoriaAlimento,
     Alimento,
 )
-from .calculos import calcular_objetivo_nutricional, calorias_para_comida
+
+from .calculos import calcular_objetivo_nutricional
+
 from .serializers import (
     PlanNutricionalSerializer,
     ComidaSerializer,
@@ -27,11 +32,6 @@ def usuario_actual(request):
     return get_object_or_404(Usuario, auth=request.user)
 
 
-# Catálogo base. No usa IMC ni IA todavía.
-# Usa únicamente categorías que ya existen en el catálogo actual.
-# A qué plan base del catálogo corresponde cada meta del usuario.
-# Se usa solo para marcar "recomendado" en la lista, no cambia lo que
-# ya existe en el catálogo.
 META_A_PLAN_BASE = {
     "perder_peso": "Plan balance ligero",
     "ganar_musculo": "Plan alto en proteína",
@@ -83,7 +83,7 @@ PLANES_BASE = [
             "snack": ["Frutas", "Snacks", "Frutos secos y semillas"],
         },
     },
-    {
+        {
         "nombre": "Plan balance ligero",
         "descripcion": "Plan base con énfasis en verduras, frutas, proteínas y comidas variadas.",
         "calorias_diarias": 1800,
@@ -97,25 +97,106 @@ PLANES_BASE = [
             "snack": ["Frutas", "Lácteos"],
         },
     },
+    {
+        "nombre": "Plan mantenimiento",
+        "descripcion": "Plan variado orientado a mantener hábitos de alimentación y energía diaria.",
+        "calorias_diarias": 2000,
+        "proteinas_g": 130,
+        "carbohidratos_g": 230,
+        "grasas_g": 65,
+        "bloques": {
+            "desayuno": ["Panes y harinas", "Lácteos", "Frutas"],
+            "almuerzo": ["Proteínas", "Cereales y granos", "Verduras"],
+            "cena": ["Proteínas", "Legumbres", "Verduras"],
+            "snack": ["Frutos secos y semillas", "Frutas"],
+        },
+    },
+    {
+        "nombre": "Plan pérdida de peso",
+        "descripcion": "Plan con porciones moderadas y variedad de verduras, frutas y fuentes de proteína.",
+        "calorias_diarias": 1800,
+        "proteinas_g": 140,
+        "carbohidratos_g": 170,
+        "grasas_g": 60,
+        "bloques": {
+            "desayuno": ["Lácteos", "Frutas", "Panes y harinas"],
+            "almuerzo": ["Proteínas", "Verduras", "Legumbres"],
+            "cena": ["Proteínas", "Verduras", "Legumbres"],
+            "snack": ["Frutas", "Lácteos"],
+        },
+    },
+    {
+        "nombre": "Plan ganancia muscular",
+        "descripcion": "Plan con mayor aporte energético y de proteínas para acompañar el entrenamiento de fuerza.",
+        "calorias_diarias": 2400,
+        "proteinas_g": 180,
+        "carbohidratos_g": 270,
+        "grasas_g": 70,
+        "bloques": {
+            "desayuno": ["Proteínas", "Lácteos", "Cereales y granos"],
+            "almuerzo": ["Proteínas", "Cereales y granos", "Legumbres"],
+            "cena": ["Proteínas", "Panes y harinas", "Verduras"],
+            "snack": ["Lácteos", "Frutos secos y semillas"],
+        },
+    },
+    {
+        "nombre": "Plan vegetariano",
+        "descripcion": "Plan basado en legumbres, cereales, frutas, verduras, lácteos y frutos secos.",
+        "calorias_diarias": 2000,
+        "proteinas_g": 120,
+        "carbohidratos_g": 250,
+        "grasas_g": 65,
+        "bloques": {
+            "desayuno": ["Lácteos", "Cereales y granos", "Frutas"],
+            "almuerzo": ["Legumbres", "Cereales y granos", "Verduras"],
+            "cena": ["Legumbres", "Verduras", "Lácteos"],
+            "snack": ["Frutos secos y semillas", "Frutas"],
+        },
+    },
+    {
+        "nombre": "Plan rendimiento deportivo",
+        "descripcion": "Plan con variedad de alimentos energéticos para acompañar la actividad física.",
+        "calorias_diarias": 2400,
+        "proteinas_g": 155,
+        "carbohidratos_g": 300,
+        "grasas_g": 65,
+        "bloques": {
+            "desayuno": ["Cereales y granos", "Lácteos", "Frutas"],
+            "almuerzo": ["Proteínas", "Cereales y granos", "Verduras"],
+            "cena": ["Proteínas", "Panes y harinas", "Verduras"],
+            "snack": ["Frutas", "Lácteos", "Frutos secos y semillas"],
+        },
+    },
+    {
+        "nombre": "Plan alto en fibra",
+        "descripcion": "Plan que prioriza legumbres, cereales, frutas y verduras.",
+        "calorias_diarias": 2000,
+        "proteinas_g": 125,
+        "carbohidratos_g": 260,
+        "grasas_g": 60,
+        "bloques": {
+            "desayuno": ["Frutas", "Cereales y granos", "Lácteos"],
+            "almuerzo": ["Legumbres", "Verduras", "Cereales y granos"],
+            "cena": ["Legumbres", "Verduras", "Frutas"],
+            "snack": ["Frutas", "Frutos secos y semillas"],
+        },
+    },
 ]
 
 
 def _marcar_recomendados(datos_planes, usuario):
-    """Añade 'recomendado': True al plan del catálogo que mejor se ajusta
-    a la meta del usuario, sin tocar la base de datos."""
     nombre_recomendado = META_A_PLAN_BASE.get(usuario.meta)
+
     for plan in datos_planes:
         plan["recomendado"] = (
             not plan.get("generada_por_ia")
             and plan.get("nombre") == nombre_recomendado
         )
+
     return datos_planes
 
 
 def _agregar_comidas_base(plan, bloques, factor_porcion=1.0):
-    if plan.comidas.exists():
-        return
-
     orden = 0
     alimentos_usados = set()
 
@@ -134,18 +215,53 @@ def _agregar_comidas_base(plan, bloques, factor_porcion=1.0):
                 if alimento.id in alimentos_usados:
                     continue
 
-                Comida.objects.create(
-                    plan=plan,
-                    alimento=alimento,
-                    tipo=tipo,
-                    nombre=alimento.nombre,
-                    descripcion=alimento.descripcion,
-                    calorias=round(alimento.calorias_100g * factor_porcion, 1),
-                    proteinas_g=round(alimento.proteinas_100g * factor_porcion, 1),
-                    carbohidratos_g=round(alimento.carbohidratos_100g * factor_porcion, 1),
-                    grasas_g=round(alimento.grasas_100g * factor_porcion, 1),
-                    orden=orden,
+                cantidad_base = round(100 * factor_porcion, 2)
+
+                datos_comida = {
+                    "nombre": alimento.nombre,
+                    "descripcion": alimento.descripcion,
+                    "cantidad_base_g": cantidad_base,
+                    "calorias": round(
+                        alimento.calorias_100g * factor_porcion, 1
+                    ),
+                    "proteinas_g": round(
+                        alimento.proteinas_100g * factor_porcion, 1
+                    ),
+                    "carbohidratos_g": round(
+                        alimento.carbohidratos_100g * factor_porcion, 1
+                    ),
+                    "grasas_g": round(
+                        alimento.grasas_100g * factor_porcion, 1
+                    ),
+                    "orden": orden,
+                }
+
+                # Reutilizar la comida evita romper los registros
+                # históricos que apuntan a ella.
+                comida_existente = (
+                    Comida.objects
+                    .filter(
+                        plan=plan,
+                        alimento=alimento,
+                        tipo=tipo,
+                    )
+                    .order_by("id")
+                    .first()
                 )
+
+                if comida_existente:
+                    for campo, valor in datos_comida.items():
+                        setattr(comida_existente, campo, valor)
+
+                    comida_existente.save()
+                else:
+                    Comida.objects.create(
+                        plan=plan,
+                        alimento=alimento,
+                        tipo=tipo,
+                        **datos_comida,
+                    )
+
                 alimentos_usados.add(alimento.id)
                 orden += 1
 
@@ -155,7 +271,13 @@ class CategoriaAlimentoListView(APIView):
 
     def get(self, request):
         categorias = CategoriaAlimento.objects.all()
-        return Response(CategoriaAlimentoSerializer(categorias, many=True).data)
+
+        return Response(
+            CategoriaAlimentoSerializer(
+                categorias,
+                many=True,
+            ).data
+        )
 
 
 class AlimentoListView(APIView):
@@ -172,13 +294,20 @@ class AlimentoListView(APIView):
         )
 
         if buscar:
-            alimentos = alimentos.filter(nombre__icontains=buscar)
+            alimentos = alimentos.filter(
+                nombre__icontains=buscar
+            )
 
         if categoria:
-            alimentos = alimentos.filter(categoria_id=categoria)
+            alimentos = alimentos.filter(
+                categoria_id=categoria
+            )
 
         return Response(
-            AlimentoSerializer(alimentos[:100], many=True).data
+            AlimentoSerializer(
+                alimentos[:100],
+                many=True,
+            ).data
         )
 
 
@@ -194,17 +323,25 @@ class PlanNutricionalListView(APIView):
             .prefetch_related("comidas__alimento")
         )
 
-        datos = PlanNutricionalSerializer(planes, many=True).data
+        datos = PlanNutricionalSerializer(
+            planes,
+            many=True,
+        ).data
+
         _marcar_recomendados(datos, usuario)
 
         return Response(datos)
 
     def post(self, request):
         usuario = usuario_actual(request)
-        serializer = PlanNutricionalSerializer(data=request.data)
+
+        serializer = PlanNutricionalSerializer(
+            data=request.data
+        )
 
         if serializer.is_valid():
             plan = serializer.save(usuario=usuario)
+
             return Response(
                 PlanNutricionalSerializer(plan).data,
                 status=status.HTTP_201_CREATED,
@@ -248,12 +385,70 @@ class GenerarCatalogoPlanesView(APIView):
             .prefetch_related("comidas__alimento")
         )
 
-        datos = PlanNutricionalSerializer(planes, many=True).data
+        datos = PlanNutricionalSerializer(
+            planes,
+            many=True,
+        ).data
+
         _marcar_recomendados(datos, usuario)
 
-        return Response(datos, status=status.HTTP_200_OK)
+        return Response(
+            datos,
+            status=status.HTTP_200_OK,
+        )
 
+class GenerarPlanModalidadView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
+    def post(self, request):
+        usuario = usuario_actual(request)
+        nombre = str(request.data.get("nombre", "")).strip()
+
+        plantilla = next(
+            (p for p in PLANES_BASE if p["nombre"] == nombre),
+            None,
+        )
+
+        if plantilla is None:
+            return Response(
+                {"detail": "La modalidad solicitada no existe."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        plan, creado = PlanNutricional.objects.get_or_create(
+            usuario=usuario,
+            nombre=plantilla["nombre"],
+            defaults={
+                "descripcion": plantilla["descripcion"],
+                "calorias_diarias": plantilla["calorias_diarias"],
+                "proteinas_g": plantilla["proteinas_g"],
+                "carbohidratos_g": plantilla["carbohidratos_g"],
+                "grasas_g": plantilla["grasas_g"],
+                "generada_por_ia": False,
+            },
+        )
+
+        if creado or not plan.comidas.exists():
+            _agregar_comidas_base(plan, plantilla["bloques"])
+
+        plan.refresh_from_db()
+        datos = PlanNutricionalSerializer(plan).data
+        datos["recomendado"] = (
+            usuario.meta == next(
+                (
+                    meta
+                    for meta, nombre_plan in META_A_PLAN_BASE.items()
+                    if nombre_plan == plantilla["nombre"]
+                ),
+                None,
+            )
+        )
+
+        return Response(
+            datos,
+            status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK,
+        )
 class PlanNutricionalDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -275,6 +470,7 @@ class PlanNutricionalDetailView(APIView):
 
     def put(self, request, pk):
         plan = self.get_object(request, pk)
+
         serializer = PlanNutricionalSerializer(
             plan,
             data=request.data,
@@ -283,6 +479,7 @@ class PlanNutricionalDetailView(APIView):
 
         if serializer.is_valid():
             serializer.save()
+
             return Response(
                 PlanNutricionalSerializer(plan).data
             )
@@ -294,7 +491,10 @@ class PlanNutricionalDetailView(APIView):
 
     def delete(self, request, pk):
         self.get_object(request, pk).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 
 class ComidaListView(APIView):
@@ -302,6 +502,7 @@ class ComidaListView(APIView):
 
     def post(self, request, plan_id):
         usuario = usuario_actual(request)
+
         plan = get_object_or_404(
             PlanNutricional,
             pk=plan_id,
@@ -317,20 +518,56 @@ class ComidaListView(APIView):
                 activo=True,
             )
 
-            cantidad_g = float(
-                request.data.get("cantidad_g", 100) or 100
-            )
+            try:
+                cantidad_g = float(
+                    request.data.get("cantidad_g", 100) or 100
+                )
+            except (TypeError, ValueError):
+                return Response(
+                    {
+                        "cantidad_g": (
+                            "Ingresa una cantidad válida en gramos."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not 0 < cantidad_g <= 10000:
+                return Response(
+                    {
+                        "cantidad_g": (
+                            "La cantidad debe ser mayor que 0 "
+                            "y no superar 10000 gramos."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             factor = cantidad_g / 100
 
             datos = {
                 "alimento": alimento.id,
                 "tipo": request.data.get("tipo", "snack"),
-                "nombre": request.data.get("nombre") or alimento.nombre,
-                "descripcion": request.data.get("descripcion") or alimento.descripcion,
-                "calorias": round(alimento.calorias_100g * factor, 2),
-                "proteinas_g": round(alimento.proteinas_100g * factor, 2),
-                "carbohidratos_g": round(alimento.carbohidratos_100g * factor, 2),
-                "grasas_g": round(alimento.grasas_100g * factor, 2),
+                "nombre": (
+                    request.data.get("nombre") or alimento.nombre
+                ),
+                "descripcion": (
+                    request.data.get("descripcion")
+                    or alimento.descripcion
+                ),
+                "cantidad_base_g": cantidad_g,
+                "calorias": round(
+                    alimento.calorias_100g * factor, 2
+                ),
+                "proteinas_g": round(
+                    alimento.proteinas_100g * factor, 2
+                ),
+                "carbohidratos_g": round(
+                    alimento.carbohidratos_100g * factor, 2
+                ),
+                "grasas_g": round(
+                    alimento.grasas_100g * factor, 2
+                ),
                 "orden": request.data.get("orden", 0),
             }
         else:
@@ -340,6 +577,7 @@ class ComidaListView(APIView):
 
         if serializer.is_valid():
             comida = serializer.save(plan=plan)
+
             return Response(
                 ComidaSerializer(comida).data,
                 status=status.HTTP_201_CREATED,
@@ -356,6 +594,7 @@ class ComidaDetailView(APIView):
 
     def get_object(self, request, pk):
         usuario = usuario_actual(request)
+
         return get_object_or_404(
             Comida,
             pk=pk,
@@ -364,6 +603,7 @@ class ComidaDetailView(APIView):
 
     def patch(self, request, pk):
         comida = self.get_object(request, pk)
+
         serializer = ComidaSerializer(
             comida,
             data=request.data,
@@ -372,6 +612,7 @@ class ComidaDetailView(APIView):
 
         if serializer.is_valid():
             serializer.save()
+
             return Response(
                 ComidaSerializer(comida).data
             )
@@ -383,7 +624,13 @@ class ComidaDetailView(APIView):
 
     def delete(self, request, pk):
         self.get_object(request, pk).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+
 
 
 class RegistroComidaListView(APIView):
@@ -391,65 +638,134 @@ class RegistroComidaListView(APIView):
 
     def get(self, request):
         usuario = usuario_actual(request)
+
         registros = (
             RegistroComida.objects
             .filter(usuario=usuario)
-            .select_related("comida")
+            .order_by("-fecha", "-id")
         )
 
-        return Response(
-            RegistroComidaSerializer(registros, many=True).data
+        serializer = RegistroComidaSerializer(
+            registros,
+            many=True,
         )
+
+        return Response(serializer.data)
 
     def post(self, request):
         usuario = usuario_actual(request)
+
         comida = get_object_or_404(
             Comida,
             pk=request.data.get("comida"),
             plan__usuario=usuario,
         )
 
+        try:
+            cantidad_g = float(
+                request.data.get("cantidad_g", 100)
+            )
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "cantidad_g": (
+                        "Ingresa una cantidad válida en gramos."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not 0 < cantidad_g <= 10000:
+            return Response(
+                {
+                    "cantidad_g": (
+                        "La cantidad debe ser mayor que 0 "
+                        "y no superar 10000 gramos."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cantidad_base = comida.cantidad_base_g
+
+        if cantidad_base is None or cantidad_base <= 0:
+            return Response(
+                {
+                    "error": (
+                        "La comida tiene una cantidad base inválida."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        factor = cantidad_g / cantidad_base
+
         registro = RegistroComida.objects.create(
             usuario=usuario,
             comida=comida,
+            comida_nombre=comida.nombre,
+            tipo=comida.tipo,
+            cantidad_g=cantidad_g,
+            calorias=round(comida.calorias * factor, 2),
+            proteinas_g=round(
+                comida.proteinas_g * factor, 2
+            ),
+            carbohidratos_g=round(
+                comida.carbohidratos_g * factor, 2
+            ),
+            grasas_g=round(
+                comida.grasas_g * factor, 2
+            ),
         )
 
+        serializer = RegistroComidaSerializer(registro)
+
         return Response(
-            RegistroComidaSerializer(registro).data,
+            serializer.data,
             status=status.HTTP_201_CREATED,
         )
 
 
-# ============================================================
-# OBJETIVO NUTRICIONAL PERSONALIZADO (peso, altura, edad, meta)
-# ============================================================
+class RegistroComidaDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        usuario = usuario_actual(request)
+
+        registro = get_object_or_404(
+            RegistroComida,
+            pk=pk,
+            usuario=usuario,
+        )
+
+        registro.delete()
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
 
 class ObjetivoNutricionalView(APIView):
-    """Calorías y macros calculados a partir del perfil del usuario.
-    No crea nada, solo informa el objetivo (útil para mostrarlo en el
-    frontend aunque el usuario no haya generado su plan personalizado)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         usuario = usuario_actual(request)
-        return Response(calcular_objetivo_nutricional(usuario))
+
+        return Response(
+            calcular_objetivo_nutricional(usuario)
+        )
 
 
-# Nombre fijo del plan que se genera a la medida de cada usuario.
-NOMBRE_PLAN_PERSONALIZADO = 'Mi plan personalizado'
+NOMBRE_PLAN_PERSONALIZADO = "Mi plan personalizado"
 
-# Qué bloques de categorías usar en el plan personalizado, según la meta
-# (mismos bloques que ya existen en el catálogo base, para reutilizar
-# los alimentos que ya están cargados).
 BLOQUES_POR_META = {
-    plantilla["nombre"]: plantilla["bloques"] for plantilla in PLANES_BASE
+    plantilla["nombre"]: plantilla["bloques"]
+    for plantilla in PLANES_BASE
 }
 
 
 class GenerarPlanPersonalizadoView(APIView):
-    """Genera (o actualiza) el plan alimenticio hecho a la medida del
-    usuario: calorías y macros calculados con su peso/altura/edad/meta,
-    y comidas escaladas para acercarse a esas calorías diarias."""
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
@@ -457,9 +773,16 @@ class GenerarPlanPersonalizadoView(APIView):
         usuario = usuario_actual(request)
         objetivo = calcular_objetivo_nutricional(usuario)
 
-        nombre_base = META_A_PLAN_BASE.get(objetivo['meta'], PLANES_BASE[0]['nombre'])
+        nombre_base = META_A_PLAN_BASE.get(
+            objetivo["meta"],
+            PLANES_BASE[0]["nombre"],
+        )
+
         plantilla = next(
-            (p for p in PLANES_BASE if p['nombre'] == nombre_base),
+            (
+                p for p in PLANES_BASE
+                if p["nombre"] == nombre_base
+            ),
             PLANES_BASE[0],
         )
 
@@ -467,44 +790,46 @@ class GenerarPlanPersonalizadoView(APIView):
             usuario=usuario,
             nombre=NOMBRE_PLAN_PERSONALIZADO,
             defaults={
-                'descripcion': (
-                    'Plan generado automáticamente a partir de tu peso, '
-                    'altura, edad y objetivo. Se recalcula cada vez que lo generas.'
+                "descripcion": (
+                    "Plan generado automáticamente a partir de tu peso, "
+                    "altura, edad y objetivo. Se recalcula cada vez que lo generas."
                 ),
-                'calorias_diarias': objetivo['calorias'],
-                'proteinas_g': objetivo['proteinas_g'],
-                'carbohidratos_g': objetivo['carbohidratos_g'],
-                'grasas_g': objetivo['grasas_g'],
-                'generada_por_ia': True,
+                "calorias_diarias": objetivo["calorias"],
+                "proteinas_g": objetivo["proteinas_g"],
+                "carbohidratos_g": objetivo["carbohidratos_g"],
+                "grasas_g": objetivo["grasas_g"],
+                "generada_por_ia": True,
             },
         )
 
-        # Se regenera completo cada vez: así siempre queda al día con el
-        # objetivo actual (si cambió el peso o la meta, cambian las porciones).
-        plan.comidas.all().delete()
+        calorias_base_plantilla = (
+            plantilla["calorias_diarias"] or 1
+        )
 
-        # Calorías base del plan plantilla (referencia de 100g por alimento)
-        # para saber cuánto hay que escalar cada porción.
-        calorias_base_plantilla = plantilla['calorias_diarias'] or 1
-        factor_porcion = objetivo['calorias'] / calorias_base_plantilla
-        # Limitar el factor para que las porciones no queden absurdas
-        # si el objetivo calculado es muy distinto al de la plantilla.
-        factor_porcion = max(0.5, min(factor_porcion, 2.0))
+        factor_porcion = (
+            objetivo["calorias"] / calorias_base_plantilla
+        )
+
+        factor_porcion = max(
+            0.5,
+            min(factor_porcion, 2.0),
+        )
 
         _agregar_comidas_base(
             plan,
-            plantilla['bloques'],
+            plantilla["bloques"],
             factor_porcion=factor_porcion,
         )
 
         plan.refresh_from_db()
+
         plan_datos = PlanNutricionalSerializer(plan).data
-        plan_datos['recomendado'] = False  # es "el tuyo", no hace falta la etiqueta
+        plan_datos["recomendado"] = False
 
         return Response(
             {
-                'plan': plan_datos,
-                'objetivo': objetivo,
+                "plan": plan_datos,
+                "objetivo": objetivo,
             },
             status=status.HTTP_200_OK,
         )

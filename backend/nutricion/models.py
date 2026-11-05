@@ -90,6 +90,7 @@ class Comida(models.Model):
     nombre = models.CharField(max_length=120)
     descripcion = models.TextField(blank=True)
     calorias = models.FloatField(default=0)
+    cantidad_base_g = models.FloatField(default=100)
     proteinas_g = models.FloatField(default=0)
     carbohidratos_g = models.FloatField(default=0)
     grasas_g = models.FloatField(default=0)
@@ -114,10 +115,23 @@ class RegistroComida(models.Model):
     )
     comida = models.ForeignKey(
         Comida,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='registros',
         db_column='comida_id',
+        null=True,
+        blank=True,
     )
+
+    # Copia de los datos al momento del consumo.
+    comida_nombre = models.CharField(max_length=120, blank=True, default='')
+    tipo = models.CharField(max_length=20, blank=True, default='')
+    cantidad_g = models.FloatField(default=100)
+
+    calorias = models.FloatField(default=0)
+    proteinas_g = models.FloatField(default=0)
+    carbohidratos_g = models.FloatField(default=0)
+    grasas_g = models.FloatField(default=0)
+
     fecha = models.DateField(auto_now_add=True)
 
     class Meta:
@@ -127,4 +141,7 @@ class RegistroComida(models.Model):
         verbose_name_plural = 'Comidas registradas'
 
     def __str__(self):
-        return f'{self.usuario.nombre} comió {self.comida.nombre} el {self.fecha}'
+        nombre = self.comida_nombre or (
+            self.comida.nombre if self.comida else 'Comida'
+        )
+        return f'{self.usuario.nombre} comió {nombre} el {self.fecha}'
