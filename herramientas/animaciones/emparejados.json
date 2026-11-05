@@ -40,6 +40,14 @@
   "exdb_id": "r1XNRYB"
  },
  {
+  "slug": "banded-glute-bridge",
+  "exdb_id": "u0cNiij"
+ },
+ {
+  "slug": "banded-good-morning",
+  "exdb_id": "XlZ4lAC"
+ },
+ {
   "slug": "banded-hamstring-stretch",
   "exdb_id": "99rWm7w"
  },
@@ -54,6 +62,10 @@
  {
   "slug": "banded-lateral-walk",
   "exdb_id": "O95afRA"
+ },
+ {
+  "slug": "banded-romanian-deadlift",
+  "exdb_id": "KUaoUV8"
  },
  {
   "slug": "banded-seated-hip-abduction",
@@ -164,6 +176,10 @@
   "exdb_id": "BJ0Hz5L"
  },
  {
+  "slug": "bent-over-ez-bar-row",
+  "exdb_id": "eZyBC3j"
+ },
+ {
   "slug": "bicep-curl",
   "exdb_id": "NbVPDMW"
  },
@@ -174,6 +190,10 @@
  {
   "slug": "bodyweight-calf-raise",
   "exdb_id": "bJYHBIN"
+ },
+ {
+  "slug": "bodyweight-good-morning",
+  "exdb_id": "XlZ4lAC"
  },
  {
   "slug": "bodyweight-squat",
@@ -252,6 +272,10 @@
   "exdb_id": "LrV4s90"
  },
  {
+  "slug": "captains-chair-knee-raise",
+  "exdb_id": "weoDEpH"
+ },
+ {
   "slug": "captains-chair-leg-raise",
   "exdb_id": "weoDEpH"
  },
@@ -302,6 +326,10 @@
  {
   "slug": "close-grip-incline-bench",
   "exdb_id": "gx7s7uF"
+ },
+ {
+  "slug": "close-grip-pull-ups",
+  "exdb_id": "G70mEAJ"
  },
  {
   "slug": "cocoons",
@@ -368,6 +396,10 @@
   "exdb_id": "GrO65fd"
  },
  {
+  "slug": "decline-bench-press-ez-bar",
+  "exdb_id": "GrO65fd"
+ },
+ {
   "slug": "decline-db-fly",
   "exdb_id": "xXm4nYq"
  },
@@ -392,6 +424,10 @@
   "exdb_id": "9WTm7dq"
  },
  {
+  "slug": "double-kettlebell-bicep-curl",
+  "exdb_id": "NbVPDMW"
+ },
+ {
   "slug": "double-kettlebell-clean",
   "exdb_id": "a4F9Oyc"
  },
@@ -402,6 +438,10 @@
  {
   "slug": "double-kettlebell-jerk",
   "exdb_id": "tznL2Ad"
+ },
+ {
+  "slug": "double-kettlebell-overhead-press",
+  "exdb_id": "blBXysN"
  },
  {
   "slug": "double-kettlebell-push-press",
@@ -440,6 +480,14 @@
   "exdb_id": "HsvHqgf"
  },
  {
+  "slug": "dumbbell-hip-thrust",
+  "exdb_id": "aWedzZX"
+ },
+ {
+  "slug": "dumbbell-pistol-squat",
+  "exdb_id": "nqs5HGV"
+ },
+ {
   "slug": "dumbbell-push-press",
   "exdb_id": "FS63wTN"
  },
@@ -476,12 +524,20 @@
   "exdb_id": "ainizkb"
  },
  {
+  "slug": "dumbbell-windmill",
+  "exdb_id": "9Tkqa9O"
+ },
+ {
   "slug": "dumbbell-wrist-curl",
   "exdb_id": "2dImyQ8"
  },
  {
   "slug": "ez-bar-curl",
   "exdb_id": "6TG6x2w"
+ },
+ {
+  "slug": "ez-bar-front-raise",
+  "exdb_id": "b2Uoz54"
  },
  {
   "slug": "ez-bar-overhead-extension",
@@ -504,12 +560,24 @@
   "exdb_id": "o6LqKKP"
  },
  {
+  "slug": "ez-bar-romanian-deadlift",
+  "exdb_id": "wQ2c4XD"
+ },
+ {
+  "slug": "ez-bar-shrug",
+  "exdb_id": "dG7tG5y"
+ },
+ {
   "slug": "ez-bar-spider-curl",
   "exdb_id": "2kattbR"
  },
  {
   "slug": "ez-bar-upright-row",
   "exdb_id": "1oE78pm"
+ },
+ {
+  "slug": "ez-bar-upright-row",
+  "exdb_id": "83HoW9X"
  },
  {
   "slug": "face-pull",
@@ -564,6 +632,10 @@
   "exdb_id": "rQxwMxO"
  },
  {
+  "slug": "hang-clean",
+  "exdb_id": "SiWCcTN"
+ },
+ {
   "slug": "hang-power-clean",
   "exdb_id": "SiWCcTN"
  },
@@ -602,6 +674,10 @@
  {
   "slug": "horizontal-leg-press",
   "exdb_id": "9KU9TYF"
+ },
+ {
+  "slug": "incline-bench-ez-bar-press",
+  "exdb_id": "3TZduzM"
  },
  {
   "slug": "incline-bench-press",
@@ -648,6 +724,18 @@
   "exdb_id": "LIlE5Tn"
  },
  {
+  "slug": "jumping-jacks",
+  "exdb_id": "1g5bPpA"
+ },
+ {
+  "slug": "kettlebell-bulgarian-split-squat",
+  "exdb_id": "qx4fgX7"
+ },
+ {
+  "slug": "kettlebell-deadlift",
+  "exdb_id": "nUwVh7b"
+ },
+ {
   "slug": "kettlebell-farmers-walk",
   "exdb_id": "qPEzJjA"
  },
@@ -656,12 +744,44 @@
   "exdb_id": "rg59QCH"
  },
  {
+  "slug": "kettlebell-goblet-lunge",
+  "exdb_id": "SSsBDwB"
+ },
+ {
+  "slug": "kettlebell-hammer-curl",
+  "exdb_id": "2NpxjC1"
+ },
+ {
+  "slug": "kettlebell-hip-thrust",
+  "exdb_id": "aWedzZX"
+ },
+ {
   "slug": "kettlebell-pistol-squat",
   "exdb_id": "5bpPTHv"
  },
  {
+  "slug": "kettlebell-pullover",
+  "exdb_id": "9XjtHvS"
+ },
+ {
+  "slug": "kettlebell-reverse-lunge",
+  "exdb_id": "SSsBDwB"
+ },
+ {
   "slug": "kettlebell-russian-twist",
   "exdb_id": "XVDdcoj"
+ },
+ {
+  "slug": "kettlebell-shrug",
+  "exdb_id": "NJzBsGJ"
+ },
+ {
+  "slug": "kettlebell-single-leg-deadlift",
+  "exdb_id": "gKozT8X"
+ },
+ {
+  "slug": "kettlebell-sumo-deadlift",
+  "exdb_id": "KgI0tqW"
  },
  {
   "slug": "kettlebell-sumo-high-pull",
@@ -776,6 +896,10 @@
   "exdb_id": "FS63wTN"
  },
  {
+  "slug": "one-arm-kettlebell-bicep-curl",
+  "exdb_id": "NbVPDMW"
+ },
+ {
   "slug": "one-arm-kettlebell-bottoms-up-press",
   "exdb_id": "kuXhl0o"
  },
@@ -804,11 +928,19 @@
   "exdb_id": "UHJlbu3"
  },
  {
+  "slug": "one-arm-kettlebell-tricep-kickback",
+  "exdb_id": "W6PxUkg"
+ },
+ {
   "slug": "one-arm-lat-pulldown",
   "exdb_id": "U5INZY6"
  },
  {
   "slug": "one-arm-single-leg-dumbbell-romanian-deadlift",
+  "exdb_id": "gKozT8X"
+ },
+ {
+  "slug": "one-arm-single-leg-kettlebell-romanian-deadlift",
   "exdb_id": "gKozT8X"
  },
  {
@@ -852,12 +984,20 @@
   "exdb_id": "LYJodFS"
  },
  {
+  "slug": "plank",
+  "exdb_id": "VBAWRPG"
+ },
+ {
   "slug": "preacher-curl",
   "exdb_id": "qOgPVf6"
  },
  {
   "slug": "pull-up",
   "exdb_id": "lBDjFxJ"
+ },
+ {
+  "slug": "push-press",
+  "exdb_id": "FS63wTN"
  },
  {
   "slug": "push-up",
@@ -898,6 +1038,10 @@
  {
   "slug": "rings-inverted-row",
   "exdb_id": "1YUWDNZ"
+ },
+ {
+  "slug": "rings-inverted-row",
+  "exdb_id": "bZGHsAZ"
  },
  {
   "slug": "romanian-deadlift",
@@ -970,6 +1114,10 @@
  {
   "slug": "side-lying-hip-adduction",
   "exdb_id": "c8f5cSY"
+ },
+ {
+  "slug": "side-plank",
+  "exdb_id": "RKjH6Lt"
  },
  {
   "slug": "single-arm-db-row",
@@ -1056,6 +1204,10 @@
   "exdb_id": "9E25EOx"
  },
  {
+  "slug": "spoto-press",
+  "exdb_id": "EIeI8Vf"
+ },
+ {
   "slug": "squat",
   "exdb_id": "qXTaZnJ"
  },
@@ -1088,6 +1240,10 @@
   "exdb_id": "KgI0tqW"
  },
  {
+  "slug": "sumo-squat",
+  "exdb_id": "dzz6BiV"
+ },
+ {
   "slug": "svend-press",
   "exdb_id": "I1OBLnn"
  },
@@ -1100,12 +1256,24 @@
   "exdb_id": "f7Y9eDZ"
  },
  {
+  "slug": "toes-to-bar",
+  "exdb_id": "I3tsCnC"
+ },
+ {
   "slug": "tricep-kickback",
   "exdb_id": "W6PxUkg"
  },
  {
   "slug": "tricep-pushdown",
   "exdb_id": "3ZflifB"
+ },
+ {
+  "slug": "trx-chest-press",
+  "exdb_id": "IaGQCrC"
+ },
+ {
+  "slug": "trx-row",
+  "exdb_id": "4OaumBr"
  },
  {
   "slug": "upright-row",
@@ -1130,6 +1298,10 @@
  {
   "slug": "v-sit",
   "exdb_id": "ZuXu4Eq"
+ },
+ {
+  "slug": "v-ups",
+  "exdb_id": "mbkgB44"
  },
  {
   "slug": "walking-lunge",
