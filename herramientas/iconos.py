@@ -16,14 +16,12 @@ svg = (CARPETA / 'icono.svg').read_text(encoding='utf-8')
 def a_sangre(texto, escala_letra):
     """Sin esquinas transparentes ni borde: iPhone y Android recortan el ícono ellos mismos.
     escala_letra < 1 deja la "B." dentro de la zona segura del ícono "maskable"."""
-    texto = texto.replace('<rect x="1" y="1" width="38" height="38" rx="11" fill="url(#fondo)"/>',
-                          '<rect width="40" height="40" fill="url(#fondo)"/>')
-    texto = texto.replace('<rect x="1" y="1" width="38" height="20" rx="11" fill="url(#brillo)"/>',
-                          '<rect width="40" height="21" fill="url(#brillo)"/>')
+    # Las capas de fondo (degradado, luces y sombra) pasan a cubrir todo el cuadro
+    texto = texto.replace('<rect x="1" y="1" width="38" height="38" rx="11" ', '<rect width="40" height="40" ')
     texto = re.sub(r'\s*<rect x="1\.4"[^>]*stroke="url\(#borde\)"[^>]*/>', '', texto)
     # La letra y el punto van juntos, para escalarlos desde el centro
-    texto = texto.replace('<path transform="matrix', f'<g transform="translate(20 20) scale({escala_letra}) translate(-20 -20)"><path transform="matrix')
-    return texto.replace('fill="#ffd1ec"/>', 'fill="#ffd1ec"/></g>')
+    texto = texto.replace('<g filter="url(#relieve)">', f'<g transform="translate(20 20) scale({escala_letra}) translate(-20 -20)"><g filter="url(#relieve)">')
+    return texto.replace('fill="url(#chispa)"/>', 'fill="url(#chispa)"/></g>')
 
 
 def guardar(texto, lado, nombre):
