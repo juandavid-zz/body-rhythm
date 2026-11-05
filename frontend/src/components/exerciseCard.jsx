@@ -15,6 +15,16 @@ const nombresGrupos = {
   pantorrillas: "Pantorrillas",
   cardio: "Cardio",
   cuerpo_completo: "Cuerpo completo",
+  // Grupos de la biblioteca (vienen de RepDB en inglés)
+  chest: "Pecho",
+  back: "Espalda",
+  upper_legs: "Piernas",
+  lower_legs: "Pantorrillas",
+  shoulders: "Hombros",
+  upper_arms: "Brazos",
+  lower_arms: "Antebrazos",
+  core: "Core",
+  full_body: "Cuerpo completo",
 };
 
 const clasesGrupos = {
@@ -30,6 +40,15 @@ const clasesGrupos = {
   pantorrillas: "pantorrillas",
   cardio: "cardio",
   cuerpo_completo: "cuerpo-completo",
+  chest: "pecho",
+  back: "espalda",
+  upper_legs: "piernas",
+  lower_legs: "pantorrillas",
+  shoulders: "hombros",
+  upper_arms: "brazos",
+  lower_arms: "brazos",
+  core: "core",
+  full_body: "cuerpo-completo",
 };
 
 function ExerciseCard({ ejercicio }) {
