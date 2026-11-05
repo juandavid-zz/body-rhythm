@@ -9,6 +9,11 @@
 :root {
   /* Alto que ocupa la barra; las páginas de pantalla completa (chat) lo usan */
   --nav-alto: 62px;
+  /* Todo lo de adentro mide lo mismo y queda a la misma distancia del borde */
+  --nav-pieza: 38px;
+  --nav-margen: 6px;
+  /* El ancho del contenido de las páginas (biblioteca, planes, nutrición...) */
+  --nav-ancho: 1380px;
 }
 
 .br-nav {
@@ -18,7 +23,7 @@
   display: flex;
   justify-content: center;
   height: var(--nav-alto);
-  padding: 8px 16px 4px;
+  padding: 7px 32px 5px;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   pointer-events: none;
@@ -34,9 +39,9 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
-  width: min(1240px, 100%);
+  width: min(var(--nav-ancho), 100%);
   height: 100%;
-  padding: 0 6px 0 10px;
+  padding: 0 var(--nav-margen);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(28, 22, 42, 0.62), rgba(16, 13, 26, 0.55));
@@ -64,7 +69,8 @@
   align-items: center;
   gap: 10px;
   justify-self: start;
-  padding: 4px 10px 4px 4px;
+  height: var(--nav-pieza);
+  padding: 0 14px 0 0;
   border-radius: 999px;
   color: #fff;
   text-decoration: none;
@@ -78,8 +84,8 @@
 /* El mismo orbe del asistente: degradado con brillo, gira despacio al pasar el mouse */
 .br-nav-orbe {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: var(--nav-pieza);
+  height: var(--nav-pieza);
   flex-shrink: 0;
   border-radius: 50%;
   background:
@@ -115,16 +121,12 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.035);
 }
 
 .br-nav-pildora {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 0;
+  bottom: 0;
   left: 0;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
@@ -142,8 +144,8 @@
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  height: 34px;
-  padding: 0 14px;
+  height: var(--nav-pieza);
+  padding: 0 15px;
   border-radius: 999px;
   color: rgba(244, 242, 255, 0.66);
   font-size: 0.86rem;
@@ -170,7 +172,7 @@
   content: '';
   position: absolute;
   left: 50%;
-  bottom: 3px;
+  bottom: 4px;
   width: 4px;
   height: 4px;
   margin-left: -2px;
@@ -189,8 +191,8 @@
 }
 
 .br-nav .btn-campana {
-  width: 38px;
-  height: 38px;
+  width: var(--nav-pieza);
+  height: var(--nav-pieza);
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
@@ -206,8 +208,8 @@
 .br-nav-avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: var(--nav-pieza);
+  height: var(--nav-pieza);
   margin: 0;
   padding: 2px;
   border: none;
@@ -349,7 +351,7 @@
 .br-nav-boton {
   margin: 0;
   padding: 0 16px;
-  height: 38px;
+  height: var(--nav-pieza);
   border-radius: 999px;
   font: inherit;
   font-size: 0.86rem;
@@ -385,8 +387,8 @@
 .br-nav-hamburguesa {
   display: none;
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: var(--nav-pieza);
+  height: var(--nav-pieza);
   margin: 0;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -397,8 +399,8 @@
 
 .br-nav-hamburguesa span {
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: 11px;
+  right: 11px;
   height: 2px;
   border-radius: 2px;
   background: #fff;
@@ -406,20 +408,20 @@
 }
 
 .br-nav-hamburguesa span:first-child {
-  top: 15px;
+  top: 14px;
 }
 
 .br-nav-hamburguesa span:last-child {
-  top: 22px;
+  top: 21px;
 }
 
 .br-nav-hamburguesa.abierta span:first-child {
-  top: 18.5px;
+  top: 17.5px;
   transform: rotate(45deg);
 }
 
 .br-nav-hamburguesa.abierta span:last-child {
-  top: 18.5px;
+  top: 17.5px;
   transform: rotate(-45deg);
 }
 
@@ -559,19 +561,18 @@
   }
 
   .br-nav-marca {
-    padding-right: 4px;
+    padding-right: 0;
   }
 }
 
 /* Celular y tablet chica: las secciones pasan al panel */
 @media (max-width: 900px) {
   .br-nav {
-    padding: 6px 10px 4px;
+    padding: 7px 12px 5px;
   }
 
   .br-nav-barra {
     grid-template-columns: 1fr auto;
-    padding: 0 5px 0 6px;
   }
 
   .br-nav-pista {

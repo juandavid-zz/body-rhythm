@@ -333,3 +333,17 @@ body .home-kicker {
   font-weight: 600;
   letter-spacing: 0.06em;
 }
+
+/* El inicio usa el mismo ancho que la barra y el resto de las páginas,
+   para que logo, títulos y tarjetas compartan el mismo borde */
+@media (min-width: 901px) {
+  body .hero,
+  body .home-section {
+    padding-left: max(32px, calc((100% - var(--nav-ancho, 1380px)) / 2));
+    padding-right: max(32px, calc((100% - var(--nav-ancho, 1380px)) / 2));
+  }
+
+  body .hero-left {
+    padding-left: 0;
+  }
+}
