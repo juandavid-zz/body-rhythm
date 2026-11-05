@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import api from "../api/api";
 import Notificaciones from "./Notificaciones";
 import Avatar from "./social/Avatar";
+import Logo from "./Logo";
 import "../css/navbar.css";
 
 // Secciones de la barra. "privada": sin sesión lleva a iniciar sesión.
@@ -201,10 +202,7 @@ export default function Navbar() {
             navigate("/");
           }}
         >
-          <span className="br-nav-orbe" aria-hidden="true" />
-          <span className="br-nav-nombre">
-            Body <span>Rhythm</span>
-          </span>
+          <Logo />
         </a>
 
         <div className="br-nav-pista" ref={pista} onMouseLeave={() => moverPildora(activa?.ruta)}>

@@ -82,52 +82,66 @@
 .br-nav-marca {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   justify-self: start;
   height: var(--nav-pieza);
-  padding: 0 14px 0 0;
-  border-radius: 999px;
   color: #fff;
   text-decoration: none;
-  transition: background 0.2s;
 }
 
-.br-nav-marca:hover {
-  background: rgba(255, 255, 255, 0.05);
+/* ---------- Logo: ícono tipo app + nombre en blanco ---------- */
+.br-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
 }
 
-/* El mismo orbe del asistente: degradado con brillo, gira despacio al pasar el mouse */
-.br-nav-orbe {
-  position: relative;
-  width: var(--nav-pieza);
-  height: var(--nav-pieza);
+.br-logo-icono {
+  display: block;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85), transparent 32%),
-    conic-gradient(from 210deg, #a855f7, #ec4899, #8b5cf6, #3b82f6, #a855f7);
-  box-shadow:
-    inset 0 -3px 6px rgba(40, 0, 70, 0.45),
-    0 0 18px rgba(168, 85, 247, 0.45);
-  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  overflow: visible;
+  filter: drop-shadow(0 4px 10px rgba(168, 85, 247, 0.45)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.25));
+  transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25), filter 0.3s;
 }
 
-.br-nav-marca:hover .br-nav-orbe {
-  transform: rotate(160deg) scale(1.06);
+/* Al pasar el mouse el ícono se levanta y la onda se vuelve a dibujar */
+.br-nav-marca:hover .br-logo-icono {
+  transform: translateY(-1px) scale(1.05);
+  filter: drop-shadow(0 6px 14px rgba(236, 72, 153, 0.55)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
 }
 
-.br-nav-nombre {
-  font-size: 1.02rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.br-logo-onda {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.br-nav-marca:hover .br-logo-onda {
+  animation: br-logo-dibujar 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes br-logo-dibujar {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+.br-logo-nombre {
+  color: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', sans-serif;
+  font-size: 1.06rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1;
   white-space: nowrap;
+  font-feature-settings: 'ss01', 'cv11';
 }
 
-.br-nav-nombre span {
-  background: linear-gradient(135deg, #c084fc, #f472b6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.br-logo-nombre span {
+  margin-left: 0.22em;
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 
 /* ---------- Secciones (con la píldora que se desliza) ---------- */
@@ -569,14 +583,10 @@
   }
 }
 
-/* Sin espacio para el nombre de la marca: queda solo el orbe */
+/* Sin espacio para el nombre de la marca: queda solo el ícono */
 @media (max-width: 1040px) {
-  .br-nav-nombre {
+  .br-logo-nombre {
     display: none;
-  }
-
-  .br-nav-marca {
-    padding-right: 0;
   }
 }
 
@@ -594,7 +604,7 @@
     display: none;
   }
 
-  .br-nav-nombre {
+  .br-logo-nombre {
     display: inline;
   }
 
@@ -614,7 +624,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .br-nav-pildora,
-  .br-nav-orbe,
+  .br-logo-icono,
+  .br-logo-onda,
   .br-nav-panel li,
   .br-nav-panel-pie,
   .br-nav-menu {
