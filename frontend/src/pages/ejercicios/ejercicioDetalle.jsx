@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import AnimacionEjercicio from "../../components/AnimacionEjercicio";
+import { animacionDe } from "../../utils/ejercicios";
 import {
   CartesianGrid,
   Line,
@@ -404,7 +406,7 @@ export default function EjercicioDetalle() {
   }, [id]);
 
   useEffect(() => {
-    if (!ejercicio?.imagen_inicio || !ejercicio?.imagen_final) {
+    if (!ejercicio?.imagen_inicio || !ejercicio?.imagen_final || animacionDe(ejercicio)) {
       return undefined;
     }
 
@@ -473,6 +475,8 @@ export default function EjercicioDetalle() {
   const terciarios = obtenerListaMusculos(musculos_terciarios);
   const grupoNombre = nombresGrupos[grupo] || grupo || "Ejercicio";
 
+  const animacion = animacionDe(ejercicio);
+
   const imagenMostrar =
     imagenActiva === "final" && imagen_final ? imagen_final : imagen_inicio;
 
@@ -502,8 +506,10 @@ export default function EjercicioDetalle() {
         <main>
           <section className="ej-detalle-hero">
             <div className="ej-detalle-visual">
-              <div className="ej-detalle-image-wrapper">
-                {imagenMostrar ? (
+              <div className={`ej-detalle-image-wrapper${animacion ? " ej-detalle-image-wrapper--animada" : ""}`}>
+                {animacion ? (
+                  <AnimacionEjercicio animacion={animacion} nombre={nombre} />
+                ) : imagenMostrar ? (
                   <img
                     src={imagenMostrar}
                     alt={nombre}
@@ -516,7 +522,7 @@ export default function EjercicioDetalle() {
                   </div>
                 )}
 
-                {imagen_inicio && imagen_final && (
+                {!animacion && imagen_inicio && imagen_final && (
                   <div className="ej-detalle-image-badge">
                     <span />
                     Movimiento automático

@@ -507,6 +507,19 @@
   transform: scale(1.035);
 }
 
+/* Animación propia: el video trae su escenario morado, se ve entero */
+.card-image-wrapper--animada {
+  background: #0d0a18;
+}
+
+.card-video {
+  object-fit: contain;
+}
+
+.ejercicios-container .card:hover .card-video {
+  transform: scale(1.04);
+}
+
 
 /* Oscurecimiento */
 

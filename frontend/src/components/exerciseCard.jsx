@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { animacionDe } from "../utils/ejercicios";
 
 const nombresGrupos = {
   pecho: "Pecho",
@@ -32,6 +34,18 @@ const clasesGrupos = {
 
 function ExerciseCard({ ejercicio }) {
   const navigate = useNavigate();
+  const video = useRef(null);
+  const animacion = animacionDe(ejercicio);
+
+  // En la tarjeta solo se ve el póster; el video corre al pasar el mouse
+  const reproducir = () => {
+    video.current?.play().catch(() => {});
+  };
+  const detener = () => {
+    if (!video.current) return;
+    video.current.pause();
+    video.current.currentTime = 0;
+  };
 
 const grupoNombre =
   nombresGrupos[ejercicio.grupo] || ejercicio.grupo;
@@ -56,10 +70,27 @@ const grupoClase =
       role="button"
       tabIndex={0}
       aria-label={`Ver detalles de ${ejercicio.nombre}`}
+      onMouseEnter={animacion ? reproducir : undefined}
+      onMouseLeave={animacion ? detener : undefined}
     >
-      <div className="card-image-wrapper">
+      <div className={`card-image-wrapper${animacion ? " card-image-wrapper--animada" : ""}`}>
 
-        {ejercicio.imagen_inicio ? (
+        {animacion ? (
+          <>
+            <video
+              ref={video}
+              className="card-img card-video"
+              src={animacion.video}
+              poster={animacion.poster}
+              muted
+              loop
+              playsInline
+              preload="none"
+              aria-label={ejercicio.nombre}
+            />
+            <div className="card-image-gradient" />
+          </>
+        ) : ejercicio.imagen_inicio ? (
           <>
             <img
               src={ejercicio.imagen_inicio}
