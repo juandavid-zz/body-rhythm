@@ -15,7 +15,7 @@
 
   /* Debajo de la Navbar (62px de alto) */
   position: fixed;
-  inset: 62px 0 0 0;
+  inset: var(--nav-alto, 62px) 0 0 0;
   display: flex;
   gap: 16px;
   padding: 16px;
@@ -1366,7 +1366,7 @@
   cursor: default;
 }
 
-/* ---------- Móvil: la Navbar ocupa dos filas (92px) y el historial pasa arriba ---------- */
+/* ---------- Móvil: el historial pasa arriba ---------- */
 @media (max-width: 720px) {
   .chatbot-page {
     flex-direction: column;
@@ -1425,7 +1425,7 @@
 
 @media (max-width: 700px) {
   .chatbot-page {
-    inset: 92px 0 0 0;
+    inset: var(--nav-alto, 62px) 0 0 0;
   }
 }
 
