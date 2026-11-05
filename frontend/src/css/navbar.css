@@ -88,23 +88,19 @@
   text-decoration: none;
 }
 
-/* ---------- Logo: ícono tipo app + nombre en blanco ---------- */
+/* ---------- Logo: escudo en punta + nombre apilado ---------- */
 .br-logo {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 10px;
 }
 
-/* El marco recorta el destello; la sombra va en él para que no se corte */
 .br-logo-marco {
-  position: relative;
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 9.4px;
-  filter: drop-shadow(0 5px 12px rgba(124, 52, 238, 0.5)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 4px 10px rgba(168, 85, 247, 0.55)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
   transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25), filter 0.3s;
 }
 
@@ -112,61 +108,47 @@
   display: block;
   width: 100%;
   height: 100%;
+  overflow: visible;
 }
 
-/* Destello de luz que cruza el ícono en diagonal */
-.br-logo-marco::after {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
-  transform: translateX(-75%);
-  pointer-events: none;
-}
-
-/* Al pasar el mouse el ícono se levanta y lo cruza el destello */
+/* Al pasar el mouse el escudo se levanta y un destello lo cruza */
 .br-nav-marca:hover .br-logo-marco {
-  transform: translateY(-1px) scale(1.05);
-  filter: drop-shadow(0 7px 16px rgba(219, 39, 119, 0.55)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transform: translateY(-1px) scale(1.06) rotate(-2deg);
+  filter: drop-shadow(0 6px 16px rgba(236, 72, 153, 0.65)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 
-.br-nav-marca:hover .br-logo-marco::after {
-  transform: translateX(75%);
-  transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+.br-logo-destello {
+  transform: translateX(-24px);
 }
 
-/* El punto rosa de "B." late una vez al pasar el mouse */
-.br-logo-punto {
-  transform-box: fill-box;
-  transform-origin: center;
+.br-nav-marca:hover .br-logo-destello {
+  transform: translateX(40px);
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.br-nav-marca:hover .br-logo-punto {
-  animation: br-logo-latido 0.7s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-
-@keyframes br-logo-latido {
-  40% {
-    transform: scale(1.7);
-  }
-}
-
+/* Nombre apilado en dos líneas, condensado y en mayúsculas */
 .br-logo-nombre {
-  color: #fff;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  line-height: 1;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: 'Saira Condensed', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 0.88;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-/* Rhythm en lavanda, del mismo tono que la luz del ícono */
-.br-logo-nombre span {
-  margin-left: 0.2em;
-  color: rgba(226, 212, 255, 0.66);
-  font-weight: 500;
-  letter-spacing: -0.03em;
+.br-logo-nombre span:first-child {
+  color: #fff;
+}
+
+.br-logo-nombre span:last-child {
+  background: linear-gradient(100deg, #d8b4fe, #f472b6 70%, #fb7185);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ---------- Secciones (con la píldora que se desliza) ---------- */
@@ -630,7 +612,7 @@
   }
 
   .br-logo-nombre {
-    display: inline;
+    display: inline-flex;
   }
 
   .br-nav-hamburguesa {
@@ -650,8 +632,7 @@
 @media (prefers-reduced-motion: reduce) {
   .br-nav-pildora,
   .br-logo-marco,
-  .br-logo-marco::after,
-  .br-logo-punto,
+  .br-logo-destello,
   .br-nav-panel li,
   .br-nav-panel-pie,
   .br-nav-menu {
