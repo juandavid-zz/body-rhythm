@@ -1,6 +1,7 @@
 /* ============================================================
    BARRA DE NAVEGACIÓN
-   Una cápsula de vidrio flotante, con una píldora que se desliza
+   Vidrio de borde a borde de la pantalla; lo de adentro queda
+   alineado con el contenido de las páginas. Una píldora se desliza
    hasta la sección activa (o la que tiene el mouse encima).
    En celular se vuelve logo + campana + avatar + menú, y el menú
    abre un panel a pantalla completa con iconos.
@@ -11,7 +12,6 @@
   --nav-alto: 62px;
   /* Todo lo de adentro mide lo mismo y queda a la misma distancia del borde */
   --nav-pieza: 38px;
-  --nav-margen: 6px;
   /* El ancho del contenido de las páginas (biblioteca, planes, nutrición...) */
   --nav-ancho: 1380px;
 }
@@ -23,14 +23,48 @@
   display: flex;
   justify-content: center;
   height: var(--nav-alto);
-  padding: 7px 32px 5px;
+  padding: 0 32px;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* El vidrio va en una capa aparte: si el desenfoque estuviera en .br-nav,
+   el panel del celular (fixed, adentro) quedaría encerrado en la barra */
+.br-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(20, 15, 32, 0.6), rgba(12, 10, 20, 0.5));
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  transition: background 0.3s, box-shadow 0.3s;
   pointer-events: none;
 }
 
-.br-nav > * {
-  pointer-events: auto;
+/* Línea de luz morada a rosa en el borde de abajo, que se apaga hacia los lados */
+.br-nav::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.55) 30%, rgba(236, 72, 153, 0.5) 70%, transparent);
+  opacity: 0.45;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+/* Al bajar, más sólida y con sombra para separarse del contenido */
+.br-nav--scroll::before {
+  background: linear-gradient(180deg, rgba(22, 17, 34, 0.9), rgba(13, 11, 21, 0.86));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 12px 30px -18px rgba(0, 0, 0, 0.8);
+}
+
+.br-nav--scroll::after {
+  opacity: 0.8;
 }
 
 .br-nav-barra {
@@ -39,28 +73,9 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
+  /* El orbe y el avatar caen justo sobre los bordes del contenido */
   width: min(var(--nav-ancho), 100%);
   height: 100%;
-  padding: 0 var(--nav-margen);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(28, 22, 42, 0.62), rgba(16, 13, 26, 0.55));
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 10px 30px -12px rgba(0, 0, 0, 0.55);
-  transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
-}
-
-/* Al bajar, más sólida y con más sombra para separarse del contenido */
-.br-nav--scroll .br-nav-barra {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: linear-gradient(180deg, rgba(30, 23, 46, 0.86), rgba(16, 13, 26, 0.82));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 18px 40px -14px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(168, 85, 247, 0.08);
 }
 
 /* ---------- Marca ---------- */
@@ -568,7 +583,7 @@
 /* Celular y tablet chica: las secciones pasan al panel */
 @media (max-width: 900px) {
   .br-nav {
-    padding: 7px 12px 5px;
+    padding: 0 16px;
   }
 
   .br-nav-barra {
