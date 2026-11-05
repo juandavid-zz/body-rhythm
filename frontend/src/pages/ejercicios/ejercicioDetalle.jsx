@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Navbar from "../../components/Navbar";
 import {
   CartesianGrid,
   Line,
@@ -423,17 +424,22 @@ export default function EjercicioDetalle() {
 
   if (cargando) {
     return (
-      <div className="ej-detalle-page">
-        <div className="ej-detalle-state">
-          <div className="ej-detalle-spinner" />
-          <p>Cargando ejercicio...</p>
+      <>
+        <Navbar />
+        <div className="ej-detalle-page">
+          <div className="ej-detalle-state">
+            <div className="ej-detalle-spinner" />
+            <p>Cargando ejercicio...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error || !ejercicio) {
     return (
+      <>
+      <Navbar />
       <div className="ej-detalle-page">
         <div className="ej-detalle-state ej-detalle-state-error">
           <div className="ej-detalle-error-icon">!</div>
@@ -447,6 +453,7 @@ export default function EjercicioDetalle() {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
@@ -479,6 +486,8 @@ export default function EjercicioDetalle() {
   } = estadisticas;
 
   return (
+    <>
+    <Navbar />
     <div className="ej-detalle-page">
       <div className="ej-detalle-wrapper">
         <button
@@ -760,5 +769,6 @@ export default function EjercicioDetalle() {
         </main>
       </div>
     </div>
+    </>
   );
 }

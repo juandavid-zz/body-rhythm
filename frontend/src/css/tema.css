@@ -1,0 +1,335 @@
+/* ============================================================
+   TEMA COMÚN DE BODY RHYTHM
+   Un solo estilo para toda la app: el de Entrenamientos y el
+   asistente (vidrio translúcido sobre fondo morado, letra de
+   Apple, botones con degradado). Se carga en main.jsx.
+
+   La parte de abajo ("Secciones") ajusta las páginas que tenían
+   otro estilo. Va con "body" delante para ganarle a la hoja de
+   cada página, que se carga después.
+   ============================================================ */
+
+:root {
+  --br-sf: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Inter', 'Segoe UI', sans-serif;
+
+  --br-texto: #f5f3ff;
+  --br-texto-2: rgba(244, 242, 255, 0.82);
+  --br-texto-3: rgba(244, 242, 255, 0.6);
+  --br-separador: rgba(255, 255, 255, 0.09);
+  --br-acento: #a855f7;
+  --br-acento-claro: #c084fc;
+  --br-degradado: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+
+  /* Vidrio: el mismo de las tarjetas de Entrenamientos */
+  --br-vidrio: linear-gradient(155deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.06) 100%);
+  --br-vidrio-hover: linear-gradient(155deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0.08) 100%);
+  --br-vidrio-suave: rgba(255, 255, 255, 0.06);
+  --br-borde: rgba(255, 255, 255, 0.1);
+  --br-borde-fuerte: rgba(255, 255, 255, 0.18);
+  --br-sombra: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 24px 60px -24px rgba(0, 0, 0, 0.6);
+  --br-desenfoque: blur(30px) saturate(170%);
+  --br-radio: 24px;
+
+  /* Fondo de todas las páginas: manchas suaves de morado, rosa y azul */
+  --br-fondo:
+    radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.22), transparent 40%),
+    radial-gradient(circle at 95% 25%, rgba(236, 72, 153, 0.12), transparent 36%),
+    radial-gradient(circle at 45% 105%, rgba(59, 130, 246, 0.13), transparent 42%),
+    #07060d;
+}
+
+/* "html body" para ganarle al body de index.css y styles.css, que se cargan después */
+html body {
+  background: var(--br-fondo);
+  background-attachment: fixed;
+  color: var(--br-texto);
+  font-family: var(--br-sf);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Secciones
+   ============================================================ */
+
+/* ---------- Ejercicios (biblioteca) ---------- */
+body {
+  --ej-bg: transparent;
+  --ej-panel: var(--br-vidrio);
+  --ej-panel-2: var(--br-vidrio-hover);
+  --ej-panel-hover: var(--br-vidrio-hover);
+  --ej-border: var(--br-borde);
+  --ej-border-strong: var(--br-borde-fuerte);
+  --ej-text: var(--br-texto);
+  --ej-muted: var(--br-texto-3);
+  --ej-muted-light: var(--br-texto-2);
+  --ej-purple: var(--br-acento);
+  --ej-purple-light: var(--br-acento-claro);
+  --ej-purple-soft: rgba(168, 85, 247, 0.16);
+  --ej-radius: var(--br-radio);
+}
+
+body .ejercicios-container {
+  font-family: var(--br-sf);
+}
+
+body .ejercicios-header h1,
+body .ej-detalle-heading h1,
+body .nutricion-hero h1 {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+body .ejercicios-container .card,
+body .ejercicios-search,
+body .ejercicios-header-count,
+body .filtro-btn {
+  -webkit-backdrop-filter: var(--br-desenfoque);
+  backdrop-filter: var(--br-desenfoque);
+  box-shadow: var(--br-sombra);
+}
+
+body .filtro-btn {
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+body .filtro-activo {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--br-degradado);
+  color: #fff;
+}
+
+body .ejercicios-search {
+  border-radius: 18px;
+}
+
+/* ---------- Detalle de un ejercicio ---------- */
+body .ej-detalle-page {
+  --ej-bg: transparent;
+  --ej-panel: var(--br-vidrio);
+  --ej-panel-light: var(--br-vidrio-hover);
+  --ej-border: var(--br-borde);
+  --ej-text: var(--br-texto);
+  --ej-muted: var(--br-texto-2);
+  --ej-purple: var(--br-acento);
+  --ej-purple-light: var(--br-acento-claro);
+  min-height: calc(100vh - 62px);
+  background: transparent;
+  font-family: var(--br-sf);
+}
+
+body .ej-detalle-image-wrapper,
+body .ej-detalle-description,
+body .ej-detalle-muscle-card,
+body .ej-detalle-chart-card,
+body .ej-detalle-record {
+  border-radius: var(--br-radio);
+  border-color: var(--br-borde);
+  -webkit-backdrop-filter: var(--br-desenfoque);
+  backdrop-filter: var(--br-desenfoque);
+  box-shadow: var(--br-sombra);
+}
+
+body .ej-detalle-description,
+body .ej-detalle-record {
+  background: var(--br-vidrio);
+}
+
+body .ej-detalle-button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: var(--br-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+body .ej-detalle-back {
+  border-radius: 999px;
+  background: var(--br-vidrio-suave);
+}
+
+body .ej-detalle-overline,
+body .ejercicios-overline,
+body .nutricion-kicker,
+body .nutricion-section-label,
+body .nutricion-plan-number,
+body .planes-badge {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Nutrición ---------- */
+body .nutricion-page {
+  min-height: calc(100vh - 62px);
+  padding-top: 3.5rem;
+  background: transparent;
+  font-family: var(--br-sf);
+}
+
+body .nutricion-hero,
+body .nutricion-card,
+body .nv-card {
+  border: 1px solid var(--br-borde);
+  border-radius: var(--br-radio);
+  background: var(--br-vidrio);
+  -webkit-backdrop-filter: var(--br-desenfoque);
+  backdrop-filter: var(--br-desenfoque);
+  box-shadow: var(--br-sombra);
+}
+
+body .nutricion-hero-badge,
+body .nutricion-plan-card,
+body .nutricion-meal,
+body .nutricion-summary-metrics div,
+body .nutricion-summary span {
+  border-color: var(--br-borde);
+  border-radius: 18px;
+  background: var(--br-vidrio-suave);
+}
+
+body .nutricion-summary-card h2,
+body .nutricion-plan-top h3 {
+  font-weight: 700;
+}
+
+body .nutricion-action-button,
+body .nutricion-auto-plan-icon {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--br-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+body .nutricion-action-button,
+body .nutricion-refresh-button,
+body .nutricion-register-button {
+  border-radius: 999px;
+}
+
+body .nv {
+  --nv-panel: var(--br-vidrio);
+  --nv-border: var(--br-borde);
+  --nv-muted: var(--br-texto-3);
+  --nv-muted-light: var(--br-texto-2);
+  --nv-purple: var(--br-acento);
+  --nv-purple-light: var(--br-acento-claro);
+}
+
+/* ---------- Planes y pago ---------- */
+body .planes-page,
+body .pago-page,
+body .pago-exitoso-page {
+  background: transparent;
+  font-family: var(--br-sf);
+}
+
+body .planes-hero h1 {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+body .plan-card {
+  border-color: var(--br-borde);
+  border-radius: 28px;
+  background: var(--br-vidrio);
+  -webkit-backdrop-filter: var(--br-desenfoque);
+  backdrop-filter: var(--br-desenfoque);
+  box-shadow: var(--br-sombra);
+}
+
+body .plan-card.destacado {
+  border-color: rgba(192, 132, 252, 0.55);
+  background: linear-gradient(155deg, rgba(168, 85, 247, 0.22), rgba(236, 72, 153, 0.08) 60%, rgba(255, 255, 255, 0.05));
+}
+
+body .plan-price,
+body .plan-card h2,
+body .plan-card h3 {
+  font-weight: 700;
+}
+
+body .plan-button {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+body .plan-button.pro,
+body .plan-button.premium {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--br-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ---------- Inicio ---------- */
+body .home,
+body .hero {
+  font-family: var(--br-sf);
+}
+
+/* Titulares de la portada: la misma letra de Apple, sin mayúsculas forzadas */
+body .hero h1,
+body .hero .h1-accent,
+body .home-title,
+body .home-card-num,
+body .home-card-top h3,
+body .home-step-num {
+  font-family: var(--br-sf);
+  text-transform: none;
+}
+
+body .hero h1,
+body .hero .h1-accent {
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+body .home-title {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+body .home-card-top h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Barras y medidores de Nutrición con los colores del tema */
+body .nv-bar-col,
+body .nv-track {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+body .nv-bar-fill {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+body .nv-bar:hover .nv-bar-fill {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+body .nv-bar.hoy .nv-bar-fill,
+body .nv-track-fill.p {
+  background: var(--br-degradado);
+}
+
+/* Tarjetas de la portada con el mismo vidrio */
+body .home-card,
+body .home-step {
+  border: 1px solid var(--br-borde);
+  border-radius: var(--br-radio);
+  background: var(--br-vidrio);
+  -webkit-backdrop-filter: var(--br-desenfoque);
+  backdrop-filter: var(--br-desenfoque);
+  box-shadow: var(--br-sombra);
+}
+
+body .home-card:hover,
+body .home-step:hover {
+  border-color: var(--br-borde-fuerte);
+  background: var(--br-vidrio-hover);
+}
+
+body .home-kicker {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}

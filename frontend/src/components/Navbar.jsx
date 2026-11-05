@@ -138,7 +138,7 @@ export default function Navbar() {
             className="btn-iniciar"
             onClick={() => navigate("/auth?modo=login")}
           >
-            Iniciar Sesión
+            Iniciar sesión
           </button>
 
           <button
@@ -165,7 +165,7 @@ export default function Navbar() {
             </svg>
           </button>
           <button className="btn-iniciar" onClick={cerrarSesion}>
-            Cerrar Sesión
+            Cerrar sesión
           </button>
         </>
       )}

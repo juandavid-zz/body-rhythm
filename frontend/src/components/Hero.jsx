@@ -14,12 +14,12 @@ export default function Hero() {
         <span className="hero-pill">Entrena. Come bien. Repite.</span>
 
         <h1>
-          Transforma Tu Cuerpo,
+          Transforma tu cuerpo,
         </h1>
 
         <span className="h1-accent">
-          Transforma Tu<br />
-          Vida
+          transforma tu<br />
+          vida
         </span>
 
         <p className="hero-sub">
