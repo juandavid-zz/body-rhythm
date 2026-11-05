@@ -21,12 +21,20 @@ def a_dibujo(ruta):
     img = Image.open(ruta).convert('RGB')
     a = np.asarray(img, dtype=np.int16)
     # El fondo es un color liso: todo lo parecido a la esquina se vuelve blanco
-    fondo = np.median(np.concatenate([a[:8, :8].reshape(-1, 3), a[:8, -8:].reshape(-1, 3)]), axis=0)
+    # Mediana de las cuatro esquinas: aunque una tenga un objeto (el anclaje del TRX),
+    # las otras tres mandan
+    esquinas = [a[:8, :8], a[:8, -8:], a[-8:, :8], a[-8:, -8:]]
+    fondo = np.median(np.concatenate([e.reshape(-1, 3) for e in esquinas]), axis=0)
     cerca = np.abs(a - fondo).sum(-1) < 60
     # Solo el fondo conectado al borde (no la ropa del mismo tono)
     etiquetas, _ = ndimage.label(cerca)
     borde = np.unique(np.concatenate([etiquetas[0], etiquetas[-1], etiquetas[:, 0], etiquetas[:, -1]]))
     es_fondo = np.isin(etiquetas, borde[borde > 0])
+    # Zonas grandes del color del fondo encerradas por el cuerpo y la sombra del piso
+    # (entre las piernas, entre brazo y torso) también son fondo
+    tam_cerca = np.bincount(etiquetas.ravel())
+    tam_cerca[0] = 0
+    es_fondo |= tam_cerca[etiquetas] > cerca.size * 0.004
     # Puntitos sueltos dentro del fondo (ruido de la compresión) también son fondo
     figura, _ = ndimage.label(~es_fondo)
     tamanos = np.bincount(figura.ravel())

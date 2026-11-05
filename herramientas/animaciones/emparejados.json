@@ -21,15 +21,7 @@
  },
  {
   "slug": "assisted-pull-ups",
-  "exdb_id": "5ipN0iE"
- },
- {
-  "slug": "assisted-pull-ups",
   "exdb_id": "kiJ4Z2K"
- },
- {
-  "slug": "back-extension",
-  "exdb_id": "rUXfn3R"
  },
  {
   "slug": "ball-pike",
@@ -44,16 +36,8 @@
   "exdb_id": "u0cNiij"
  },
  {
-  "slug": "banded-good-morning",
-  "exdb_id": "XlZ4lAC"
- },
- {
   "slug": "banded-hamstring-stretch",
   "exdb_id": "99rWm7w"
- },
- {
-  "slug": "banded-hip-thrust",
-  "exdb_id": "Pjbc0Kt"
  },
  {
   "slug": "banded-kneeling-hip-thrust",
@@ -116,16 +100,8 @@
   "exdb_id": "S9zHIvU"
  },
  {
-  "slug": "barbell-reverse-lunge",
-  "exdb_id": "t8iSghb"
- },
- {
   "slug": "barbell-row",
   "exdb_id": "eZyBC3j"
- },
- {
-  "slug": "battle-ropes",
-  "exdb_id": "hVzPY5j"
  },
  {
   "slug": "battle-ropes",
@@ -146,10 +122,6 @@
  {
   "slug": "bench-dips",
   "exdb_id": "DQ0cqkT"
- },
- {
-  "slug": "bench-hamstring-stretch",
-  "exdb_id": "99rWm7w"
  },
  {
   "slug": "bench-leg-pull-in",
@@ -188,20 +160,8 @@
   "exdb_id": "bJYHBIN"
  },
  {
-  "slug": "bodyweight-good-morning",
-  "exdb_id": "XlZ4lAC"
- },
- {
-  "slug": "bodyweight-squat",
-  "exdb_id": "6YUfHPL"
- },
- {
-  "slug": "box-squat",
-  "exdb_id": "W9pFVv1"
- },
- {
   "slug": "bulgarian-split-squat",
-  "exdb_id": "gGNQmVt"
+  "exdb_id": "qx4fgX7"
  },
  {
   "slug": "burpees",
@@ -214,10 +174,6 @@
  {
   "slug": "cable-chest-press",
   "exdb_id": "nIR4Rwl"
- },
- {
-  "slug": "cable-crunch",
-  "exdb_id": "CUmLRTA"
  },
  {
   "slug": "cable-crunch",
@@ -262,10 +218,6 @@
  {
   "slug": "cable-wrist-curl",
   "exdb_id": "LrV4s90"
- },
- {
-  "slug": "captains-chair-knee-raise",
-  "exdb_id": "weoDEpH"
  },
  {
   "slug": "captains-chair-leg-raise",
@@ -322,10 +274,6 @@
  {
   "slug": "close-grip-pull-ups",
   "exdb_id": "G70mEAJ"
- },
- {
-  "slug": "cocoons",
-  "exdb_id": "7i4msxz"
  },
  {
   "slug": "cocoons",
@@ -416,10 +364,6 @@
   "exdb_id": "9WTm7dq"
  },
  {
-  "slug": "double-kettlebell-bicep-curl",
-  "exdb_id": "NbVPDMW"
- },
- {
   "slug": "double-kettlebell-clean",
   "exdb_id": "a4F9Oyc"
  },
@@ -452,10 +396,6 @@
   "exdb_id": "IENzBdA"
  },
  {
-  "slug": "dumbbell-calf-raise",
-  "exdb_id": "r29jP7S"
- },
- {
   "slug": "dumbbell-deadlift",
   "exdb_id": "nUwVh7b"
  },
@@ -476,16 +416,8 @@
   "exdb_id": "aWedzZX"
  },
  {
-  "slug": "dumbbell-pistol-squat",
-  "exdb_id": "nqs5HGV"
- },
- {
   "slug": "dumbbell-push-press",
   "exdb_id": "FS63wTN"
- },
- {
-  "slug": "dumbbell-reverse-fly",
-  "exdb_id": "EAs3xL9"
  },
  {
   "slug": "dumbbell-romanian-deadlift",
@@ -516,10 +448,6 @@
   "exdb_id": "ainizkb"
  },
  {
-  "slug": "dumbbell-windmill",
-  "exdb_id": "9Tkqa9O"
- },
- {
   "slug": "dumbbell-wrist-curl",
   "exdb_id": "2dImyQ8"
  },
@@ -545,10 +473,6 @@
  },
  {
   "slug": "ez-bar-romanian-deadlift",
-  "exdb_id": "o6LqKKP"
- },
- {
-  "slug": "ez-bar-romanian-deadlift",
   "exdb_id": "wQ2c4XD"
  },
  {
@@ -558,14 +482,6 @@
  {
   "slug": "ez-bar-spider-curl",
   "exdb_id": "2kattbR"
- },
- {
-  "slug": "ez-bar-upright-row",
-  "exdb_id": "1oE78pm"
- },
- {
-  "slug": "ez-bar-upright-row",
-  "exdb_id": "83HoW9X"
  },
  {
   "slug": "face-pull",
@@ -590,10 +506,6 @@
  {
   "slug": "glute-bridge",
   "exdb_id": "GibBPPg"
- },
- {
-  "slug": "glute-kickback",
-  "exdb_id": "Kpajagk"
  },
  {
   "slug": "goblet-squat",
@@ -628,16 +540,8 @@
   "exdb_id": "SiWCcTN"
  },
  {
-  "slug": "hanging-knee-raise",
-  "exdb_id": "03lzqwk"
- },
- {
   "slug": "hanging-leg-raise",
   "exdb_id": "I3tsCnC"
- },
- {
-  "slug": "hanging-pike",
-  "exdb_id": "gdPIyyO"
  },
  {
   "slug": "hanging-pike",
@@ -693,10 +597,6 @@
  },
  {
   "slug": "inverted-row",
-  "exdb_id": "1YUWDNZ"
- },
- {
-  "slug": "inverted-row",
   "exdb_id": "bZGHsAZ"
  },
  {
@@ -712,60 +612,16 @@
   "exdb_id": "LIlE5Tn"
  },
  {
-  "slug": "kettlebell-bulgarian-split-squat",
-  "exdb_id": "qx4fgX7"
- },
- {
-  "slug": "kettlebell-deadlift",
-  "exdb_id": "nUwVh7b"
- },
- {
-  "slug": "kettlebell-farmers-walk",
-  "exdb_id": "qPEzJjA"
- },
- {
   "slug": "kettlebell-floor-press",
   "exdb_id": "rg59QCH"
- },
- {
-  "slug": "kettlebell-goblet-lunge",
-  "exdb_id": "SSsBDwB"
- },
- {
-  "slug": "kettlebell-hammer-curl",
-  "exdb_id": "2NpxjC1"
- },
- {
-  "slug": "kettlebell-hip-thrust",
-  "exdb_id": "aWedzZX"
  },
  {
   "slug": "kettlebell-pistol-squat",
   "exdb_id": "5bpPTHv"
  },
  {
-  "slug": "kettlebell-pullover",
-  "exdb_id": "9XjtHvS"
- },
- {
-  "slug": "kettlebell-reverse-lunge",
-  "exdb_id": "SSsBDwB"
- },
- {
   "slug": "kettlebell-russian-twist",
   "exdb_id": "XVDdcoj"
- },
- {
-  "slug": "kettlebell-shrug",
-  "exdb_id": "NJzBsGJ"
- },
- {
-  "slug": "kettlebell-single-leg-deadlift",
-  "exdb_id": "gKozT8X"
- },
- {
-  "slug": "kettlebell-sumo-deadlift",
-  "exdb_id": "KgI0tqW"
  },
  {
   "slug": "kettlebell-sumo-high-pull",
@@ -786,10 +642,6 @@
  {
   "slug": "knee-push-ups",
   "exdb_id": "ZOuKWir"
- },
- {
-  "slug": "kneeling-cable-row",
-  "exdb_id": "N6dZN2I"
  },
  {
   "slug": "kneeling-cable-row",
@@ -818,10 +670,6 @@
  {
   "slug": "leg-press",
   "exdb_id": "10Z2DXU"
- },
- {
-  "slug": "lunge",
-  "exdb_id": "iqH55N8"
  },
  {
   "slug": "lunge",
@@ -860,10 +708,6 @@
   "exdb_id": "RJgzwny"
  },
  {
-  "slug": "muscle-ups",
-  "exdb_id": "yJUHKTn"
- },
- {
   "slug": "negative-pull-ups",
   "exdb_id": "lBDjFxJ"
  },
@@ -874,14 +718,6 @@
  {
   "slug": "ohp",
   "exdb_id": "Kyd9Rz5"
- },
- {
-  "slug": "one-arm-dumbbell-push-press",
-  "exdb_id": "FS63wTN"
- },
- {
-  "slug": "one-arm-kettlebell-bicep-curl",
-  "exdb_id": "NbVPDMW"
  },
  {
   "slug": "one-arm-kettlebell-bottoms-up-press",
@@ -912,19 +748,11 @@
   "exdb_id": "UHJlbu3"
  },
  {
-  "slug": "one-arm-kettlebell-tricep-kickback",
-  "exdb_id": "W6PxUkg"
- },
- {
   "slug": "one-arm-lat-pulldown",
   "exdb_id": "U5INZY6"
  },
  {
   "slug": "one-arm-single-leg-dumbbell-romanian-deadlift",
-  "exdb_id": "gKozT8X"
- },
- {
-  "slug": "one-arm-single-leg-kettlebell-romanian-deadlift",
   "exdb_id": "gKozT8X"
  },
  {
@@ -960,10 +788,6 @@
   "exdb_id": "r0z6xzQ"
  },
  {
-  "slug": "pistol-squat",
-  "exdb_id": "5bpPTHv"
- },
- {
   "slug": "planche",
   "exdb_id": "LYJodFS"
  },
@@ -980,20 +804,12 @@
   "exdb_id": "lBDjFxJ"
  },
  {
-  "slug": "push-press",
-  "exdb_id": "FS63wTN"
- },
- {
   "slug": "push-up",
   "exdb_id": "I4hDWkc"
  },
  {
   "slug": "rack-pull",
   "exdb_id": "za9Ni4z"
- },
- {
-  "slug": "rear-delt-fly",
-  "exdb_id": "8DiFDVA"
  },
  {
   "slug": "reverse-crunches",
@@ -1018,18 +834,6 @@
  {
   "slug": "ring-dips",
   "exdb_id": "ezTvXcr"
- },
- {
-  "slug": "rings-inverted-row",
-  "exdb_id": "1YUWDNZ"
- },
- {
-  "slug": "rings-inverted-row",
-  "exdb_id": "bZGHsAZ"
- },
- {
-  "slug": "romanian-deadlift",
-  "exdb_id": "o6LqKKP"
  },
  {
   "slug": "romanian-deadlift",
@@ -1077,19 +881,11 @@
  },
  {
   "slug": "seated-smith-machine-shoulder-press",
-  "exdb_id": "MRaFiZP"
- },
- {
-  "slug": "seated-smith-machine-shoulder-press",
   "exdb_id": "xUwnBMT"
  },
  {
   "slug": "shrug",
   "exdb_id": "dG7tG5y"
- },
- {
-  "slug": "side-lunge",
-  "exdb_id": "py1HSzx"
  },
  {
   "slug": "side-lying-hip-abduction",
@@ -1134,10 +930,6 @@
  {
   "slug": "smith-machine-bench-press",
   "exdb_id": "trqKQv2"
- },
- {
-  "slug": "smith-machine-bent-over-row",
-  "exdb_id": "5lE7XRz"
  },
  {
   "slug": "smith-machine-bent-over-row",
@@ -1224,24 +1016,12 @@
   "exdb_id": "KgI0tqW"
  },
  {
-  "slug": "sumo-squat",
-  "exdb_id": "dzz6BiV"
- },
- {
   "slug": "svend-press",
   "exdb_id": "I1OBLnn"
  },
  {
-  "slug": "t-bar-row",
-  "exdb_id": "aaXr7ld"
- },
- {
   "slug": "thruster",
   "exdb_id": "f7Y9eDZ"
- },
- {
-  "slug": "toes-to-bar",
-  "exdb_id": "I3tsCnC"
  },
  {
   "slug": "tricep-kickback",
@@ -1254,22 +1034,6 @@
  {
   "slug": "trx-chest-press",
   "exdb_id": "IaGQCrC"
- },
- {
-  "slug": "trx-row",
-  "exdb_id": "4OaumBr"
- },
- {
-  "slug": "upright-row",
-  "exdb_id": "1oE78pm"
- },
- {
-  "slug": "upright-row",
-  "exdb_id": "83HoW9X"
- },
- {
-  "slug": "v-bar-lat-pulldown",
-  "exdb_id": "0MlxeMn"
  },
  {
   "slug": "v-bar-lat-pulldown",

@@ -48,7 +48,14 @@ def silueta(luz):
     for esquina in ((0, 0), (fuera.width - 1, 0), (0, fuera.height - 1), (fuera.width - 1, fuera.height - 1)):
         if fuera.getpixel(esquina) == 0:
             ImageDraw.floodfill(fuera, esquina, 128)
-    lleno = np.where(np.asarray(fuera) == 128, 0, 255).astype(np.uint8)
+    # Solo se rellenan los huecos chicos (entre líneas del dibujo); un hueco grande,
+    # como el espacio entre las piernas, sigue siendo fondo
+    hueco = (np.asarray(fuera) == 0)
+    etiquetas, _ = ndimage.label(hueco)
+    tamanos = np.bincount(etiquetas.ravel())
+    tamanos[0] = 0
+    grande = tamanos[etiquetas] > hueco.size * 0.006
+    lleno = np.where((np.asarray(fuera) == 128) | grande, 0, 255).astype(np.uint8)
     lleno_img = Image.fromarray(lleno, 'L').filter(ImageFilter.GaussianBlur(1.0))
     gordo = lleno_img.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.4))
     dentro = np.asarray(lleno_img, dtype=np.float32) / 255

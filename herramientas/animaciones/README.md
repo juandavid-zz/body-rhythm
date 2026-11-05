@@ -29,15 +29,21 @@ curl con pesa rusa usa el de mancuerna, la plancha lateral usa "side bridge").
 - `emparejar.py` busca el ejercicio de ExerciseDB más parecido por nombre y equipo.
 - `decidir.py` aplica la revisión a mano: descarta los que salían con otro
   ejercicio y fija algunos elegidos a mano.
-- `emparejados.json` es la lista de los que salen de ExerciseDB (296 de los
+- `emparejados.json` es la lista de los que salen de ExerciseDB (253 de los
   376 ejercicios de la biblioteca).
-- `desde_repdb.py` hace los otros 80 (sobre todo TRX y estiramientos con
-  banda, que no están en ExerciseDB): toma las fotos de inicio y final de
-  RepDB, les quita el fondo, las pasa a gris y les aplica el mismo estilo.
+- `desde_repdb.py` hace los otros 123, listados en `desde_repdb.txt`: toma las
+  fotos de inicio y final de RepDB, les quita el fondo, las pasa a gris y les
+  aplica el mismo estilo. Son los que no están en ExerciseDB (TRX,
+  estiramientos con banda...) y los que allá salían con otro equipo o postura
+  (pesa rusa que en el GIF es mancuerna, anillas en vez de TRX...).
 
 ```bash
-python desde_repdb.py ../../frontend/public/ejercicios ../../frontend/public/ejercicios/animadas plate-pinch clamshells ...
+python desde_repdb.py ../../frontend/public/ejercicios ../../frontend/public/ejercicios/animadas $(tr -d '\r' < desde_repdb.txt)
 ```
+
+Cada ejercicio se revisó poniendo lado a lado sus fotos de RepDB (que son las
+que coinciden con el nombre, la descripción y los músculos de la app) y las
+dos posturas de la animación.
 
 Después de generar, la lista de `frontend/src/data/animaciones.json` debe tener
 el nombre de cada video que exista en la carpeta.
