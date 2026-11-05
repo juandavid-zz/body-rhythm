@@ -3,7 +3,7 @@
 Uso: python herramientas/iconos.py   (necesita: pip install resvg-py pillow)
 
 icono.svg es el escudo solo, sin fondo: así sirve de favicon. Para los
-íconos de la app se pone sobre un cuadro oscuro con un resplandor morado.
+íconos de la app se pone sobre el mismo fondo de la página.
 """
 import io
 from pathlib import Path
@@ -23,15 +23,17 @@ def sobre_fondo(escala):
     margen = 20 * (1 - escala)
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
   <defs>
-    <linearGradient id="app-fondo" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1e1230"/><stop offset="1" stop-color="#07050b"/>
-    </linearGradient>
-    <radialGradient id="app-luz" cx="20" cy="22" r="18" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#a855f7" stop-opacity="0.45"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    <radialGradient id="app-morado" cx="6" cy="2" r="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c3aed" stop-opacity="0.45"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="app-rosa" cx="36" cy="38" r="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ec4899" stop-opacity="0.3"/><stop offset="1" stop-color="#ec4899" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="40" height="40" fill="url(#app-fondo)"/>
-  <rect width="40" height="40" fill="url(#app-luz)"/>
+  <!-- El mismo fondo de la página: casi negro con un resplandor morado y uno rosa -->
+  <rect width="40" height="40" fill="#07060d"/>
+  <rect width="40" height="40" fill="url(#app-morado)"/>
+  <rect width="40" height="40" fill="url(#app-rosa)"/>
   <g transform="translate({margen} {margen}) scale({escala})">{interior}</g>
 </svg>'''
 

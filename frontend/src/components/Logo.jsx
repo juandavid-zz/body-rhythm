@@ -6,7 +6,7 @@ const LETRA_B =
 const ESCUDO = "M6 2.5h28l3.5 3.5v15.6L20 38 2.5 21.6V6z";
 
 /**
- * Logo de Body Rhythm: un escudo en punta, en degradado metálico, con la B
+ * Logo de Body Rhythm: un escudo en punta, con el degradado de los títulos de la página y la B
  * cincelada calada en el centro, y el nombre apilado en letra condensada.
  * El mismo dibujo está en public/icons/icono.svg.
  */
@@ -21,10 +21,10 @@ export default function Logo({ conNombre = true }) {
         <svg className="br-logo-icono" viewBox="0 0 40 40" aria-hidden="true">
           <defs>
             <linearGradient id={`${id}-metal`} x1="8" y1="2" x2="32" y2="38" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#e3c4ff" />
-              <stop offset="0.3" stopColor="#a855f7" />
-              <stop offset="0.72" stopColor="#d0287a" />
-              <stop offset="1" stopColor="#fb7185" />
+              <stop offset="0" stopColor="#c084fc" />
+              <stop offset="0.28" stopColor="#a855f7" />
+              <stop offset="0.6" stopColor="#c14cff" />
+              <stop offset="1" stopColor="#ec4899" />
             </linearGradient>
             <linearGradient id={`${id}-filo`} x1="20" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
               <stop offset="0" stopColor="#fff" stopOpacity="0.6" />
@@ -33,7 +33,7 @@ export default function Logo({ conNombre = true }) {
             <linearGradient id={`${id}-bisel`} x1="20" y1="3" x2="20" y2="37" gradientUnits="userSpaceOnUse">
               <stop offset="0" stopColor="#fff" stopOpacity="0.85" />
               <stop offset="0.5" stopColor="#fff" stopOpacity="0.12" />
-              <stop offset="1" stopColor="#ffd0e4" stopOpacity="0.5" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0.4" />
             </linearGradient>
             <clipPath id={`${id}-recorte`}>
               <path d={ESCUDO} />
@@ -47,7 +47,7 @@ export default function Logo({ conNombre = true }) {
           </g>
           <path fill="none" stroke={url("bisel")} strokeWidth="0.9" d="M6.6 4h26.8l2.6 2.6v14.4L20 36 4 21V6.6z" />
           <g transform="translate(20 18.4) scale(0.64) skewX(-11) translate(-20 -20)">
-            <path fillRule="evenodd" fill="#0d0716" d={LETRA_B} />
+            <path fillRule="evenodd" fill="#07060d" d={LETRA_B} />
           </g>
         </svg>
       </span>
