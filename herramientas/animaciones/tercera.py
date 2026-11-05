@@ -22,7 +22,6 @@ PARECIDOS = {
     'toes-to-bar': 'hanging leg raise',
     'v-ups': 'jackknife sit-up',
     'captains-chair-knee-raise': 'captains chair straight-leg raise',
-    'jumping-jacks': 'jack jump',
     # Piernas y glúteos
     'sumo-squat': 'smith sumo squat',
     'dumbbell-pistol-squat': 'single leg squat (pistol)',
@@ -47,7 +46,6 @@ PARECIDOS = {
     'incline-bench-ez-bar-press': 'barbell incline bench press',
     'trx-chest-press': 'suspended push-up',
     'double-kettlebell-overhead-press': 'kettlebell two-arm military press',
-    'ez-bar-front-raise': 'barbell front raise',
     'ez-bar-upright-row': 'barbell upright row',
     'hang-clean': 'power clean',
     # Espalda

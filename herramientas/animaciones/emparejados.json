@@ -92,10 +92,6 @@
   "exdb_id": "25GPyDY"
  },
  {
-  "slug": "barbell-front-raise",
-  "exdb_id": "b2Uoz54"
- },
- {
   "slug": "barbell-glute-bridge",
   "exdb_id": "qKBpF7I"
  },
@@ -200,10 +196,6 @@
   "exdb_id": "6YUfHPL"
  },
  {
-  "slug": "box-jump",
-  "exdb_id": "iPm26QU"
- },
- {
   "slug": "box-squat",
   "exdb_id": "W9pFVv1"
  },
@@ -253,7 +245,7 @@
  },
  {
   "slug": "cable-kickback",
-  "exdb_id": "HEJ6DIX"
+  "exdb_id": "Kpajagk"
  },
  {
   "slug": "cable-lateral-raise",
@@ -261,7 +253,7 @@
  },
  {
   "slug": "cable-tricep-kickback",
-  "exdb_id": "HEJ6DIX"
+  "exdb_id": "vvNjDJS"
  },
  {
   "slug": "cable-upright-row",
@@ -536,10 +528,6 @@
   "exdb_id": "6TG6x2w"
  },
  {
-  "slug": "ez-bar-front-raise",
-  "exdb_id": "b2Uoz54"
- },
- {
   "slug": "ez-bar-overhead-extension",
   "exdb_id": "iaapw0g"
  },
@@ -605,7 +593,7 @@
  },
  {
   "slug": "glute-kickback",
-  "exdb_id": "HEJ6DIX"
+  "exdb_id": "Kpajagk"
  },
  {
   "slug": "goblet-squat",
@@ -722,10 +710,6 @@
  {
   "slug": "jump-squat",
   "exdb_id": "LIlE5Tn"
- },
- {
-  "slug": "jumping-jacks",
-  "exdb_id": "1g5bPpA"
  },
  {
   "slug": "kettlebell-bulgarian-split-squat",
@@ -865,7 +849,7 @@
  },
  {
   "slug": "machine-shoulder-press",
-  "exdb_id": "67n3r98"
+  "exdb_id": "dNFYIU1"
  },
  {
   "slug": "medicine-ball-slam",
@@ -1121,7 +1105,7 @@
  },
  {
   "slug": "single-arm-db-row",
-  "exdb_id": "v2DfH14"
+  "exdb_id": "C0MA9bC"
  },
  {
   "slug": "single-arm-dumbbell-overhead-tricep-extension",

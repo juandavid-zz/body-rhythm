@@ -46,18 +46,25 @@ A_MANO = {
     'hip-abduction': 'CHpahtl',      # machine seated hip abduction
     'hip-adduction': 'oHsrypV',      # machine seated hip adduction
     'cable-crunch': 'CUmLRTA',       # cable kneeling crunch
-    'ez-bar-front-raise': '33AzZeV',  # barbell front raise (and pullover)
     'pec-deck': 'v3xmPAR',           # machine seated fly
     'hanging-knee-raise': '03lzqwk',  # assisted hanging knee raise
     'side-lunge': 'py1HSzx',         # barbell lateral lunge
     'clean': 'SiWCcTN',              # power clean
     'snatch': 'xHKN2s8',             # barbell single-arm snatch
     'ohp': 'Kyd9Rz5',                # barbell standing military press
+    # Revisados cuadro a cuadro: el GIF que salía por nombre mostraba otra cosa
+    'single-arm-db-row': 'C0MA9bC',  # salía un remo en espaldera
+    'machine-shoulder-press': 'dNFYIU1',  # salía una sentadilla con landmine
+    'glute-kickback': 'Kpajagk',     # cable kickback es de deltoides posterior
+    'cable-kickback': 'Kpajagk',     # cable standing hip extension
+    'cable-tricep-kickback': 'vvNjDJS',  # cable two-arm triceps kickback
 }
 
 # Revisados en video y descartados después
 DESCARTADOS = {
     'ez-bar-front-raise',            # sale un pullover acostado
+    'barbell-front-raise',           # sostiene la barra de un extremo, en diagonal
+    'box-jump',                      # baja de un banco, no salta al cajón
 }
 
 pares = json.load(open(sys.argv[1], encoding='utf-8'))

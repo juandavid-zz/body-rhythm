@@ -29,9 +29,9 @@ curl con pesa rusa usa el de mancuerna, la plancha lateral usa "side bridge").
 - `emparejar.py` busca el ejercicio de ExerciseDB más parecido por nombre y equipo.
 - `decidir.py` aplica la revisión a mano: descarta los que salían con otro
   ejercicio y fija algunos elegidos a mano.
-- `emparejados.json` es la lista de los que salen de ExerciseDB (300 de los
+- `emparejados.json` es la lista de los que salen de ExerciseDB (296 de los
   376 ejercicios de la biblioteca).
-- `desde_repdb.py` hace los otros 76 (sobre todo TRX y estiramientos con
+- `desde_repdb.py` hace los otros 80 (sobre todo TRX y estiramientos con
   banda, que no están en ExerciseDB): toma las fotos de inicio y final de
   RepDB, les quita el fondo, las pasa a gris y les aplica el mismo estilo.
 
