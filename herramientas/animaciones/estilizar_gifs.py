@@ -44,7 +44,10 @@ def silueta(luz):
     cuerpo = cuerpo.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.MinFilter(7))
     # Rellena los huecos: todo lo que no se alcanza desde el borde es cuerpo
     fuera = cuerpo.copy()
-    ImageDraw.floodfill(fuera, (0, 0), 128)
+    # Desde las cuatro esquinas: una colchoneta de lado a lado no debe cerrar el fondo de abajo
+    for esquina in ((0, 0), (fuera.width - 1, 0), (0, fuera.height - 1), (fuera.width - 1, fuera.height - 1)):
+        if fuera.getpixel(esquina) == 0:
+            ImageDraw.floodfill(fuera, esquina, 128)
     lleno = np.where(np.asarray(fuera) == 128, 0, 255).astype(np.uint8)
     lleno_img = Image.fromarray(lleno, 'L').filter(ImageFilter.GaussianBlur(1.0))
     gordo = lleno_img.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.4))
