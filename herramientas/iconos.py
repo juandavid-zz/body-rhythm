@@ -13,15 +13,17 @@ CARPETA = Path(__file__).resolve().parent.parent / 'frontend' / 'public' / 'icon
 svg = (CARPETA / 'icono.svg').read_text(encoding='utf-8')
 
 
-def a_sangre(texto, escala_onda):
-    """Sin esquinas transparentes: iPhone y Android recortan el ícono ellos mismos.
-    escala_onda < 1 deja la onda dentro de la zona segura del ícono "maskable"."""
-    texto = re.sub(r'<path d="M20 1\.5c9\.6[^"]*s0 14\.4[^"]*" fill="url\(#fondo\)"/>',
-                   '<rect width="40" height="40" fill="url(#fondo)"/>', texto)
-    texto = re.sub(r'<path d="M20 1\.5c9\.6 0 14\.4 0 16\.5 2\.1S38\.5 10\.4 38\.5 20H1\.5[^"]*" fill="url\(#brillo\)"/>',
-                   '<rect width="40" height="22" fill="url(#brillo)"/>', texto)
-    return texto.replace('<path d="M7 20h2',
-                         f'<path transform="translate(20 20) scale({escala_onda}) translate(-20 -20)" d="M7 20h2')
+def a_sangre(texto, escala_letra):
+    """Sin esquinas transparentes ni borde: iPhone y Android recortan el ícono ellos mismos.
+    escala_letra < 1 deja la "B." dentro de la zona segura del ícono "maskable"."""
+    texto = texto.replace('<rect x="1" y="1" width="38" height="38" rx="11" fill="url(#fondo)"/>',
+                          '<rect width="40" height="40" fill="url(#fondo)"/>')
+    texto = texto.replace('<rect x="1" y="1" width="38" height="20" rx="11" fill="url(#brillo)"/>',
+                          '<rect width="40" height="21" fill="url(#brillo)"/>')
+    texto = re.sub(r'\s*<rect x="1\.4"[^>]*stroke="url\(#borde\)"[^>]*/>', '', texto)
+    # La letra y el punto van juntos, para escalarlos desde el centro
+    texto = texto.replace('<path transform="matrix', f'<g transform="translate(20 20) scale({escala_letra}) translate(-20 -20)"><path transform="matrix')
+    return texto.replace('fill="#ffd1ec"/>', 'fill="#ffd1ec"/></g>')
 
 
 def guardar(texto, lado, nombre):

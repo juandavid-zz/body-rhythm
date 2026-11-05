@@ -105,43 +105,43 @@
   transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25), filter 0.3s;
 }
 
-/* Al pasar el mouse el ícono se levanta y la onda se vuelve a dibujar */
+/* Al pasar el mouse el ícono se levanta un poco */
 .br-nav-marca:hover .br-logo-icono {
   transform: translateY(-1px) scale(1.05);
   filter: drop-shadow(0 6px 14px rgba(236, 72, 153, 0.55)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
 }
 
-.br-logo-onda {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
+/* El punto rosa de "B." late una vez al pasar el mouse */
+.br-logo-punto {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.br-nav-marca:hover .br-logo-onda {
-  animation: br-logo-dibujar 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+.br-nav-marca:hover .br-logo-punto {
+  animation: br-logo-latido 0.7s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
-@keyframes br-logo-dibujar {
-  from {
-    stroke-dashoffset: 1;
+@keyframes br-logo-latido {
+  40% {
+    transform: scale(1.7);
   }
 }
 
 .br-logo-nombre {
   color: #fff;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', sans-serif;
-  font-size: 1.06rem;
-  font-weight: 650;
-  letter-spacing: -0.035em;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   line-height: 1;
   white-space: nowrap;
-  font-feature-settings: 'ss01', 'cv11';
 }
 
 .br-logo-nombre span {
-  margin-left: 0.22em;
-  color: rgba(255, 255, 255, 0.62);
-  font-weight: 400;
-  letter-spacing: -0.025em;
+  margin-left: 0.2em;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  letter-spacing: -0.03em;
 }
 
 /* ---------- Secciones (con la píldora que se desliza) ---------- */
@@ -625,7 +625,7 @@
 @media (prefers-reduced-motion: reduce) {
   .br-nav-pildora,
   .br-logo-icono,
-  .br-logo-onda,
+  .br-logo-punto,
   .br-nav-panel li,
   .br-nav-panel-pie,
   .br-nav-menu {
