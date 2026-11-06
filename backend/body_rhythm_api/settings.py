@@ -176,13 +176,18 @@ STORAGES = {
     },
 }
 
-# Fotos de perfil en Cloudinary cuando hay CLOUDINARY_URL (cloudinary://clave:secreto@nube).
-# En Render y otros servidores gratis el disco se borra al reiniciar: las fotos se perderían.
-# Sin la variable (desarrollo) se guardan en MEDIA_ROOT como siempre.
+# Dónde se guardan las fotos de perfil (ALMACEN_FOTOS):
+#   "disco"      carpeta MEDIA_ROOT (lo normal en desarrollo)
+#   "base"       la base de datos (lo normal en producción: en Render gratis el disco
+#                se borra al reiniciar y no depende de ningún servicio externo)
+#   "cloudinary" Cloudinary, con CLOUDINARY_URL (cloudinary://clave:secreto@nube)
+ALMACEN_FOTOS = os.getenv('ALMACEN_FOTOS', '').strip().lower() or ('disco' if DEBUG else 'base')
 CLOUDINARY_URL = os.getenv('CLOUDINARY_URL', '').strip()
-if CLOUDINARY_URL:
+if ALMACEN_FOTOS == 'cloudinary' and CLOUDINARY_URL:
     STORAGES['default'] = {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'}
     CLOUDINARY_STORAGE = {'PREFIX': 'body-rhythm'}
+elif ALMACEN_FOTOS == 'base':
+    STORAGES['default'] = {'BACKEND': 'users.almacen.AlmacenBaseDatos'}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

@@ -8,6 +8,7 @@ import { normalizarUsername, useDisponibilidadUsername } from "../components/Aut
 import { iniciales } from "../utils/formato";
 import { urlFoto } from "../utils/foto";
 import "../css/configuracion.css";
+import { avisarFotoPerfil } from "../utils/fotoPerfil";
 
 const METAS = [
   { value: "perder_peso", label: "Perder peso" },
@@ -94,6 +95,7 @@ function SeccionFoto({ cuenta, onGuardado }) {
         headers: { "Content-Type": "multipart/form-data" },
       });
       onGuardado({ ...cuenta, foto: res.data.foto });
+      avisarFotoPerfil(res.data.foto);
       setMensaje({ tipo: "exito", texto: "Foto actualizada." });
     } catch (error) {
       setMensaje({ tipo: "error", texto: primerError(error.response?.data, "No se pudo subir la foto.") });
@@ -107,6 +109,7 @@ function SeccionFoto({ cuenta, onGuardado }) {
     try {
       await api.delete("/usuarios/me/foto/");
       onGuardado({ ...cuenta, foto: null });
+      avisarFotoPerfil(null);
       setMensaje({ tipo: "exito", texto: "Foto quitada." });
     } catch {
       setMensaje({ tipo: "error", texto: "No se pudo quitar la foto." });

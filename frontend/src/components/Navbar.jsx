@@ -5,6 +5,7 @@ import api from "../api/api";
 import Notificaciones from "./Notificaciones";
 import Avatar from "./social/Avatar";
 import Logo from "./Logo";
+import { EVENTO_FOTO_PERFIL } from "../utils/fotoPerfil";
 import "../css/navbar.css";
 
 // Secciones de la barra. "privada": sin sesión lleva a iniciar sesión.
@@ -43,7 +44,8 @@ function Icono({ nombre }) {
   );
 }
 
-// La foto de perfil se pide una sola vez por sesión y la comparten todas las páginas
+// La foto de perfil se pide una sola vez por sesión y la comparten todas las páginas.
+// Cuando cambia, Configuración lo avisa con este evento (avisarFotoPerfil).
 let perfilCache = null;
 function obtenerPerfil() {
   if (!perfilCache) {
@@ -88,6 +90,17 @@ export default function Navbar() {
       vivo = false;
     };
   }, [logueado]);
+
+  // Al cambiar o quitar la foto en Configuración, la barra la cambia al instante
+  useEffect(() => {
+    const alCambiar = (e) => {
+      const nueva = e.detail?.foto ?? null;
+      setFoto(nueva);
+      perfilCache = (perfilCache || Promise.resolve({})).then((perfil) => ({ ...(perfil || {}), foto: nueva }));
+    };
+    window.addEventListener(EVENTO_FOTO_PERFIL, alCambiar);
+    return () => window.removeEventListener(EVENTO_FOTO_PERFIL, alCambiar);
+  }, []);
 
   // La barra se vuelve más sólida cuando la página baja
   useEffect(() => {

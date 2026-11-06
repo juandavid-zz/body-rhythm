@@ -548,3 +548,62 @@ class FotoPerfilAlmacenamientoTests(APITestCase):
         self.usuario.refresh_from_db()
         self.assertEqual(self.usuario.foto.name, anterior)
         self.assertTrue(self.usuario.foto.storage.exists(anterior))
+
+
+@override_settings(STORAGES={
+    'default': {'BACKEND': 'users.almacen.AlmacenBaseDatos'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
+class FotoEnBaseDeDatosTests(APITestCase):
+    """En producción (Render gratis) las fotos se guardan en la base, no en el disco."""
+
+    def setUp(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from .models import Usuario
+
+        self.auth = AuthUsuario.objects.create_user(email='base@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=self.auth, nombre='Base', username='base')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(self.auth).access_token}')
+
+    def subir(self, color=(120, 60, 200)):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        b = io.BytesIO()
+        Image.new('RGB', (600, 400), color).save(b, 'JPEG')
+        return self.client.post('/api/usuarios/me/foto/', {'foto': SimpleUploadedFile('yo.jpg', b.getvalue(), content_type='image/jpeg')}, format='multipart')
+
+    def test_sube_sirve_cambia_y_borra(self):
+        from django.test import RequestFactory
+        from .almacen import servir_archivo
+        from .models import ArchivoGuardado
+
+        respuesta = self.subir()
+        self.assertEqual(respuesta.status_code, 200)
+        url = respuesta.data['foto']
+        self.assertTrue(url.startswith('/media/fotos_perfil/') and url.endswith('.webp'), url)
+        self.assertEqual(ArchivoGuardado.objects.count(), 1)
+
+        servida = servir_archivo(RequestFactory().get(url), url.removeprefix('/media/'))
+        self.assertEqual(servida.status_code, 200)
+        self.assertEqual(servida['Content-Type'], 'image/webp')
+        self.assertIn('immutable', servida['Cache-Control'])
+        self.assertEqual(servida.content[:4], b'RIFF')
+
+        # Cambiar la foto deja solo la nueva
+        otra = self.subir((236, 72, 153))
+        self.assertNotEqual(otra.data['foto'], url)
+        self.assertEqual(list(ArchivoGuardado.objects.values_list('nombre', flat=True)), [otra.data['foto'].removeprefix('/media/')])
+
+        # Borrar la cuenta borra la foto
+        self.auth.delete()
+        self.assertEqual(ArchivoGuardado.objects.count(), 0)
+
+    def test_un_archivo_que_no_existe_da_404(self):
+        from django.http import Http404
+        from django.test import RequestFactory
+        from .almacen import servir_archivo
+
+        with self.assertRaises(Http404):
+            servir_archivo(RequestFactory().get('/media/x.webp'), 'fotos_perfil/no-existe.webp')

@@ -41,7 +41,11 @@ urlpatterns = [
 
 # Fotos subidas: en desarrollo siempre; en producción solo con SERVIR_MEDIA=True
 # (si no, las sirve el servidor web, por ejemplo Nginx con un alias a MEDIA_ROOT)
-if settings.DEBUG:
+if settings.ALMACEN_FOTOS == 'base':
+    # Fotos guardadas en la base de datos (producción)
+    from users.almacen import servir_archivo
+    urlpatterns += [re_path(r'^media/(?P<nombre>.+)$', servir_archivo)]
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 elif settings.SERVIR_MEDIA:
     urlpatterns += [re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT})]
