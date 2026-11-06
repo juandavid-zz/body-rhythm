@@ -104,12 +104,7 @@ def _texto_usuario(valor, largo=80):
 
 
 # ── 1) Generación de rutina estructurada (ya existente, formato JSON) ──
-def generar_rutina_ia(usuario, lugar, equipo, grupo_muscular="cuerpo completo"):
-    """
-    Devuelve un dict con la rutina en JSON estructurado.
-    Lanza excepción si Gemini falla (la vista debe capturarla y usar el
-    catálogo de respaldo, como ya tenías).
-    """
+def _prompt_rutina(usuario, lugar, equipo, grupo_muscular):
     contexto = _contexto_usuario(usuario)
 
     if grupo_muscular == "recomendado":
@@ -136,7 +131,6 @@ con JSON puro (sin texto adicional, sin ```json) con esta forma exacta:
   "duracion_minutos": number,
   "estructura": "string (1-2 frases) que explique cómo está dividida la semana y por qué",
   "calentamiento": ["paso concreto con tiempo o repeticiones", "..."],
-  "enfriamiento": ["estiramiento concreto con su duración", "..."],
   "ejercicios": [
     {{
       "dia": "Día 1 · Pierna",
@@ -155,6 +149,7 @@ con JSON puro (sin texto adicional, sin ```json) con esta forma exacta:
       "alternativa": "nombre de otro ejercicio del catálogo que lo pueda reemplazar, o null"
     }}
   ],
+  "enfriamiento": ["estiramiento concreto con su duración", "..."],
   "progresion": [
     "Semanas 1-2: ...",
     "Semanas 3-4: ...",
@@ -218,7 +213,39 @@ Instrucciones:
 - Todo en español, tuteando.
 """
 
+    return prompt
+
+
+def generar_rutina_ia(usuario, lugar, equipo, grupo_muscular="cuerpo completo"):
+    """
+    Devuelve un dict con la rutina en JSON estructurado.
+    Lanza excepción si Gemini falla (la vista usa el catálogo de respaldo).
+    """
+    prompt = _prompt_rutina(usuario, lugar, equipo, grupo_muscular)
     texto = _generar(MODELO_RUTINA, prompt, "generar_rutina_ia", json_puro=True)
+    return rutina_de_texto(texto)
+
+
+def generar_rutina_ia_por_partes(usuario, lugar, equipo, grupo_muscular="cuerpo completo"):
+    """
+    Igual que generar_rutina_ia, pero va entregando el JSON a medida que
+    Gemini lo escribe (trozos de texto). Al terminar, rutina_de_texto con
+    todo el texto da la rutina con los ejercicios vinculados.
+    """
+    prompt = _prompt_rutina(usuario, lugar, equipo, grupo_muscular)
+    config = types.GenerateContentConfig(response_mime_type="application/json")
+    inicio = time.time()
+    hubo_texto = False
+    for trozo in _cliente().models.generate_content_stream(model=MODELO_RUTINA, contents=prompt, config=config):
+        if trozo.text:
+            hubo_texto = True
+            yield trozo.text
+    logger.info("Gemini (generar_rutina_ia_por_partes) tardó %.2fs", time.time() - inicio)
+    if not hubo_texto:
+        raise ValueError("Gemini no devolvió texto (generar_rutina_ia_por_partes)")
+
+
+def rutina_de_texto(texto):
     return vincular_ejercicios(_json_de(texto))
 
 

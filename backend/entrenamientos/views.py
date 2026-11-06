@@ -8,6 +8,7 @@ from rest_framework.exceptions import Throttled
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
@@ -91,6 +92,9 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
         imc = chatbot_service.calcular_imc(float(peso), float(altura))
         rango_imc = chatbot_service.obtener_rango_imc(imc)
 
+        if request.data.get("por_partes"):
+            return self._por_partes(usuario, lugar, equipo, grupo_muscular, meta, imc, rango_imc)
+
         try:
             rutina = chatbot_service.generar_rutina_ia(usuario, lugar, equipo, grupo_muscular)
             fuente = "ia"
@@ -121,6 +125,52 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
         )
 
         return Response(resultado, status=status.HTTP_200_OK)
+
+    def _por_partes(self, usuario, lugar, equipo, grupo_muscular, meta, imc, rango_imc):
+        """
+        La rutina llega mientras la IA la escribe, como en un chat: una línea
+        JSON por evento (NDJSON).
+          {"t": "inicio", "imc": ..., "rango_imc": ...}
+          {"t": "texto", "d": "..."}    trozos del JSON de la rutina
+          {"t": "fin", "resultado": {...}}   la rutina completa y vinculada
+          {"t": "error", "error": "..."}
+        """
+        def linea(datos):
+            return json.dumps(datos, ensure_ascii=False, default=str) + "\n"
+
+        def eventos():
+            yield linea({"t": "inicio", "imc": imc, "rango_imc": rango_imc})
+            texto = ""
+            try:
+                for trozo in chatbot_service.generar_rutina_ia_por_partes(usuario, lugar, equipo, grupo_muscular):
+                    texto += trozo
+                    yield linea({"t": "texto", "d": trozo})
+                rutina = chatbot_service.rutina_de_texto(texto)
+                fuente = "ia"
+            except Exception as e:
+                logger.warning("Gemini falló al generar la rutina por partes, se usa el respaldo: %s", e)
+                rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
+                fuente = "respaldo"
+                if rutina is None:
+                    yield linea({"t": "error", "error": "No se pudo generar la rutina ni encontrar un respaldo para tu perfil."})
+                    return
+
+            resultado = {"imc": imc, "rango_imc": rango_imc, "fuente": fuente, "rutina": rutina}
+            _guardar_conversacion(
+                usuario,
+                f"Generar rutina: lugar={lugar}, equipo={equipo}, grupo_muscular={grupo_muscular}",
+                resultado,
+                fuente,
+                tipo="rutina",
+            )
+            yield linea({"t": "fin", "resultado": resultado})
+
+        respuesta = StreamingHttpResponse(eventos(), content_type="application/x-ndjson; charset=utf-8")
+        # Sin compresión ni búfer: si no, los trozos llegarían todos juntos al final
+        respuesta["Content-Encoding"] = "identity"
+        respuesta["Cache-Control"] = "no-cache"
+        respuesta["X-Accel-Buffering"] = "no"
+        return respuesta
 
 
 class GuardarRutinaChatbotView(APIView):

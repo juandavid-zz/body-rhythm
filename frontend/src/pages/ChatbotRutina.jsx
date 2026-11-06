@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { jsonParcial } from '../utils/jsonParcial'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -208,7 +209,8 @@ function guardarChats(chats) {
 }
 
 // Lo que se manda al servidor: sin el indicador de "escribiendo..."
-const paraGuardar = (chat) => ({ ...chat, mensajes: chat.mensajes.filter((m) => !m.typing) })
+// Lo que se está escribiendo no se guarda: se guarda cuando termina
+const paraGuardar = (chat) => ({ ...chat, mensajes: chat.mensajes.filter((m) => !m.typing && !m.escribiendo) })
 // Conversación recién creada en la que aún no se ha hecho nada
 const esVacio = (chat) => chat.paso === PASOS.LUGAR && chat.mensajes.length <= MENSAJES_INICIALES.length
 
@@ -267,6 +269,14 @@ export default function ChatbotRutina() {
     }
     if (chatIdAnterior.current !== chatActualId) {
       chatIdAnterior.current = chatActualId
+      return
+    }
+    const ultimo = chatActual?.mensajes?.[chatActual.mensajes.length - 1]
+    if (ultimo?.escribiendo) {
+      // Como en un chat: si subiste a leer, no te baja a la fuerza
+      const caja = finChat.current?.closest('.chat-messages')
+      if (caja && caja.scrollHeight - caja.scrollTop - caja.clientHeight > 220) return
+      finChat.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
       return
     }
     finChat.current?.scrollIntoView({ behavior: 'smooth' })
@@ -431,33 +441,89 @@ export default function ChatbotRutina() {
     agregarMensaje({ from: 'bot', text: '', typing: true })
     actualizarChatActual({ grupoMuscular: valorGrupoMuscular, paso: PASOS.CARGANDO })
 
-    try {
-      const res = await api.post('/entrenamientos/chatbot/', {
-        lugar: chatActual.lugar,
-        equipo: chatActual.equipo,
-        grupo_muscular: valorGrupoMuscular,
-      })
-
+    // Pone la rutina (a medias o completa) como último mensaje del chat
+    const ponerRutina = (resultado, escribiendo) =>
       setChats((prev) =>
         prev.map((c) => {
           if (c.id !== chatActualId) return c
-          const sinTyping = c.mensajes.filter((m) => !m.typing)
+          const base = c.mensajes.filter((m) => !m.typing && !m.escribiendo)
+          const mensaje = escribiendo ? { from: 'bot', rutina: resultado, escribiendo: true } : { from: 'bot', rutina: resultado }
           return {
             ...c,
-            mensajes: [...sinTyping, { from: 'bot', rutina: res.data }],
-            resultado: res.data,
+            mensajes: [...base, mensaje],
             paso: PASOS.RESULTADO,
-            titulo: res.data.rutina?.nombre || 'Rutina generada',
+            ...(escribiendo ? {} : { resultado, titulo: resultado.rutina?.nombre || 'Rutina generada' }),
           }
         })
       )
+
+    // La respuesta llega por partes: una línea JSON por evento
+    let leidas = 0
+    let datos = null
+    let texto = ''
+    let final = null
+    let falla = null
+    const leer = (crudo) => {
+      const lineas = crudo.split('\n')
+      for (; leidas < lineas.length - 1; leidas++) {
+        if (!lineas[leidas].trim()) continue
+        const ev = JSON.parse(lineas[leidas])
+        if (ev.t === 'inicio') datos = ev
+        else if (ev.t === 'texto') texto += ev.d
+        else if (ev.t === 'fin') final = ev.resultado
+        else if (ev.t === 'error') falla = ev.error
+      }
+    }
+    let ultimoDibujo = 0
+    const dibujar = () => {
+      const parcial = jsonParcial(texto)
+      if (parcial) ponerRutina({ imc: datos?.imc, rango_imc: datos?.rango_imc, fuente: 'ia', rutina: parcial }, true)
+    }
+
+    try {
+      const res = await api.post(
+        '/entrenamientos/chatbot/',
+        {
+          lugar: chatActual.lugar,
+          equipo: chatActual.equipo,
+          grupo_muscular: valorGrupoMuscular,
+          por_partes: true,
+        },
+        {
+          responseType: 'text',
+          onDownloadProgress: (e) => {
+            const crudo = e.event?.target?.responseText
+            if (!crudo) return
+            leer(crudo)
+            // Hasta 20 veces por segundo, para que se vea fluido sin trabar la página
+            const ahora = performance.now()
+            if (!final && texto && ahora - ultimoDibujo > 50) {
+              ultimoDibujo = ahora
+              dibujar()
+            }
+          },
+        }
+      )
+      leer(String(res.data || '') + '\n')
+      if (falla) throw new Error(falla)
+      if (!final) throw new Error('La rutina llegó incompleta, intenta de nuevo.')
+      ponerRutina(final, false)
     } catch (err) {
+      // Con responseType 'text' el error del servidor llega como texto JSON
+      let datosError = err.response?.data
+      if (typeof datosError === 'string') {
+        try {
+          datosError = JSON.parse(datosError)
+        } catch {
+          datosError = null
+        }
+      }
       const mensajeError =
-        err.response?.data?.error || err.response?.data?.detail || 'No se pudo generar la rutina, intenta de nuevo.'
+        datosError?.error || datosError?.detail || err.message || 'No se pudo generar la rutina, intenta de nuevo.'
       setChats((prev) =>
         prev.map((c) => {
           if (c.id !== chatActualId) return c
-          const sinTyping = c.mensajes.filter((m) => !m.typing)
+          const sinTyping = c.mensajes.filter((m) => !m.typing && !m.escribiendo)
           return {
             ...c,
             mensajes: [...sinTyping, { from: 'bot', text: `⚠️ ${mensajeError}` }],
@@ -758,7 +824,7 @@ export default function ChatbotRutina() {
                     </span>
                   </div>
                 ) : m.rutina ? (
-                  <div className="msg-bubble rutina-bubble">
+                  <div className={`msg-bubble rutina-bubble${m.escribiendo ? ' escribiendo' : ''}`}>
                     <div className="rutina-resultado">
                       {m.rutina.fuente === 'respaldo' && (
                         <p className="rutina-aviso">
@@ -819,16 +885,16 @@ export default function ChatbotRutina() {
                         </div>
                       )}
 
-                      {Object.entries(agruparPorDia(m.rutina.rutina.ejercicios)).map(
+                      {Object.entries(agruparPorDia((m.rutina.rutina.ejercicios || []).filter((ej) => ej?.dia && ej.nombre))).map(
                         ([dia, ejercicios], d) => (
-                          <section key={dia} className="dia-rutina" style={{ '--d': d }}>
+                          <section key={d} className="dia-rutina" style={{ '--d': m.escribiendo ? 0 : d }}>
                             <h4>
                               <span className="dia-rutina-nombre">{dia}</span>
                               <small>{ejercicios.length} ejercicios</small>
                             </h4>
                             <ol>
                               {ejercicios.map((ej, n) => (
-                                <li key={ej.id || ej.nombre} style={{ '--n': n }}>
+                                <li key={n} style={{ '--n': n }}>
                                   <span className="ejercicio-num" aria-hidden="true">{n + 1}</span>
                                   <div className="ejercicio-cuerpo">
                                     <div className="ejercicio-fila">
@@ -949,6 +1015,12 @@ export default function ChatbotRutina() {
                           </div>
                         )}
 
+                      {m.escribiendo ? (
+                      <p className="rutina-escribiendo" role="status">
+                        <span className="typing-dots"><span></span><span></span><span></span></span>
+                        Escribiendo tu rutina…
+                      </p>
+                      ) : (
                       <div className="rutina-guardar">
                         {m.guardado ? (
                           <>
@@ -981,6 +1053,7 @@ export default function ChatbotRutina() {
                           </>
                         )}
                       </div>
+                      )}
                     </div>
                   </div>
                 ) : m.markdown ? (

@@ -1,3 +1,4 @@
+import json
 from unittest import mock
 
 from django.core.cache import cache
@@ -119,6 +120,48 @@ class GenerarRutinaTests(BaseChatbotTest):
         self.assertEqual(codigos, [200, 200, 429])
         self.assertIn('Intenta de nuevo', str(ultima.data['detail']))
         cache.clear()
+
+
+class RutinaPorPartesTests(BaseChatbotTest):
+    """La rutina llega mientras la IA la escribe (una línea JSON por evento)."""
+
+    def pedir(self):
+        respuesta = self.client.post('/api/entrenamientos/chatbot/', {
+            'lugar': 'gimnasio', 'equipo': 'completo', 'grupo_muscular': 'cuerpo completo', 'por_partes': True,
+        }, format='json')
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.streaming)
+        self.assertEqual(respuesta['Content-Encoding'], 'identity')  # el gzip no la junta
+        cuerpo = b''.join(respuesta.streaming_content).decode()
+        return [json.loads(l) for l in cuerpo.splitlines() if l.strip()]
+
+    def test_manda_los_trozos_y_al_final_la_rutina_vinculada(self):
+        texto = json.dumps({'nombre': 'Fuerza', 'ejercicios': [
+            {'dia': 'Día 1', 'ejercicio_id': self.press.id, 'nombre': 'press', 'series': 4, 'repeticiones': 8},
+        ]})
+        trozos = [texto[:10], texto[10:40], texto[40:]]
+        with mock.patch.object(chatbot_service, 'generar_rutina_ia_por_partes', return_value=iter(trozos)):
+            eventos = self.pedir()
+
+        self.assertEqual(eventos[0]['t'], 'inicio')
+        self.assertEqual(eventos[0]['rango_imc'], 'normal')
+        self.assertEqual(''.join(e['d'] for e in eventos if e['t'] == 'texto'), texto)
+        fin = eventos[-1]
+        self.assertEqual(fin['t'], 'fin')
+        self.assertEqual(fin['resultado']['fuente'], 'ia')
+        self.assertEqual(fin['resultado']['rutina']['ejercicios'][0]['nombre'], 'Press de Banca')
+
+    def test_si_la_ia_se_corta_termina_con_el_respaldo(self):
+        def a_medias(*args):
+            yield '{"nombre": "Fuer'
+            raise RuntimeError('se cortó')
+
+        with mock.patch.object(chatbot_service, 'generar_rutina_ia_por_partes', side_effect=a_medias):
+            eventos = self.pedir()
+
+        self.assertEqual(eventos[-1]['t'], 'fin')
+        self.assertEqual(eventos[-1]['resultado']['fuente'], 'respaldo')
+        self.assertTrue(eventos[-1]['resultado']['rutina']['ejercicios'])
 
 
 class TemaDelChatTests(BaseChatbotTest):

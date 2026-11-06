@@ -1748,3 +1748,32 @@
     animation: none;
   }
 }
+
+/* ---------- Rutina escribiéndose (llega por partes, como en un chat) ---------- */
+.chatbot-page .rutina-escribiendo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 1.4rem 0 0.2rem;
+  color: var(--cb-texto-3);
+  font-size: 0.88rem;
+}
+
+/* Lo último que se va escribiendo entra suave en vez de aparecer de golpe */
+.chatbot-page .rutina-bubble.escribiendo .dia-rutina li:last-child,
+.chatbot-page .rutina-bubble.escribiendo .rutina-nota:last-of-type {
+  animation: cb-aparecer 0.45s ease both;
+}
+
+/* Mientras se escribe, los días no esperan su turno para aparecer */
+.chatbot-page .rutina-bubble.escribiendo .dia-rutina {
+  animation-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-page .rutina-bubble.escribiendo .dia-rutina li:last-child,
+  .chatbot-page .rutina-bubble.escribiendo .rutina-nota:last-of-type {
+    animation: none;
+  }
+}
