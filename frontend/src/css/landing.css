@@ -1,0 +1,847 @@
+/* ============================================================
+   PÁGINA DE INICIO (Landing.jsx)
+   Al estilo de las páginas de producto de Apple: fondo negro,
+   titulares grandes y apretados, y la historia contada al bajar.
+   Todas las clases van con "la-" para no chocar con otras hojas.
+   ============================================================ */
+
+.la-pagina {
+  --la-sf: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Inter', 'Segoe UI', sans-serif;
+  --la-gris: #86868b;
+  --la-gris-claro: #a1a1a6;
+  --la-deg: linear-gradient(135deg, #a855f7 20%, #c14cff 55%, #ec4899 100%);
+  --la-boton: linear-gradient(135deg, rgba(168, 85, 247, 0.95), rgba(219, 39, 119, 0.85));
+  /* Debajo de la barra de la app y de la sub-barra */
+  --la-arriba: calc(var(--nav-alto, 62px) + 52px);
+
+  background: #000;
+  color: #f5f5f7;
+  font-family: var(--la-sf);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.la-pagina button {
+  margin: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.la-deg {
+  background: var(--la-deg);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.la-ancho {
+  width: min(980px, 100% - 44px);
+  margin: 0 auto;
+}
+
+.la-boton {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 22px !important;
+  border-radius: 980px;
+  background: var(--la-boton) !important;
+  color: #fff;
+  font-size: 17px !important;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.la-boton:hover {
+  transform: scale(1.03);
+  filter: brightness(1.1);
+}
+
+/* Los enlaces van en el morado claro de la marca (en Apple son azules) */
+.la-enlace {
+  color: #c084fc !important;
+  font-size: 19px !important;
+}
+
+.la-enlace:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Sub-barra ---------- */
+.la-sub {
+  position: sticky;
+  top: var(--nav-alto, 62px);
+  z-index: 40;
+  height: 52px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.la-sub .la-ancho {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+  height: 100%;
+  font-size: 12px;
+  color: #d2d2d7;
+}
+
+.la-sub button:hover {
+  color: #fff;
+}
+
+.la-sub .la-pildora {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 980px;
+  background: var(--la-boton);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ---------- 1. Hero ---------- */
+.la-hero {
+  position: relative;
+  height: 210vh;
+}
+
+.la-hero-fijo {
+  position: sticky;
+  top: var(--la-arriba);
+  height: calc(100vh - var(--la-arriba));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.la-hero-luz {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 900px;
+  height: 900px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.45), rgba(236, 72, 153, 0.12) 40%, transparent 65%);
+  opacity: var(--la-luz, 0.5);
+  pointer-events: none;
+}
+
+.la-hero-titulos {
+  position: relative;
+  z-index: 2;
+  padding-top: 6vh;
+  text-align: center;
+  opacity: var(--la-texto, 1);
+  transform: translateY(var(--la-sube, 0px));
+}
+
+.la-sobre {
+  margin: 0;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.la-hero h1 {
+  margin: 6px 0 0;
+  color: #f5f5f7;
+  font-size: clamp(48px, 8.4vw, 96px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.la-hero-acciones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  margin-top: 22px;
+}
+
+/* ---------- El celular dibujado ---------- */
+.la-celu {
+  position: relative;
+  z-index: 1;
+  width: 300px;
+  height: 610px;
+  padding: 11px;
+  border-radius: 52px;
+  background: linear-gradient(160deg, #3a3346, #141119 40%, #0b0a0f);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 6px #000,
+    0 60px 120px -40px rgba(124, 58, 237, 0.7);
+}
+
+.la-celu::before {
+  content: '';
+  position: absolute;
+  top: 120px;
+  right: -3px;
+  width: 3px;
+  height: 70px;
+  border-radius: 2px;
+  background: #2c2735;
+}
+
+/* En el hero sube desde abajo y crece hasta quedar centrado */
+.la-celu-hero {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, calc(-50% + var(--la-celu-y, 330px))) scale(var(--la-celu-s, 0.82));
+  will-change: transform;
+}
+
+.la-pantalla {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 42px;
+  background: #0d0a18;
+}
+
+.la-isla {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  z-index: 5;
+  width: 96px;
+  height: 28px;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  background: #000;
+}
+
+.la-estado {
+  position: absolute;
+  top: 15px;
+  left: 28px;
+  right: 28px;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.la-vista {
+  position: absolute;
+  inset: 0;
+  padding: 56px 18px 18px;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 0.6s, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.la-vista.la-activa {
+  opacity: 1;
+  transform: none;
+}
+
+.la-vista h5 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.la-vista small {
+  color: var(--la-gris);
+  font-size: 12px;
+}
+
+.la-v-ejercicio {
+  padding: 0;
+}
+
+.la-v-ejercicio video {
+  display: block;
+  width: 100%;
+  height: 64%;
+  object-fit: cover;
+}
+
+.la-datos {
+  padding: 14px 18px;
+}
+
+.la-datos small {
+  color: #c084fc;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.la-series {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.la-series i {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--la-gris-claro);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.la-series i.ok {
+  background: rgba(168, 85, 247, 0.28);
+  color: #fff;
+}
+
+.la-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.la-chat p {
+  max-width: 86%;
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 18px 18px 18px 6px;
+  background: #1f1a29;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.la-chat p.yo {
+  align-self: flex-end;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--la-boton);
+}
+
+.la-rutina {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.la-rutina span {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12.5px;
+}
+
+.la-rutina b {
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.la-anillos {
+  display: grid;
+  place-items: center;
+  margin: 24px 0 16px;
+}
+
+.la-macros {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.la-macros div {
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--la-gris);
+  font-size: 11px;
+  text-align: center;
+}
+
+.la-macros b {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+}
+
+.la-grafica {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 170px;
+  margin: 26px 0 14px;
+}
+
+.la-grafica i {
+  flex: 1;
+  border-radius: 8px 8px 3px 3px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.la-vista.la-activa .la-grafica i {
+  transform: scaleY(1);
+}
+
+.la-grafica i:last-child {
+  background: var(--la-boton);
+}
+
+.la-record {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(168, 85, 247, 0.16);
+  font-size: 13px;
+}
+
+.la-record b {
+  display: block;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- 2. Frase que se enciende ---------- */
+.la-frase {
+  padding: 200px 0 160px;
+}
+
+.la-frase p {
+  margin: 0;
+  font-size: clamp(32px, 4.6vw, 56px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.16;
+}
+
+.la-frase span {
+  color: rgba(255, 255, 255, 0.18);
+  transition: color 0.25s;
+}
+
+.la-frase span.on {
+  color: #f5f5f7;
+}
+
+.la-frase span.on.morado {
+  background: var(--la-deg);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- 3. Recorrido con el celular fijo ---------- */
+/* Al saltar desde la sub-barra, la sección no queda escondida debajo de las barras */
+#la-recorrido,
+#la-destacado {
+  scroll-margin-top: var(--la-arriba);
+}
+
+.la-rejilla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  width: min(1080px, 100% - 44px);
+  margin: 0 auto;
+}
+
+.la-lado-celu {
+  position: sticky;
+  top: calc(var(--la-arriba) + 14px);
+  display: grid;
+  place-items: center;
+  height: calc(100vh - var(--la-arriba) - 24px);
+}
+
+.la-paso {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0.22;
+  transition: opacity 0.5s;
+}
+
+.la-paso.la-activo {
+  opacity: 1;
+}
+
+.la-paso small {
+  color: #c084fc;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.la-paso h2 {
+  margin: 10px 0 18px;
+  color: #f5f5f7;
+  font-size: clamp(36px, 4.4vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.la-paso p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--la-gris-claro);
+  font-size: 19px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.la-paso p b {
+  color: #f5f5f7;
+  font-weight: 600;
+}
+
+/* ---------- 4. Lo más destacado ---------- */
+.la-destacado {
+  padding: 160px 0 120px;
+}
+
+.la-destacado h2 {
+  width: min(980px, 100% - 44px);
+  margin: 0 auto 40px;
+  color: #f5f5f7;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.la-pista {
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0 max(22px, calc((100% - 980px) / 2));
+  scrollbar-width: none;
+}
+
+.la-pista::-webkit-scrollbar {
+  display: none;
+}
+
+/* La animación completa a la derecha; el fondo de la pieza es el mismo del video */
+.la-pieza {
+  position: relative;
+  flex: 0 0 min(840px, 86vw);
+  height: 560px;
+  overflow: hidden;
+  border-radius: 30px;
+  background: #0d0a18;
+  scroll-snap-align: center;
+}
+
+.la-pieza video {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 64%;
+  height: 100%;
+  object-fit: contain;
+  object-position: right center;
+}
+
+.la-pieza::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #0d0a18 30%, transparent 60%);
+}
+
+.la-pieza p {
+  position: absolute;
+  z-index: 2;
+  top: 44px;
+  left: 44px;
+  max-width: 380px;
+  margin: 0;
+  color: var(--la-gris-claro);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.la-pieza p b {
+  color: #fff;
+}
+
+.la-controles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.la-puntos {
+  display: flex;
+  gap: 10px;
+  padding: 18px 22px;
+  border-radius: 980px;
+  background: rgba(66, 66, 69, 0.7);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.la-puntos button {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.4);
+  transition: width 0.4s;
+}
+
+.la-puntos button.on {
+  width: 48px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* La barrita se llena mientras la pieza está en pantalla */
+.la-puntos button.on::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform-origin: left;
+  animation: la-progreso var(--la-dur, 5s) linear forwards;
+}
+
+.la-pausado .la-puntos button.on::after {
+  animation-play-state: paused;
+}
+
+@keyframes la-progreso {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.la-pausa {
+  width: 56px;
+  height: 56px;
+  border-radius: 50% !important;
+  background: rgba(66, 66, 69, 0.7) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  font-size: 16px;
+}
+
+/* ---------- 5. Números ---------- */
+.la-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 50px 30px;
+  padding: 80px 0 160px;
+}
+
+.la-numeros div {
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.la-numeros b {
+  display: block;
+  font-size: clamp(56px, 7vw, 88px);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.la-numeros span {
+  display: block;
+  margin-top: 10px;
+  color: var(--la-gris-claro);
+  font-size: 19px;
+}
+
+/* ---------- 6. Cierre ---------- */
+.la-cierre {
+  position: relative;
+  padding: 140px 0 170px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.la-cierre::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 700px;
+  height: 700px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.4), transparent 60%);
+}
+
+.la-escudo {
+  position: relative;
+  display: inline-block;
+  width: 150px;
+  filter: drop-shadow(0 30px 60px rgba(168, 85, 247, 0.6));
+}
+
+.la-escudo img {
+  display: block;
+  width: 100%;
+}
+
+/* Destello que recorre el escudo, como el brillo de un producto */
+.la-escudo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%);
+  background-size: 250% 100%;
+  -webkit-mask: url(/icons/icono.svg) center / contain no-repeat;
+  mask: url(/icons/icono.svg) center / contain no-repeat;
+  animation: la-brillo 3.2s ease-in-out infinite;
+}
+
+@keyframes la-brillo {
+  from {
+    background-position: 150% 0;
+  }
+
+  60%,
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.la-cierre h2 {
+  position: relative;
+  margin: 30px 0 0;
+  color: #f5f5f7;
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.la-cierre > p {
+  position: relative;
+  margin: 18px 0 30px;
+  color: var(--la-gris-claro);
+  font-size: 21px;
+}
+
+.la-cierre-acciones {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+}
+
+.la-pie {
+  padding: 20px 0 50px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--la-gris);
+  font-size: 12px;
+}
+
+.la-pie .la-ancho {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* ---------- Tamaños ---------- */
+@media (max-width: 860px) {
+  .la-rejilla {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* El teléfono queda arriba en pequeño, sobre fondo negro, y el texto pasa por debajo */
+  .la-lado-celu {
+    top: var(--la-arriba);
+    z-index: 3;
+    display: block;
+    height: 340px;
+    background: linear-gradient(#000 88%, transparent);
+  }
+
+  .la-lado-celu .la-celu {
+    margin: 12px auto 0;
+    transform: scale(0.5);
+    transform-origin: top center;
+  }
+
+  .la-paso {
+    min-height: 75vh;
+    justify-content: flex-start;
+    padding: 40px 4px 0;
+  }
+
+  .la-numeros {
+    grid-template-columns: 1fr;
+  }
+
+  .la-pieza {
+    height: 460px;
+  }
+
+  .la-pieza video {
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    height: 72%;
+    object-position: center bottom;
+  }
+
+  .la-pieza::after {
+    background: linear-gradient(#0d0a18 28%, transparent 55%);
+  }
+
+  .la-pieza p {
+    top: 28px;
+    left: 24px;
+    right: 24px;
+    max-width: none;
+    font-size: 21px;
+  }
+}
+
+@media (max-width: 480px) {
+  .la-celu {
+    width: 260px;
+    height: 530px;
+  }
+
+  .la-hero-acciones {
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .la-pagina *,
+  .la-pagina *::before,
+  .la-pagina *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
