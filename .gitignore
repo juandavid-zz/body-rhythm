@@ -42,3 +42,6 @@ diferencias.txt
 .claude/
 # Fotos que suben los usuarios (no van al repositorio)
 backend/media/
+
+# Programas de IA para generar las animaciones (se descargan aparte)
+herramientas/animaciones/.ia/

@@ -31,10 +31,18 @@ class MedidaCorporal(models.Model):
     brazo_derecho = models.FloatField(null=True, blank=True)
     pierna_izquierda = models.FloatField(null=True, blank=True)
     pierna_derecha = models.FloatField(null=True, blank=True)
+    grasa_corporal = models.FloatField('% de grasa corporal', null=True, blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
+
+    # Medidas en cm (y el % de grasa) que el usuario puede registrar
+    CAMPOS = (
+        'pecho', 'cintura', 'cadera', 'brazo_izquierdo', 'brazo_derecho',
+        'pierna_izquierda', 'pierna_derecha', 'grasa_corporal',
+    )
 
     class Meta:
         db_table = 'medidas_corporales'
+        ordering = ['fecha']
 
     def __str__(self):
         return f"Medidas de {self.usuario} - {self.fecha.date()}"

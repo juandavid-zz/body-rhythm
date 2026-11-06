@@ -1,0 +1,57 @@
+# Backend de Body Rhythm en Render (Blueprint: New > Blueprint y elegir este repositorio).
+# Las variables con "sync: false" se piden al crear el servicio: ver DESPLIEGUE.md.
+services:
+  - type: web
+    name: body-rhythm-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # Las migraciones corren al arrancar (el plan gratis no tiene paso previo al despliegue).
+    # gthread con hilos: la rutina del chatbot llega por partes y ocupa la conexión un rato.
+    startCommand: python manage.py migrate --noinput && python manage.py cargar_biblioteca && gunicorn body_rhythm_api.wsgi --bind 0.0.0.0:$PORT --worker-class gthread --workers 2 --threads 4 --timeout 180
+    healthCheckPath: /api/salud/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      # El certificado de Aiven se sube como Secret File "ca.pem"
+      - key: DB_SSL_CA
+        value: /etc/secrets/ca.pem
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: WOMPI_PUBLIC_KEY
+        sync: false
+      - key: WOMPI_PRIVATE_KEY
+        sync: false
+      - key: WOMPI_INTEGRITY_SECRET
+        sync: false
+      - key: WOMPI_EVENTS_SECRET
+        sync: false
+      - key: WOMPI_API_URL
+        value: https://sandbox.wompi.co/v1

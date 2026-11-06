@@ -36,20 +36,19 @@ function TooltipGrafica({ active, payload, unidad }) {
   );
 }
 
-function Grafica({ historial, metrica }) {
+function Grafica({ historial, metrica, unidad = "", nombre, vacio }) {
   if (historial.length < 2) {
     return (
       <div className="pg-grafica-vacia">
-        <p>Registra tu peso al menos dos días para ver tu evolución aquí.</p>
+        <p>{vacio}</p>
       </div>
     );
   }
 
   const datos = historial.map((h) => ({ ...h, etiqueta: fechaCorta.format(aFecha(h.fecha)) }));
-  const unidad = metrica === "peso" ? "kg" : "";
 
   return (
-    <div className="pg-grafica" role="img" aria-label={`Evolución de tu ${metrica === "peso" ? "peso" : "IMC"}`}>
+    <div className="pg-grafica" role="img" aria-label={`Evolución de tu ${nombre}`}>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={datos} margin={{ top: 16, right: 16, left: -12, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.07)" />
@@ -121,6 +120,165 @@ function RegistrarPeso({ pesoActual, onRegistrado }) {
   );
 }
 
+// ── Medidas corporales ──
+const MEDIDAS = [
+  { id: "cintura", nombre: "Cintura", unidad: "cm" },
+  { id: "pecho", nombre: "Pecho", unidad: "cm" },
+  { id: "cadera", nombre: "Cadera", unidad: "cm" },
+  { id: "brazo_derecho", nombre: "Brazo der.", unidad: "cm" },
+  { id: "brazo_izquierdo", nombre: "Brazo izq.", unidad: "cm" },
+  { id: "pierna_derecha", nombre: "Muslo der.", unidad: "cm" },
+  { id: "pierna_izquierda", nombre: "Muslo izq.", unidad: "cm" },
+  { id: "grasa_corporal", nombre: "% grasa", unidad: "%" },
+];
+
+function Medidas() {
+  const [medidas, setMedidas] = useState(null);
+  const [version, setVersion] = useState(0);
+  const [elegida, setElegida] = useState("cintura");
+  const [abierto, setAbierto] = useState(false);
+  const [form, setForm] = useState({});
+  const [estado, setEstado] = useState({ enviando: false, error: "" });
+
+  useEffect(() => {
+    let activo = true;
+    api
+      .get("/progreso/medidas/")
+      .then((res) => activo && setMedidas(res.data.medidas))
+      .catch(() => activo && setMedidas([]));
+    return () => {
+      activo = false;
+    };
+  }, [version]);
+
+  if (medidas === null) return null;
+
+  const medida = MEDIDAS.find((m) => m.id === elegida);
+  const conValor = medidas.filter((m) => m[elegida] != null);
+  const ultima = conValor[conValor.length - 1];
+  const cambio = conValor.length >= 2 ? Math.round((ultima[elegida] - conValor[0][elegida]) * 10) / 10 : null;
+  // Últimos valores de cada medida, para mostrarlos en el formulario
+  const ultimas = Object.fromEntries(
+    MEDIDAS.map((m) => [m.id, [...medidas].reverse().find((r) => r[m.id] != null)?.[m.id]])
+  );
+
+  const abrir = () => {
+    setForm({});
+    setEstado({ enviando: false, error: "" });
+    setAbierto(true);
+  };
+
+  const guardar = async (evento) => {
+    evento.preventDefault();
+    setEstado({ enviando: true, error: "" });
+    try {
+      await api.post("/progreso/medidas/", form);
+      setAbierto(false);
+      setEstado({ enviando: false, error: "" });
+      setVersion((v) => v + 1);
+    } catch (error) {
+      setEstado({ enviando: false, error: error.response?.data?.error || "No se pudieron guardar las medidas." });
+    }
+  };
+
+  const hayAlgo = Object.values(form).some((v) => v !== "" && v != null);
+
+  return (
+    <section className="pg-panel pg-medidas">
+      <div className="pg-panel-cabecera">
+        <h2>Medidas corporales</h2>
+        {!abierto && (
+          <button type="button" className="pg-boton-sec" onClick={abrir}>
+            Registrar medidas
+          </button>
+        )}
+      </div>
+
+      {abierto ? (
+        <form className="pg-medidas-form" onSubmit={guardar}>
+          <p className="pg-nota">Mídete por la mañana y en el mismo punto cada vez. Llena solo las que quieras.</p>
+          <div className="pg-medidas-campos">
+            {MEDIDAS.map((m) => (
+              <label key={m.id}>
+                <span>{m.nombre}</span>
+                <div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min={m.unidad === "%" ? 2 : 10}
+                    max={m.unidad === "%" ? 70 : 300}
+                    placeholder={ultimas[m.id] != null ? formatearNumero(ultimas[m.id]) : ""}
+                    value={form[m.id] ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, [m.id]: e.target.value }))}
+                  />
+                  <small>{m.unidad}</small>
+                </div>
+              </label>
+            ))}
+          </div>
+          {estado.error && <p className="pg-error">{estado.error}</p>}
+          <div className="pg-medidas-acciones">
+            <button type="button" className="pg-boton-sec" onClick={() => setAbierto(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className="pg-boton" disabled={!hayAlgo || estado.enviando}>
+              {estado.enviando ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </form>
+      ) : medidas.length === 0 ? (
+        <p className="pg-nota">
+          Registra tu cintura, pecho, brazos o % de grasa para ver cómo cambia tu cuerpo, no solo tu peso.
+        </p>
+      ) : (
+        <>
+          <div className="pg-tabs pg-tabs-medidas" role="tablist" aria-label="Medida">
+            {MEDIDAS.filter((m) => medidas.some((r) => r[m.id] != null)).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={elegida === m.id}
+                className={elegida === m.id ? "activa" : ""}
+                onClick={() => setElegida(m.id)}
+              >
+                {m.nombre}
+              </button>
+            ))}
+          </div>
+
+          {ultima && (
+            <p className="pg-medida-actual">
+              <strong>
+                {formatearNumero(ultima[elegida])} {medida.unidad}
+              </strong>
+              {cambio !== null && (
+                <span>
+                  {cambio > 0 ? "+" : ""}
+                  {formatearNumero(cambio)} {medida.unidad} desde el {fechaCorta.format(aFecha(conValor[0].fecha))}
+                </span>
+              )}
+            </p>
+          )}
+
+          <Grafica
+            historial={conValor}
+            metrica={elegida}
+            unidad={medida.unidad}
+            nombre={medida.nombre.toLowerCase()}
+            vacio={
+              ultima
+                ? `Registra tu ${medida.nombre.toLowerCase()} otro día para ver cómo cambia.`
+                : "Elige una medida que hayas registrado."
+            }
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function Progreso() {
   const navigate = useNavigate();
   const [version, setVersion] = useState(0);
@@ -150,7 +308,7 @@ export default function Progreso() {
         <div className="pg-contenedor">
           <header className="pg-cabecera">
             <h1>Mi progreso</h1>
-            <p>Tu evolución con los datos de tus entrenamientos y tus registros de peso.</p>
+            <p>Tu evolución con los datos de tus entrenamientos, tu peso y tus medidas.</p>
           </header>
 
           {datos.cargando && <p className="pg-nota">Cargando…</p>}
@@ -209,7 +367,13 @@ export default function Progreso() {
                     </div>
                   </div>
 
-                  <Grafica historial={historial} metrica={metrica} />
+                  <Grafica
+                    historial={historial}
+                    metrica={metrica}
+                    unidad={metrica === "peso" ? "kg" : ""}
+                    nombre={metrica === "peso" ? "peso" : "IMC"}
+                    vacio="Registra tu peso al menos dos días para ver tu evolución aquí."
+                  />
 
                   {d.perfil.altura ? (
                     <RegistrarPeso
@@ -262,6 +426,8 @@ export default function Progreso() {
                   </dl>
                 </section>
               </div>
+
+              <Medidas />
 
               {/* ── Logros ── */}
               <section className="pg-panel">

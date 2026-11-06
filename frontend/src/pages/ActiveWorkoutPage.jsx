@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import api from "../api/api";
 import { obtenerEjercicios } from "../utils/ejercicios";
 import { guardarEntrenamiento } from "../utils/rutinasStorage";
+import { avisarFinDescanso, prepararAlertas } from "../utils/alertaDescanso";
 import "../css/entrenamiento-activo.css";
 
 const KG_A_LB = 2.20462;
@@ -415,32 +416,52 @@ export default function ActiveWorkoutPage() {
   // ------------------------------------------------------
   // DESCANSOS INDIVIDUALES POR SERIE
   // Cada serie puede tener su propio descanso visible en su misma fila.
+  // Se cuenta con la hora real de fin (no restando 1 por segundo): con el
+  // celular bloqueado el navegador frena los intervalos y el tiempo se atrasaría.
+  // Al terminar: vibración, pitido y notificación si la app está en segundo plano.
   // ------------------------------------------------------
+  const descansosRef = useRef(descansos);
+  const ejerciciosRef = useRef(ejercicios);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDescansos((actuales) => {
-        let cambio = false;
-        const siguiente = { ...actuales };
+    descansosRef.current = descansos;
+    ejerciciosRef.current = ejercicios;
+  });
 
-        Object.entries(actuales).forEach(([key, descansoActual]) => {
-          if (Number(descansoActual?.restante) <= 1) {
-            delete siguiente[key];
-            cambio = true;
-          } else {
-            siguiente[key] = {
-              ...descansoActual,
-              restante: Number(descansoActual.restante) - 1,
-            };
-            cambio = true;
-          }
+  useEffect(() => {
+    const revisar = () => {
+      const ahora = Date.now();
+      const actuales = descansosRef.current;
+      const terminados = Object.entries(actuales).filter(([, d]) => d.fin <= ahora);
+      if (!Object.keys(actuales).length) return;
+
+      terminados.forEach(([, d]) => avisarFinDescanso(ejerciciosRef.current[d.ejIdx]?.nombre));
+
+      setDescansos((previos) => {
+        const siguiente = {};
+        Object.entries(previos).forEach(([key, d]) => {
+          if (d.fin > ahora) siguiente[key] = { ...d, restante: Math.ceil((d.fin - ahora) / 1000) };
         });
-
-        return cambio ? siguiente : actuales;
+        return siguiente;
       });
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(revisar, 1000);
+    // Al volver a la app se actualiza de una vez, sin esperar al siguiente segundo
+    document.addEventListener("visibilitychange", revisar);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", revisar);
+    };
   }, []);
+
+  // Suma (o resta) segundos a un descanso en curso
+  const moverDescanso = (key, segundos) =>
+    setDescansos((actuales) => {
+      const d = actuales[key];
+      if (!d) return actuales;
+      const fin = Math.max(Date.now(), d.fin + segundos * 1000);
+      return { ...actuales, [key]: { ...d, fin, restante: Math.ceil((fin - Date.now()) / 1000) } };
+    });
 
   // ------------------------------------------------------
   // CRONÓMETROS INDIVIDUALES POR SERIE
@@ -564,11 +585,13 @@ export default function ActiveWorkoutPage() {
     const descansoKey = claveDescanso(ejIdx, setIdx);
 
     if (nuevoHecho && Number(ejercicio.descanso) > 0) {
+      prepararAlertas();
       setDescansos((actuales) => ({
         ...actuales,
         [descansoKey]: {
           ejIdx,
           setIdx,
+          fin: Date.now() + Number(ejercicio.descanso) * 1000,
           restante: Number(ejercicio.descanso),
         },
       }));
@@ -1293,25 +1316,13 @@ export default function ActiveWorkoutPage() {
                         <div className="aw-descanso-acciones">
                           <button
                             type="button"
-                            onClick={() => setDescansos((actuales) => ({
-                              ...actuales,
-                              [serieKey]: {
-                                ...actuales[serieKey],
-                                restante: Math.max(0, Number(actuales[serieKey]?.restante || 0) - 15),
-                              },
-                            }))}
+                            onClick={() => moverDescanso(serieKey, -15)}
                           >
                             −15
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDescansos((actuales) => ({
-                              ...actuales,
-                              [serieKey]: {
-                                ...actuales[serieKey],
-                                restante: Number(actuales[serieKey]?.restante || 0) + 15,
-                              },
-                            }))}
+                            onClick={() => moverDescanso(serieKey, 15)}
                           >
                             +15
                           </button>

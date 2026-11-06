@@ -1,3 +1,6 @@
+import json
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,6 +8,7 @@ from rest_framework.exceptions import Throttled
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 
 from . import chatbot_service
@@ -20,25 +24,32 @@ from rutinas.serializers import RutinaSerializer
 from .models import Programa, ProgramaSesion, RegistroEntrenamiento
 from .serializers import RegistroEntrenamientoSerializer
 
-# Ajusta este import al modelo real de tu app chatbot_ia
-from chatbot_ia.models import ConversacionIa
+from chatbot_ia.models import ChatIa, ConversacionIa
+
+logger = logging.getLogger(__name__)
 
 
-def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente):
+def _guardar_conversacion(usuario, mensaje_usuario, respuesta, fuente, tipo="general"):
     """
-    Guarda cada intercambio en conversaciones_ia.
+    Guarda cada intercambio en conversaciones_ia (registro para el admin).
     Envuelto en try/except para que un problema de guardado NUNCA tumbe
     la respuesta al usuario (solo se pierde el registro histórico).
     """
+    if fuente == "error":
+        return
     try:
+        if not isinstance(usuario, Usuario):
+            usuario = Usuario.objects.get(auth=usuario)
+        if not isinstance(respuesta, str):
+            respuesta = json.dumps(respuesta, ensure_ascii=False, default=str)
         ConversacionIa.objects.create(
             usuario=usuario,
-            mensaje_usuario=mensaje_usuario,
-            respuesta=str(respuesta),
-            fuente=fuente,
+            tipo=tipo,
+            mensaje_usuario=str(mensaje_usuario)[:5000],
+            respuesta_ia=respuesta,
         )
-    except Exception as e:
-        print(f"[conversaciones_ia] No se pudo guardar el registro: {e}")
+    except Exception:
+        logger.exception("No se pudo guardar la conversación con la IA")
 
 
 class LimiteIAMixin:
@@ -81,11 +92,14 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
         imc = chatbot_service.calcular_imc(float(peso), float(altura))
         rango_imc = chatbot_service.obtener_rango_imc(imc)
 
+        if request.data.get("por_partes"):
+            return self._por_partes(usuario, lugar, equipo, grupo_muscular, meta, imc, rango_imc)
+
         try:
             rutina = chatbot_service.generar_rutina_ia(usuario, lugar, equipo, grupo_muscular)
             fuente = "ia"
         except Exception as e:
-            print(f"[chatbot] Gemini falló, usando respaldo: {e}")
+            logger.warning("Gemini falló al generar la rutina, se usa el respaldo: %s", e)
             rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
             fuente = "respaldo"
 
@@ -107,9 +121,56 @@ class ChatbotRutinaView(LimiteIAMixin, APIView):
             f"Generar rutina: lugar={lugar}, equipo={equipo}, grupo_muscular={grupo_muscular}",
             resultado,
             fuente,
+            tipo="rutina",
         )
 
         return Response(resultado, status=status.HTTP_200_OK)
+
+    def _por_partes(self, usuario, lugar, equipo, grupo_muscular, meta, imc, rango_imc):
+        """
+        La rutina llega mientras la IA la escribe, como en un chat: una línea
+        JSON por evento (NDJSON).
+          {"t": "inicio", "imc": ..., "rango_imc": ...}
+          {"t": "texto", "d": "..."}    trozos del JSON de la rutina
+          {"t": "fin", "resultado": {...}}   la rutina completa y vinculada
+          {"t": "error", "error": "..."}
+        """
+        def linea(datos):
+            return json.dumps(datos, ensure_ascii=False, default=str) + "\n"
+
+        def eventos():
+            yield linea({"t": "inicio", "imc": imc, "rango_imc": rango_imc})
+            texto = ""
+            try:
+                for trozo in chatbot_service.generar_rutina_ia_por_partes(usuario, lugar, equipo, grupo_muscular):
+                    texto += trozo
+                    yield linea({"t": "texto", "d": trozo})
+                rutina = chatbot_service.rutina_de_texto(texto)
+                fuente = "ia"
+            except Exception as e:
+                logger.warning("Gemini falló al generar la rutina por partes, se usa el respaldo: %s", e)
+                rutina = rutina_respaldo(meta, rango_imc, grupo_muscular)
+                fuente = "respaldo"
+                if rutina is None:
+                    yield linea({"t": "error", "error": "No se pudo generar la rutina ni encontrar un respaldo para tu perfil."})
+                    return
+
+            resultado = {"imc": imc, "rango_imc": rango_imc, "fuente": fuente, "rutina": rutina}
+            _guardar_conversacion(
+                usuario,
+                f"Generar rutina: lugar={lugar}, equipo={equipo}, grupo_muscular={grupo_muscular}",
+                resultado,
+                fuente,
+                tipo="rutina",
+            )
+            yield linea({"t": "fin", "resultado": resultado})
+
+        respuesta = StreamingHttpResponse(eventos(), content_type="application/x-ndjson; charset=utf-8")
+        # Sin compresión ni búfer: si no, los trozos llegarían todos juntos al final
+        respuesta["Content-Encoding"] = "identity"
+        respuesta["Cache-Control"] = "no-cache"
+        respuesta["X-Accel-Buffering"] = "no"
+        return respuesta
 
 
 class GuardarRutinaChatbotView(APIView):
@@ -166,7 +227,7 @@ class ChatbotMensajeView(LimiteIAMixin, APIView):
             )
             fuente = "ia"
         except Exception as e:
-            print(f"[chatbot] Error generando respuesta libre: {e}")
+            logger.warning("Gemini falló en el chat: %s", e)
             respuesta = (
                 "No pude conectarme con el asistente en este momento. "
                 "Intenta de nuevo en unos segundos."
@@ -176,6 +237,53 @@ class ChatbotMensajeView(LimiteIAMixin, APIView):
         _guardar_conversacion(usuario, mensaje, respuesta, fuente)
 
         return Response({"respuesta": respuesta, "fuente": fuente}, status=status.HTTP_200_OK)
+
+MAX_CHATS = 50
+MAX_TAMANO_CHAT = 300_000  # caracteres del JSON de una conversación
+
+
+class ChatsView(APIView):
+    """Conversaciones del asistente del usuario, de la más reciente a la más vieja."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        return Response({'chats': [c.datos for c in usuario.chats_ia.all()[:MAX_CHATS]]})
+
+
+class ChatDetalleView(APIView):
+    """Guarda (crea o reemplaza) o borra una conversación del asistente."""
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, cliente_id):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        datos = request.data
+        if not isinstance(datos, dict) or not isinstance(datos.get('mensajes'), list):
+            return Response({'error': 'Conversación inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(json.dumps(datos, default=str)) > MAX_TAMANO_CHAT:
+            return Response({'error': 'La conversación es demasiado larga para guardarla.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        datos = {**datos, 'id': cliente_id}
+        ChatIa.objects.update_or_create(
+            usuario=usuario, cliente_id=cliente_id,
+            defaults={'titulo': str(datos.get('titulo') or 'Nueva conversación')[:120], 'datos': datos},
+        )
+        # Solo se guardan las más recientes
+        viejos = list(usuario.chats_ia.values_list('id', flat=True)[MAX_CHATS:])
+        if viejos:
+            ChatIa.objects.filter(id__in=viejos).delete()
+        return Response({'ok': True})
+
+    def delete(self, request, cliente_id):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        usuario.chats_ia.filter(cliente_id=cliente_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class RegistroEntrenamientoListView(APIView):
     """Entrenamientos terminados del usuario: listar y guardar uno nuevo."""
@@ -478,7 +586,7 @@ class ProgramaIAView(APIView):
             diseno = chatbot_service.generar_programa_ia(usuario, dias, lugar, equipo, nivel, minutos, lesiones)
             fuente = 'ia'
         except Exception as e:
-            print(f"[programa_ia] La IA no respondió, se usa el respaldo: {e}")
+            logger.warning("Gemini falló al diseñar el programa, se usa el respaldo: %s", e)
             diseno = programa_respaldo(dias, nivel)
             fuente = 'respaldo'
 
@@ -521,7 +629,7 @@ class ResumenSemanaView(APIView):
             try:
                 texto = chatbot_service.resumen_semana_ia(usuario, datos)
             except Exception as e:
-                print(f"[resumen_semana] La IA no respondió, se usa el resumen simple: {e}")
+                logger.warning("Gemini falló en el resumen semanal, se usa el simple: %s", e)
                 texto = resumen_sin_ia(datos)
             programa.resumen_semana = datos['semana']
             programa.resumen_texto = texto

@@ -282,6 +282,110 @@
   cursor: default;
 }
 
+/* ---------- Medidas corporales ---------- */
+button.pg-boton,
+button.pg-boton-sec {
+  margin: 0;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.pg-boton {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--pg-degradado);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+button.pg-boton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.pg-boton-sec {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  color: #fff;
+}
+
+.pg-tabs-medidas {
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.pg-medida-actual {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 0.4rem;
+}
+
+.pg-medida-actual strong {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.pg-medida-actual span {
+  color: var(--pg-texto-3);
+  font-size: 0.85rem;
+}
+
+.pg-medidas-form .pg-nota {
+  margin-top: 0;
+}
+
+.pg-medidas-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 0.8rem 0 1rem;
+}
+
+.pg-medidas-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  color: var(--pg-texto-3);
+  font-size: 0.8rem;
+}
+
+.pg-medidas-campos label div {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pg-medidas-campos input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  color: #fff;
+  font: inherit;
+}
+
+.pg-medidas-campos input:focus {
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: none;
+}
+
+.pg-medidas-acciones {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 /* ---------- Semana y totales ---------- */
 .pg-dias {
   display: grid;

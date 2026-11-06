@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -29,6 +31,8 @@ from .serializers import (
 )
 import secrets
 
+logger = logging.getLogger(__name__)
+
 from rest_framework.throttling import AnonRateThrottle
 
 from .emails import (
@@ -44,8 +48,22 @@ from .emails import (
 
 
 # CREATE - Registro
+class AccesoThrottle(AnonRateThrottle):
+    """Límite por IP del login: además del bloqueo por cuenta, frena a quien prueba muchas cuentas."""
+    scope = 'acceso'
+    rate = '30/minute'
+
+
+class CuentaNuevaThrottle(AnonRateThrottle):
+    """Registro, códigos y reenvíos por IP: evita crear cuentas o mandar correos en masa."""
+    # Alto a propósito: en un colegio o una oficina muchos comparten la misma IP
+    scope = 'cuenta_nueva'
+    rate = '60/hour'
+
+
 class RegistroView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         serializer = RegistroSerializer(data=request.data)
@@ -106,6 +124,7 @@ MINUTOS_BLOQUEO_LOGIN = 15
 # LOGIN
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AccesoThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -517,8 +536,7 @@ class WompiWebhookView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        print("=== WEBHOOK WOMPI RECIBIDO ===")
-        print(data)
+        logger.info("Webhook de Wompi recibido: %s", data.get("event"))
 
         if data.get('event') != 'transaction.updated':
             return Response(
@@ -577,7 +595,7 @@ class WompiWebhookView(APIView):
             checksum_calculado.lower(),
             checksum.lower()
         ):
-            print("ERROR: checksum de Wompi inválido")
+            logger.warning("Webhook de Wompi con checksum inválido")
 
             return Response(
                 {'error': 'Checksum inválido'},
@@ -589,10 +607,7 @@ class WompiWebhookView(APIView):
         monto = transaction.get('amount_in_cents')
         moneda = transaction.get('currency')
 
-        print("Referencia:", referencia)
-        print("Estado Wompi:", estado_wompi)
-        print("Monto:", monto)
-        print("Moneda:", moneda)
+        logger.info("Wompi: referencia=%s estado=%s monto=%s %s", referencia, estado_wompi, monto, moneda)
 
         if not referencia:
             return Response(
@@ -605,7 +620,7 @@ class WompiWebhookView(APIView):
                 referencia=referencia
             )
         except Pago.DoesNotExist:
-            print("Pago no encontrado:", referencia)
+            logger.warning("Wompi: pago no encontrado (referencia %s)", referencia)
 
             return Response(
                 {'error': 'Pago no encontrado'},
@@ -615,7 +630,7 @@ class WompiWebhookView(APIView):
         monto_esperado = int(pago.precio * 100)
 
         if monto != monto_esperado or moneda != 'COP':
-            print("ERROR: monto o moneda no coinciden")
+            logger.warning("Wompi: el monto o la moneda no coinciden (referencia %s)", referencia)
 
             return Response(
                 {'error': 'Monto o moneda inválidos'},
@@ -625,7 +640,7 @@ class WompiWebhookView(APIView):
         if estado_wompi == 'APPROVED':
 
             if pago.estado == 'aprobado':
-                print("Pago ya procesado:", pago.id)
+                logger.info("Wompi: el pago %s ya estaba procesado", pago.id)
 
                 return Response(
                     {'mensaje': 'Pago ya procesado'},
@@ -639,7 +654,7 @@ class WompiWebhookView(APIView):
                 # Antes el pago quedaba aprobado pero el plan del usuario nunca cambiaba
                 pago.usuario.activar_plan(pago.plan)
 
-            print("Pago aprobado:", pago.id)
+            logger.info("Wompi: pago %s aprobado", pago.id)
 
         elif estado_wompi in [
             'DECLINED',
@@ -649,7 +664,7 @@ class WompiWebhookView(APIView):
             pago.estado = 'rechazado'
             pago.save(update_fields=['estado'])
 
-            print("Pago rechazado:", pago.id)
+            logger.info("Wompi: pago %s rechazado", pago.id)
 
         return Response(
             {'mensaje': 'Evento procesado correctamente'},
@@ -696,6 +711,7 @@ class VerificarEmailView(APIView):
 class VerificarCodigoView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = (request.data.get('email') or '').strip()
@@ -859,6 +875,7 @@ class RestablecerPasswordView(APIView):
 # REENVIAR CORREO DE VERIFICACIÓN
 class ReenviarVerificacionView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = request.data.get('email')

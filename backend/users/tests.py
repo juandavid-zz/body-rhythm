@@ -1,7 +1,16 @@
 from unittest import mock
 
 from django.test import override_settings
-from rest_framework.test import APITestCase
+from django.core.cache import cache
+from rest_framework.test import APITestCase as _APITestCase
+
+
+class APITestCase(_APITestCase):
+    """Cada prueba empieza con la caché limpia: los límites por IP no se arrastran entre pruebas."""
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
 
 from .models import AuthUsuario
 
@@ -391,3 +400,77 @@ class FotoPerfilTests(APITestCase):
         ruta = self.usuario.foto.path
         self.auth.delete()
         self.assertFalse(os.path.exists(ruta))
+
+
+class RenovarSesionTests(APITestCase):
+    def test_si_la_cuenta_se_borro_responde_401_y_no_500(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        auth = AuthUsuario.objects.create_user(email='borrada@test.com', password='Clave12345')
+        refresh = str(RefreshToken.for_user(auth))
+        ok = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(ok.status_code, 200)
+
+        auth.delete()
+        respuesta = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(respuesta.status_code, 401)
+
+
+class LimitesPorIpTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_el_login_tiene_limite_por_ip(self):
+        from .views import AccesoThrottle
+        with mock.patch.object(AccesoThrottle, 'rate', '3/minute'), \
+                mock.patch.object(AccesoThrottle, 'num_requests', 3, create=True), \
+                mock.patch.object(AccesoThrottle, 'duration', 60, create=True):
+            codigos = [
+                self.client.post('/api/login/', {'email': f'nadie{i}@test.com', 'password': 'x'}, format='json').status_code
+                for i in range(4)
+            ]
+        self.assertEqual(codigos[:3], [401, 401, 401])
+        self.assertEqual(codigos[3], 429)
+
+
+class CorreoBrevoTests(APITestCase):
+    """En Render gratis no hay SMTP: los correos salen por la API de Brevo."""
+
+    @override_settings(EMAIL_BACKEND='users.correo_brevo.CorreoBrevo', BREVO_API_KEY='clave-de-prueba',
+                       DEFAULT_FROM_EMAIL='Body Rhythm <hola@ejemplo.com>')
+    def test_envia_por_la_api_con_html_y_remitente(self):
+        from django.core.mail import EmailMultiAlternatives
+
+        respuesta = mock.Mock(status_code=201)
+        respuesta.raise_for_status.return_value = None
+        with mock.patch('users.correo_brevo.requests.post', return_value=respuesta) as post:
+            mensaje = EmailMultiAlternatives('Asunto', 'texto', to=['ana@test.com'])
+            mensaje.attach_alternative('<b>hola</b>', 'text/html')
+            self.assertEqual(mensaje.send(), 1)
+
+        datos = post.call_args.kwargs['json']
+        self.assertEqual(post.call_args.kwargs['headers']['api-key'], 'clave-de-prueba')
+        self.assertEqual(datos['sender'], {'email': 'hola@ejemplo.com', 'name': 'Body Rhythm'})
+        self.assertEqual(datos['to'], [{'email': 'ana@test.com'}])
+        self.assertEqual(datos['htmlContent'], '<b>hola</b>')
+
+        from .emails import correo_configurado
+        self.assertTrue(correo_configurado())
+
+
+class CargarBibliotecaTests(APITestCase):
+    def test_carga_los_ejercicios_solo_si_no_hay(self):
+        from django.core.management import call_command
+        from .models import Ejercicio
+
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.count(), 376)
+
+        Ejercicio.objects.filter(pk=1).update(nombre='Cambiado en el admin')
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.get(pk=1).nombre, 'Cambiado en el admin')

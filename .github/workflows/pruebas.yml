@@ -38,7 +38,10 @@ jobs:
       DB_PASSWORD: ci_root
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      SECRET_KEY: clave-solo-para-las-pruebas-de-ci
+      # Larga a propósito: con DEBUG=False la app no arranca con claves cortas
+      SECRET_KEY: clave-solo-para-las-pruebas-de-ci-no-es-secreta-y-tiene-mas-de-50-caracteres
+      # El cliente de pruebas usa http: sin esto todas las respuestas serían redirecciones a https
+      SECURE_SSL_REDIRECT: "False"
       DEBUG: "False"
 
     defaults:

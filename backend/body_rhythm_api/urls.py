@@ -17,10 +17,18 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include
-from rest_framework_simplejwt.views import TokenRefreshView
+from django.http import JsonResponse
+from django.urls import path, include, re_path
+from django.views.static import serve
+from users.sesion import RenovarSesionView
+
+def salud(request):
+    """Render la visita para saber si el servidor está arriba (sin tocar la base)."""
+    return JsonResponse({'ok': True})
+
 
 urlpatterns = [
+    path('api/salud/', salud),
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
     path('api/', include('rutinas.urls')),
@@ -28,9 +36,12 @@ urlpatterns = [
     path('api/entrenamientos/', include('entrenamientos.urls')),
     path('api/social/', include('social.urls')),
     path('api/progreso/', include('progreso.urls')),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', RenovarSesionView.as_view(), name='token_refresh'),
 ]
 
-# En desarrollo Django sirve las fotos subidas; en producción las debe servir el servidor web
+# Fotos subidas: en desarrollo siempre; en producción solo con SERVIR_MEDIA=True
+# (si no, las sirve el servidor web, por ejemplo Nginx con un alias a MEDIA_ROOT)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif settings.SERVIR_MEDIA:
+    urlpatterns += [re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT})]

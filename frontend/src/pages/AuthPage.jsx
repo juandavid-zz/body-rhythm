@@ -7,7 +7,7 @@ import '../css/styles.css'
 
 const TITULOS = {
   registro: 'Registro - Body Rhythm',
-  login: 'Iniciar Sesión - Body Rhythm',
+  login: 'Iniciar sesión',
   recuperar: 'Recuperar contraseña',
 }
 

@@ -1,6 +1,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Navbar from "../../components/Navbar";
+import AnimacionEjercicio from "../../components/AnimacionEjercicio";
+import { animacionDe } from "../../utils/ejercicios";
 import {
   CartesianGrid,
   Line,
@@ -403,7 +406,7 @@ export default function EjercicioDetalle() {
   }, [id]);
 
   useEffect(() => {
-    if (!ejercicio?.imagen_inicio || !ejercicio?.imagen_final) {
+    if (!ejercicio?.imagen_inicio || !ejercicio?.imagen_final || animacionDe(ejercicio)) {
       return undefined;
     }
 
@@ -423,17 +426,22 @@ export default function EjercicioDetalle() {
 
   if (cargando) {
     return (
-      <div className="ej-detalle-page">
-        <div className="ej-detalle-state">
-          <div className="ej-detalle-spinner" />
-          <p>Cargando ejercicio...</p>
+      <>
+        <Navbar />
+        <div className="ej-detalle-page">
+          <div className="ej-detalle-state">
+            <div className="ej-detalle-spinner" />
+            <p>Cargando ejercicio...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error || !ejercicio) {
     return (
+      <>
+      <Navbar />
       <div className="ej-detalle-page">
         <div className="ej-detalle-state ej-detalle-state-error">
           <div className="ej-detalle-error-icon">!</div>
@@ -447,6 +455,7 @@ export default function EjercicioDetalle() {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
@@ -466,6 +475,8 @@ export default function EjercicioDetalle() {
   const terciarios = obtenerListaMusculos(musculos_terciarios);
   const grupoNombre = nombresGrupos[grupo] || grupo || "Ejercicio";
 
+  const animacion = animacionDe(ejercicio);
+
   const imagenMostrar =
     imagenActiva === "final" && imagen_final ? imagen_final : imagen_inicio;
 
@@ -479,6 +490,8 @@ export default function EjercicioDetalle() {
   } = estadisticas;
 
   return (
+    <>
+    <Navbar />
     <div className="ej-detalle-page">
       <div className="ej-detalle-wrapper">
         <button
@@ -493,8 +506,10 @@ export default function EjercicioDetalle() {
         <main>
           <section className="ej-detalle-hero">
             <div className="ej-detalle-visual">
-              <div className="ej-detalle-image-wrapper">
-                {imagenMostrar ? (
+              <div className={`ej-detalle-image-wrapper${animacion ? " ej-detalle-image-wrapper--animada" : ""}`}>
+                {animacion ? (
+                  <AnimacionEjercicio animacion={animacion} nombre={nombre} />
+                ) : imagenMostrar ? (
                   <img
                     src={imagenMostrar}
                     alt={nombre}
@@ -507,7 +522,7 @@ export default function EjercicioDetalle() {
                   </div>
                 )}
 
-                {imagen_inicio && imagen_final && (
+                {!animacion && imagen_inicio && imagen_final && (
                   <div className="ej-detalle-image-badge">
                     <span />
                     Movimiento automático
@@ -760,5 +775,6 @@ export default function EjercicioDetalle() {
         </main>
       </div>
     </div>
+    </>
   );
 }

@@ -3,9 +3,16 @@ djangorestframework>=3.15
 djangorestframework-simplejwt>=5.3
 django-cors-headers>=4.4
 python-dotenv>=1.0
-mysqlclient>=2.2
 requests
-pymysql
-google-generativeai>=0.8
+# Conector de MySQL en Python puro (body_rhythm_api/__init__.py lo usa como MySQLdb):
+# no necesita compilar nada en el servidor, a diferencia de mysqlclient
+pymysql>=1.1
+google-genai>=1.0
 whitenoise>=6.6
 Pillow>=11
+# Fotos de perfil en Cloudinary (solo si está CLOUDINARY_URL en el .env)
+cloudinary>=1.40
+django-cloudinary-storage>=0.3
+openpyxl>=3.1
+# Servidor para producción (Render, Railway...): gunicorn body_rhythm_api.wsgi
+gunicorn>=22

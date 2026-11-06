@@ -385,6 +385,48 @@ function SeccionSeguridad() {
   );
 }
 
+// ── Tus datos: descargarlos en Excel ──
+function SeccionDatos() {
+  const [estado, setEstado] = useState({ descargando: false, error: "" });
+
+  const descargar = async () => {
+    setEstado({ descargando: true, error: "" });
+    try {
+      const { data } = await api.get("/progreso/exportar/", { responseType: "blob", timeout: 60000 });
+      const url = URL.createObjectURL(data);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `body-rhythm-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      enlace.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setEstado({ descargando: false, error: "" });
+    } catch (error) {
+      setEstado({
+        descargando: false,
+        error: error.response?.status === 429 ? "Descargaste varias veces seguidas. Intenta más tarde." : "No se pudo descargar. Intenta de nuevo.",
+      });
+    }
+  };
+
+  return (
+    <section className="cfg-panel">
+      <h2>Tus datos</h2>
+      <div className="cfg-lista">
+        <div className="cfg-fila">
+          <div className="cfg-fila-texto">
+            <strong>Descargar mis datos</strong>
+            <span>Un Excel con tus entrenamientos serie por serie, tu peso, tus medidas y tus rutinas.</span>
+          </div>
+          <button type="button" className="cfg-btn" onClick={descargar} disabled={estado.descargando}>
+            {estado.descargando ? "Preparando…" : "Descargar"}
+          </button>
+        </div>
+      </div>
+      {estado.error && <p className="cfg-mensaje error" role="alert">{estado.error}</p>}
+    </section>
+  );
+}
+
 // ── Cuenta: cerrar sesión y eliminar ──
 function SeccionCuenta() {
   const navigate = useNavigate();
@@ -472,6 +514,7 @@ export default function ConfiguracionPage() {
               <SeccionPerfil cuenta={cuenta} onGuardado={setCuenta} />
               <SeccionPrivacidad cuenta={cuenta} onGuardado={setCuenta} />
               <SeccionSeguridad />
+              <SeccionDatos />
               <SeccionCuenta />
             </>
           )}

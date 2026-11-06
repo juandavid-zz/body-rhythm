@@ -1,0 +1,56 @@
+/* Aviso cuando una página falla al dibujarse (PantallaError.jsx) */
+.pantalla-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #0d0f1a;
+  color: #f4f4f8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.pantalla-error-caja {
+  max-width: 420px;
+  width: 100%;
+  padding: 32px 28px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.pantalla-error h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.pantalla-error p {
+  margin: 0 0 24px;
+  color: rgba(244, 244, 248, 0.7);
+  line-height: 1.5;
+}
+
+.pantalla-error-botones {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.pantalla-error-botones button {
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pantalla-error-botones button.primario {
+  border-color: transparent;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+}

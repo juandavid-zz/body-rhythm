@@ -1,15 +1,18 @@
 from datetime import timedelta
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.throttling import UserRateThrottle
 
 from users.models import Usuario
 
-from .models import ImcHistorial
+from .exportar import libro_de_datos
+from .models import ImcHistorial, MedidaCorporal
 
 MAX_HISTORIAL = 60
 
@@ -177,4 +180,98 @@ class RegistrarPesoView(APIView):
         return Response(
             {'fecha': registro.fecha, 'peso': registro.peso, 'imc': registro.imc},
             status=status.HTTP_201_CREATED
+        )
+
+
+# ── Medidas corporales ──
+# Rangos razonables para que un error de tipeo (ej. 800 cm) no dañe la gráfica
+RANGOS_MEDIDAS = {campo: (10, 300) for campo in MedidaCorporal.CAMPOS}
+RANGOS_MEDIDAS['grasa_corporal'] = (2, 70)
+
+
+def medida_a_dict(medida):
+    return {'id': medida.id, 'fecha': medida.fecha, **{c: getattr(medida, c) for c in MedidaCorporal.CAMPOS}}
+
+
+class MedidasView(APIView):
+    """
+    Medidas corporales del usuario (cm y % de grasa).
+    GET: historial, de la más antigua a la más reciente.
+    POST: registra las de hoy; si ya había un registro hoy, lo completa o corrige.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        medidas = list(usuario.medidas_corporales.order_by('-fecha')[:MAX_HISTORIAL])[::-1]
+        return Response({'medidas': [medida_a_dict(m) for m in medidas]})
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        valores = {}
+        for campo, (minimo, maximo) in RANGOS_MEDIDAS.items():
+            valor = request.data.get(campo)
+            if valor in (None, ''):
+                continue
+            try:
+                valor = round(float(str(valor).replace(',', '.')), 1)
+            except (TypeError, ValueError):
+                return Response({'error': 'Escribe las medidas con números.'}, status=status.HTTP_400_BAD_REQUEST)
+            if not minimo <= valor <= maximo:
+                unidad = '%' if campo == 'grasa_corporal' else 'cm'
+                nombre = campo.replace('_', ' ')
+                return Response(
+                    {'error': f'El valor de {nombre} debe estar entre {minimo} y {maximo} {unidad}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            valores[campo] = valor
+
+        if not valores:
+            return Response({'error': 'Escribe al menos una medida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        hoy = dia_local(timezone.now())
+        medida = next(
+            (m for m in usuario.medidas_corporales.order_by('-fecha')[:3] if dia_local(m.fecha) == hoy), None,
+        )
+        if medida:
+            for campo, valor in valores.items():
+                setattr(medida, campo, valor)
+            medida.save(update_fields=list(valores))
+            codigo = status.HTTP_200_OK
+        else:
+            medida = MedidaCorporal.objects.create(usuario=usuario, **valores)
+            codigo = status.HTTP_201_CREATED
+        return Response(medida_a_dict(medida), status=codigo)
+
+
+class MedidaDetalleView(APIView):
+    """Borra un registro de medidas (por si se guardó mal)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        get_object_or_404(usuario.medidas_corporales, id=id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ExportarThrottle(UserRateThrottle):
+    scope = 'exportar_datos'
+    rate = '10/hour'
+
+
+class ExportarDatosView(APIView):
+    """Descarga todos los datos de entrenamiento del usuario en un Excel."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ExportarThrottle]
+
+    def get(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        nombre = f"body-rhythm-{usuario.username or 'datos'}-{dia_local(timezone.now()):%Y-%m-%d}.xlsx"
+        return HttpResponse(
+            libro_de_datos(usuario),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{nombre}"'},
         )

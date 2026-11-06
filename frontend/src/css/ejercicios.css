@@ -419,6 +419,115 @@
 
 
 /* =========================================================
+   FILAS POR GRUPO (vista inicial, al estilo Apple Fitness)
+   ========================================================= */
+
+.filas-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 42px;
+}
+
+.fila-grupo-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.fila-grupo-cabecera h2 {
+  margin: 0;
+  color: var(--ej-text);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.fila-grupo-cabecera span {
+  color: var(--ej-muted);
+  font-size: 0.85rem;
+}
+
+.fila-grupo-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ejercicios-container .fila-flecha,
+.ejercicios-container .fila-ver-todos {
+  margin: 0;
+  border: 1px solid var(--ej-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ej-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ejercicios-container .fila-flecha {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0 0 2px;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.ejercicios-container .fila-ver-todos {
+  padding: 8px 15px;
+  border-radius: 999px;
+  color: var(--ej-purple-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ejercicios-container .fila-flecha:hover,
+.ejercicios-container .fila-ver-todos:hover {
+  border-color: var(--ej-border-strong);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* El carril se desliza de lado y cada tarjeta se acomoda sola */
+.fila-grupo-carril {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * 16px) / 4);
+  gap: 16px;
+  /* Espacio para que la tarjeta suba al pasar el mouse sin cortarse */
+  margin: -8px -4px 0;
+  padding: 8px 4px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 4px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.fila-grupo-carril::-webkit-scrollbar {
+  display: none;
+}
+
+.fila-grupo-carril > .card {
+  scroll-snap-align: start;
+}
+
+/* En la fila basta con el nombre: la descripción se ve al abrir el ejercicio,
+   y el grupo ya está en el título de la fila */
+.fila-grupo-carril .card-description,
+.fila-grupo-carril .grupo-badge {
+  display: none;
+}
+
+.fila-grupo-carril .card-image-wrapper {
+  aspect-ratio: 1 / 1;
+}
+
+
+/* =========================================================
    CARD
    ========================================================= */
 
@@ -505,6 +614,19 @@
   opacity: 1;
 
   transform: scale(1.035);
+}
+
+/* Animación propia: el video trae su escenario morado, se ve entero */
+.card-image-wrapper--animada {
+  background: #0d0a18;
+}
+
+.card-video {
+  object-fit: contain;
+}
+
+.ejercicios-container .card:hover .card-video {
+  transform: scale(1.04);
 }
 
 
@@ -976,6 +1098,10 @@
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
   }
+
+  .fila-grupo-carril {
+    grid-auto-columns: calc((100% - 2 * 16px) / 3);
+  }
 }
 
 
@@ -1011,6 +1137,20 @@
 
   .lista-ejercicios {
     grid-template-columns: 1fr;
+  }
+
+  /* En celular se asoma la siguiente tarjeta para invitar a deslizar */
+  .fila-grupo-carril {
+    grid-auto-columns: 46%;
+    gap: 12px;
+  }
+
+  .fila-flecha {
+    display: none !important;
+  }
+
+  .fila-grupo-cabecera h2 {
+    font-size: 1.3rem;
   }
 }
 
