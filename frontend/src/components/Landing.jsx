@@ -56,8 +56,26 @@ const PASOS = [
 const DESTACADOS = [
   { video: "deadlift", fuerte: "Peso muerto, sentadilla, dominadas.", resto: "Los ejercicios que importan, explicados en movimiento." },
   { video: "hip-thrust", fuerte: "Glúteos, espalda, core.", resto: "Filtra por grupo muscular y encuentra lo que necesitas." },
-  { video: "kettlebell-swing", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
+  { video: "push-up", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
   { video: "pull-up", fuerte: "Comunidad.", resto: "Comparte tus entrenos y dale fuerza a los de los demás." },
+];
+
+// Planes: los mismos de la página de Planes
+const PLANES = [
+  { nombre: "Free", precio: "0", lema: "Todo lo esencial para empezar.", brillo: 0.35 },
+  { nombre: "Pro", precio: "19.900", lema: "Más herramientas para subir de nivel.", brillo: 0.65, destacado: true },
+  { nombre: "Premium", precio: "29.900", lema: "La experiencia completa de Body Rhythm.", brillo: 1 },
+];
+const FILAS_PLANES = [
+  ["Lista de ejercicios animados", true, true, true],
+  ["Rutinas básicas", true, true, true],
+  ["Seguimiento de progreso", true, true, true],
+  ["Rutinas personalizadas", false, true, true],
+  ["Estadísticas avanzadas", false, true, true],
+  ["Recomendaciones inteligentes", false, true, true],
+  ["Asistente de IA", false, false, true],
+  ["Planes personalizados", false, false, true],
+  ["Soporte prioritario", false, false, true],
 ];
 
 const DURACION_DESTACADO = 5000;
@@ -68,6 +86,7 @@ const limitar = (v) => Math.min(1, Math.max(0, v));
 function Estado() {
   return (
     <>
+      <span className="la-reflejo" />
       <span className="la-isla" />
       <span className="la-estado">
         <span>9:41</span>
@@ -80,8 +99,9 @@ function Estado() {
 /**
  * Página de inicio al estilo de las páginas de producto de Apple: el celular
  * sube y crece al bajar, una frase se enciende palabra por palabra, un
- * recorrido con el celular fijo cuya pantalla cambia, lo destacado en un
- * carrusel que avanza solo y un cierre con el escudo.
+ * recorrido con el celular fijo cuya pantalla cambia, una tarjeta que se
+ * revela a pantalla completa, lo destacado en un carrusel, una cuadrícula de
+ * funciones, la comparación de planes y un cierre con el escudo.
  */
 export default function Landing() {
   const navigate = useNavigate();
@@ -92,6 +112,8 @@ export default function Landing() {
   const pasos = useRef([]);
   const pista = useRef(null);
   const piezas = useRef([]);
+  const revelado = useRef(null);
+  const pagina = useRef(null);
 
   const [encendidas, setEncendidas] = useState(0);
   const [pasoActivo, setPasoActivo] = useState(0);
@@ -120,6 +142,17 @@ export default function Landing() {
         h.style.setProperty("--la-celu-y", `${(330 * (1 - q)).toFixed(1)}px`);
         h.style.setProperty("--la-celu-s", (0.82 + q * 0.22).toFixed(3));
         h.style.setProperty("--la-luz", (0.5 + p * 0.5).toFixed(3));
+      }
+
+      // Revelado: la tarjeta con video crece hasta ocupar toda la pantalla
+      const rv = revelado.current;
+      if (rv) {
+        const r = rv.getBoundingClientRect();
+        const p = limitar(-r.top / (r.height - innerHeight));
+        const crece = limitar(p / 0.6);
+        rv.style.setProperty("--la-r-s", (0.6 + crece * 0.4).toFixed(3));
+        rv.style.setProperty("--la-r-radio", `${(40 * (1 - crece)).toFixed(1)}px`);
+        rv.style.setProperty("--la-r-texto", limitar((p - 0.45) / 0.25).toFixed(3));
       }
 
       // 2. Frase: cuántas palabras van encendidas según lo que has bajado
@@ -162,6 +195,29 @@ export default function Landing() {
     };
   }, []);
 
+  // Los videos (salvo los del carrusel) solo corren mientras se ven en pantalla
+  useEffect(() => {
+    const raiz = pagina.current;
+    if (!raiz) return undefined;
+    const obs = new IntersectionObserver(
+      (entradas) =>
+        entradas.forEach((e) => {
+          if (e.isIntersecting) e.target.play().catch(() => {});
+          else e.target.pause();
+        }),
+      { threshold: 0.15 }
+    );
+    raiz.querySelectorAll("video[data-auto]").forEach((v) => obs.observe(v));
+    return () => obs.disconnect();
+  }, []);
+
+  // Luz que sigue al mouse en las tarjetas de la cuadrícula
+  const seguirMouse = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--la-mx", `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty("--la-my", `${e.clientY - r.top}px`);
+  };
+
   // 4. El carrusel arranca cuando se ve
   useEffect(() => {
     const el = pista.current;
@@ -194,7 +250,7 @@ export default function Landing() {
   }, [carruselVisible, destacado, pausado, mostrarDestacado]);
 
   return (
-    <div className="la-pagina">
+    <div className="la-pagina" ref={pagina}>
       {/* Sub-barra pegada, como la de las páginas de producto */}
       <div className="la-sub">
         <div className="la-ancho">
@@ -230,7 +286,7 @@ export default function Landing() {
             <div className="la-pantalla">
               <Estado />
               <div className="la-vista la-v-ejercicio la-activa">
-                <video src={video("squat")} autoPlay muted loop playsInline />
+                <video src={video("squat")} data-auto muted loop playsInline />
                 <div className="la-datos">
                   <small>Piernas · Día 2</small>
                   <h5>Sentadilla con barra</h5>
@@ -282,7 +338,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className={`la-vista la-v-ejercicio${pasoActivo === 1 ? " la-activa" : ""}`}>
-                  <video src={video("bench-press")} autoPlay muted loop playsInline />
+                  <video src={video("bench-press")} data-auto muted loop playsInline />
                   <div className="la-datos">
                     <small>Pecho · Día 1</small>
                     <h5>Press de banca</h5>
@@ -350,6 +406,24 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Revelado: una tarjeta que crece hasta llenar la pantalla */}
+      <section className="la-revelado" ref={revelado}>
+        <div className="la-revelado-fijo">
+          <div className="la-revelado-media">
+            <video src={video("kettlebell-swing")} data-auto muted loop playsInline />
+            <div className="la-revelado-texto">
+              <p className="la-deg">Ejercicios animados</p>
+              <h2>
+                Cada movimiento.
+                <br />
+                Explicado.
+              </h2>
+              <span>376 ejercicios con los músculos que trabajan, a la velocidad que quieras.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. Lo más destacado */}
       <section className="la-destacado" id="la-destacado">
         <h2>Lo más destacado.</h2>
@@ -393,16 +467,90 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 5. Números */}
-      <section>
-        <div className="la-ancho la-numeros">
-          <div><b className="la-deg">376</b><span>ejercicios con animación</span></div>
-          <div><b className="la-deg">30 s</b><span>para tener tu rutina</span></div>
-          <div><b className="la-deg">24/7</b><span>entrenador con IA</span></div>
+      {/* 5. Todo lo que necesitas: cuadrícula con luz que sigue al mouse */}
+      <section className="la-todo">
+        <div className="la-ancho">
+          <h2>
+            Todo lo que necesitas.
+            <br />
+            <span className="la-gris-txt">En una sola app.</span>
+          </h2>
+          <div className="la-bento">
+            <article className="la-caja la-caja-ia" onMouseMove={seguirMouse}>
+              <span className="la-chispa" aria-hidden="true">✦</span>
+              <h3>Entrenador con IA</h3>
+              <p>Pídele una rutina, cámbiale un ejercicio o pregúntale lo que quieras. A cualquier hora.</p>
+            </article>
+            <article className="la-caja la-caja-num" onMouseMove={seguirMouse}>
+              <b className="la-deg">376</b>
+              <p>ejercicios con animación</p>
+            </article>
+            <article className="la-caja la-caja-video" onMouseMove={seguirMouse}>
+              <video src={video("barbell-curl")} data-auto muted loop playsInline />
+              <h3>Normal, lento o en pausa</h3>
+            </article>
+            <article className="la-caja" onMouseMove={seguirMouse}>
+              <b className="la-deg">30 s</b>
+              <p>para tener tu semana armada</p>
+            </article>
+            <article className="la-caja" onMouseMove={seguirMouse}>
+              <h3>Nutrición</h3>
+              <p>Calorías y macros según tu meta.</p>
+              <div className="la-mini-anillo" aria-hidden="true" />
+            </article>
+            <article className="la-caja" onMouseMove={seguirMouse}>
+              <h3>Comunidad</h3>
+              <p>Comparte tus entrenos y dale fuerza a los demás.</p>
+              <div className="la-caras" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
-      {/* 6. Cierre */}
+      {/* 6. ¿Qué plan es para ti? */}
+      <section className="la-planes">
+        <div className="la-ancho">
+          <h2>¿Qué plan es para ti?</h2>
+          <div className="la-planes-rejilla">
+            {PLANES.map((plan, i) => {
+              const gratis = plan.precio === "0";
+              return (
+                <article key={plan.nombre} className={`la-plan${plan.destacado ? " la-plan-destacado" : ""}`}>
+                  {plan.destacado && <span className="la-plan-etiqueta">Más elegido</span>}
+                  <img src="/icons/icono.svg" alt="" style={{ "--la-brillo": plan.brillo }} />
+                  <h3>{plan.nombre}</h3>
+                  <p className="la-plan-lema">{plan.lema}</p>
+                  <p className="la-plan-precio">
+                    {gratis ? "Gratis" : <>${plan.precio}<small> / mes</small></>}
+                  </p>
+                  <button
+                    type="button"
+                    className={plan.destacado ? "la-boton" : "la-boton la-boton-suave"}
+                    onClick={() => (gratis ? empezar() : navigate("/planes"))}
+                  >
+                    {gratis ? (logueado ? "Ir a entrenar" : "Empezar gratis") : `Elegir ${plan.nombre}`}
+                  </button>
+                  <ul>
+                    {FILAS_PLANES.map(([texto, ...incluye]) => (
+                      <li key={texto} className={incluye[i] ? "" : "no"}>
+                        <span aria-hidden="true">{incluye[i] ? "✓" : "—"}</span>
+                        {texto}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* 7. Cierre */}
       <section className="la-cierre">
         <span className="la-escudo">
           <img src="/icons/icono.svg" alt="" />
