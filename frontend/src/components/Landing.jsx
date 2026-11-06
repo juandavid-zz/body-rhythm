@@ -60,22 +60,12 @@ const DESTACADOS = [
   { video: "pull-up", fuerte: "Comunidad.", resto: "Comparte tus entrenos y dale fuerza a los de los demás." },
 ];
 
-// Planes: los mismos de la página de Planes
-const PLANES = [
-  { nombre: "Free", precio: "0", lema: "Todo lo esencial para empezar.", brillo: 0.35 },
-  { nombre: "Pro", precio: "19.900", lema: "Más herramientas para subir de nivel.", brillo: 0.65, destacado: true },
-  { nombre: "Premium", precio: "29.900", lema: "La experiencia completa de Body Rhythm.", brillo: 1 },
-];
-const FILAS_PLANES = [
-  ["Lista de ejercicios animados", true, true, true],
-  ["Rutinas básicas", true, true, true],
-  ["Seguimiento de progreso", true, true, true],
-  ["Rutinas personalizadas", false, true, true],
-  ["Estadísticas avanzadas", false, true, true],
-  ["Recomendaciones inteligentes", false, true, true],
-  ["Asistente de IA", false, false, true],
-  ["Planes personalizados", false, false, true],
-  ["Soporte prioritario", false, false, true],
+// Columnas del pie de página (solo rutas que existen en la app)
+const PIE = [
+  { titulo: "Entrenar", enlaces: [["Ejercicios", "/ejercicios"], ["Entrenamientos", "/dashboard"], ["Rutinas", "/rutinas"], ["Asistente con IA", "/chatbot"]] },
+  { titulo: "Tu progreso", enlaces: [["Progreso", "/progreso"], ["Nutrición", "/nutricion"], ["Comunidad", "/comunidad"]] },
+  { titulo: "Cuenta", enlaces: [["Iniciar sesión", "/auth?modo=login"], ["Crear cuenta", "/auth?modo=registro"], ["Configuración", "/configuracion"]] },
+  { titulo: "Body Rhythm", enlaces: [["Planes", "/planes"], ["Inicio", "/"]] },
 ];
 
 const DURACION_DESTACADO = 5000;
@@ -101,7 +91,7 @@ function Estado() {
  * sube y crece al bajar, una frase se enciende palabra por palabra, un
  * recorrido con el celular fijo cuya pantalla cambia, una tarjeta que se
  * revela a pantalla completa, lo destacado en un carrusel, una cuadrícula de
- * funciones, la comparación de planes y un cierre con el escudo.
+ * funciones y un cierre con el escudo.
  */
 export default function Landing() {
   const navigate = useNavigate();
@@ -296,6 +286,10 @@ export default function Landing() {
                     <i>70 kg</i>
                     <i>70 kg</i>
                   </div>
+                  <div className="la-descanso">
+                    <span>Descanso</span>
+                    <b>1:30</b>
+                  </div>
                 </div>
               </div>
             </div>
@@ -346,6 +340,10 @@ export default function Landing() {
                       <i className="ok">40 kg</i>
                       <i className="ok">45 kg</i>
                       <i>50 kg</i>
+                    </div>
+                    <div className="la-descanso">
+                      <span>Siguiente</span>
+                      <b>Aperturas</b>
                     </div>
                   </div>
                 </div>
@@ -512,45 +510,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 6. ¿Qué plan es para ti? */}
-      <section className="la-planes">
-        <div className="la-ancho">
-          <h2>¿Qué plan es para ti?</h2>
-          <div className="la-planes-rejilla">
-            {PLANES.map((plan, i) => {
-              const gratis = plan.precio === "0";
-              return (
-                <article key={plan.nombre} className={`la-plan${plan.destacado ? " la-plan-destacado" : ""}`}>
-                  {plan.destacado && <span className="la-plan-etiqueta">Más elegido</span>}
-                  <img src="/icons/icono.svg" alt="" style={{ "--la-brillo": plan.brillo }} />
-                  <h3>{plan.nombre}</h3>
-                  <p className="la-plan-lema">{plan.lema}</p>
-                  <p className="la-plan-precio">
-                    {gratis ? "Gratis" : <>${plan.precio}<small> / mes</small></>}
-                  </p>
-                  <button
-                    type="button"
-                    className={plan.destacado ? "la-boton" : "la-boton la-boton-suave"}
-                    onClick={() => (gratis ? empezar() : navigate("/planes"))}
-                  >
-                    {gratis ? (logueado ? "Ir a entrenar" : "Empezar gratis") : `Elegir ${plan.nombre}`}
-                  </button>
-                  <ul>
-                    {FILAS_PLANES.map(([texto, ...incluye]) => (
-                      <li key={texto} className={incluye[i] ? "" : "no"}>
-                        <span aria-hidden="true">{incluye[i] ? "✓" : "—"}</span>
-                        {texto}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Cierre */}
+      {/* 6. Cierre */}
       <section className="la-cierre">
         <span className="la-escudo">
           <img src="/icons/icono.svg" alt="" />
@@ -573,8 +533,26 @@ export default function Landing() {
 
       <footer className="la-pie">
         <div className="la-ancho">
-          <span>© 2026 Body Rhythm. Entrena. Come bien. Repite.</span>
-          <span>Privacidad · Términos · Contacto</span>
+          <p className="la-pie-nota">
+            Las animaciones de los ejercicios son ilustrativas. Consulta a un profesional de la salud antes de empezar
+            un plan de entrenamiento o de alimentación.
+          </p>
+          <div className="la-pie-columnas">
+            {PIE.map((columna) => (
+              <div key={columna.titulo}>
+                <h4>{columna.titulo}</h4>
+                {columna.enlaces.map(([texto, ruta]) => (
+                  <button key={texto} type="button" onClick={() => navigate(ruta)}>
+                    {texto}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="la-pie-final">
+            <span>Copyright © 2026 Body Rhythm. Todos los derechos reservados.</span>
+            <span>Entrena. Come bien. Repite.</span>
+          </div>
         </div>
       </footer>
     </div>
