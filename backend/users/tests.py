@@ -495,7 +495,7 @@ class PagosSinConfigurarTests(APITestCase):
         self.assertFalse(Pago.objects.exists())
 
 
-class FotoPerfilTests(APITestCase):
+class FotoPerfilAlmacenamientoTests(APITestCase):
     def setUp(self):
         import tempfile
         from rest_framework_simplejwt.tokens import RefreshToken
