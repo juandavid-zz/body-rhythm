@@ -114,6 +114,18 @@ const ICONOS = {
   ),
 }
 
+// La IA puede mandar un texto o una lista de pasos: siempre se muestra como lista
+const comoLista = (valor) => (Array.isArray(valor) ? valor : valor ? [valor] : []).filter(Boolean)
+
+// Las cifras de nutrición que pueden venir en la rutina, en el orden en que se muestran
+const MACROS = [
+  { clave: 'calorias', texto: 'kcal al día', tono: 'naranja' },
+  { clave: 'proteina_g', texto: 'g de proteína', tono: 'morado' },
+  { clave: 'carbohidratos_g', texto: 'g de carbohidratos', tono: 'azul' },
+  { clave: 'grasas_g', texto: 'g de grasas', tono: 'verde' },
+  { clave: 'agua_litros', texto: 'litros de agua', tono: 'azul' },
+]
+
 const Icono = ({ nombre }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {ICONOS[nombre]}
@@ -776,6 +788,9 @@ export default function ChatbotRutina() {
                       </header>
 
                       <p className="rutina-desc">{m.rutina.rutina.descripcion}</p>
+                      {m.rutina.rutina.estructura && (
+                        <p className="rutina-estructura">{m.rutina.rutina.estructura}</p>
+                      )}
 
                       <div className="rutina-meta">
                         <span>
@@ -792,12 +807,14 @@ export default function ChatbotRutina() {
                         </span>
                       </div>
 
-                      {m.rutina.rutina.calentamiento && (
+                      {comoLista(m.rutina.rutina.calentamiento).length > 0 && (
                         <div className="rutina-nota">
                           <span className="cb-tarjeta-icono naranja"><Icono nombre="calentar" /></span>
                           <div>
                             <strong>Calentamiento</strong>
-                            <p>{m.rutina.rutina.calentamiento}</p>
+                            <ol className="rutina-pasos">
+                              {comoLista(m.rutina.rutina.calentamiento).map((paso, idx) => <li key={idx}>{paso}</li>)}
+                            </ol>
                           </div>
                         </div>
                       )}
@@ -815,10 +832,15 @@ export default function ChatbotRutina() {
                                   <span className="ejercicio-num" aria-hidden="true">{n + 1}</span>
                                   <div className="ejercicio-cuerpo">
                                     <div className="ejercicio-fila">
-                                      <strong>{ej.nombre}</strong>
+                                      <div>
+                                        <strong>{ej.nombre}</strong>
+                                        {ej.musculos && <span className="ejercicio-musculos">{ej.musculos}</span>}
+                                      </div>
                                       <span className="ejercicio-datos">
-                                        {ej.series && ej.repeticiones && <span>{ej.series} × {ej.repeticiones}</span>}
-                                        {ej.duracion_segundos && <span>{ej.duracion_segundos} s</span>}
+                                        {ej.series && (ej.duracion_segundos
+                                          ? <span>{ej.series} × {ej.duracion_segundos} s</span>
+                                          : ej.repeticiones && <span>{ej.series} × {ej.repeticiones}</span>)}
+                                        {!ej.series && ej.duracion_segundos && <span>{ej.duracion_segundos} s</span>}
                                         {ej.descanso_segundos && (
                                           <span className="ejercicio-descanso" title="Descanso">
                                             <Icono nombre="reloj" />
@@ -827,10 +849,25 @@ export default function ChatbotRutina() {
                                         )}
                                       </span>
                                     </div>
+                                    {(ej.intensidad || ej.tempo) && (
+                                      <div className="ejercicio-etiquetas">
+                                        {ej.intensidad && <span>Intensidad <b>{ej.intensidad}</b></span>}
+                                        {ej.tempo && <span title="Segundos de bajada, pausa y subida">Tempo <b>{ej.tempo}</b></span>}
+                                      </div>
+                                    )}
                                     {ej.ejercicio_id === null && (
                                       <span className="ejercicio-fuera">No está en la biblioteca: no se guardará</span>
                                     )}
-                                    {ej.consejo && <p className="ejercicio-consejo">{ej.consejo}</p>}
+                                    {(ej.consejo || ej.error_comun || ej.carga) && (
+                                      <dl className="ejercicio-detalle">
+                                        {ej.consejo && (<><dt>Técnica</dt><dd>{ej.consejo}</dd></>)}
+                                        {ej.error_comun && (<><dt>Evita</dt><dd>{ej.error_comun}</dd></>)}
+                                        {ej.carga && (<><dt>Peso</dt><dd>{ej.carga}</dd></>)}
+                                      </dl>
+                                    )}
+                                    {ej.alternativa && (
+                                      <p className="ejercicio-alternativa">Alternativa: <b>{ej.alternativa}</b></p>
+                                    )}
                                   </div>
                                 </li>
                               ))}
@@ -839,12 +876,60 @@ export default function ChatbotRutina() {
                         )
                       )}
 
-                      {m.rutina.rutina.enfriamiento && (
+                      {comoLista(m.rutina.rutina.enfriamiento).length > 0 && (
                         <div className="rutina-nota">
                           <span className="cb-tarjeta-icono azul"><Icono nombre="frio" /></span>
                           <div>
                             <strong>Enfriamiento</strong>
-                            <p>{m.rutina.rutina.enfriamiento}</p>
+                            <ol className="rutina-pasos">
+                              {comoLista(m.rutina.rutina.enfriamiento).map((paso, idx) => <li key={idx}>{paso}</li>)}
+                            </ol>
+                          </div>
+                        </div>
+                      )}
+
+                      {comoLista(m.rutina.rutina.progresion).length > 0 && (
+                        <div className="rutina-nota">
+                          <span className="cb-tarjeta-icono morado"><Icono nombre="series" /></span>
+                          <div>
+                            <strong>Cómo progresar</strong>
+                            <ol className="rutina-etapas">
+                              {comoLista(m.rutina.rutina.progresion).map((etapa, idx) => <li key={idx}>{etapa}</li>)}
+                            </ol>
+                          </div>
+                        </div>
+                      )}
+
+                      {m.rutina.rutina.nutricion && typeof m.rutina.rutina.nutricion === 'object' && (
+                        <div className="rutina-nota rutina-nutricion">
+                          <span className="cb-tarjeta-icono verde"><Icono nombre="comida" /></span>
+                          <div>
+                            <strong>Tu alimentación</strong>
+                            {m.rutina.rutina.nutricion.resumen && <p>{m.rutina.rutina.nutricion.resumen}</p>}
+                            <div className="rutina-macros">
+                              {MACROS.filter((x) => Number(m.rutina.rutina.nutricion[x.clave]) > 0).map((x) => (
+                                <div key={x.clave} className={`rutina-macro ${x.tono}`}>
+                                  <b>{Number(m.rutina.rutina.nutricion[x.clave]).toLocaleString('es-CO')}</b>
+                                  <span>{x.texto}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {comoLista(m.rutina.rutina.nutricion.consejos).length > 0 && (
+                              <ul>
+                                {comoLista(m.rutina.rutina.nutricion.consejos).map((c, idx) => <li key={idx}>{c}</li>)}
+                              </ul>
+                            )}
+                            <small className="rutina-nota-aviso">Cifras aproximadas. Ajústalas con un nutricionista si tienes alguna condición de salud.</small>
+                          </div>
+                        </div>
+                      )}
+
+                      {m.rutina.rutina.descanso && (
+                        <div className="rutina-nota">
+                          <span className="cb-tarjeta-icono azul"><Icono nombre="reloj" /></span>
+                          <div>
+                            <strong>Descanso y recuperación</strong>
+                            <p>{m.rutina.rutina.descanso}</p>
                           </div>
                         </div>
                       )}
