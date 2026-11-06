@@ -21,7 +21,7 @@ function buscarEnCatalogo(catalogo, { id, nombre }) {
 }
 
 /**
- * Botón discreto (▶) que abre la animación del ejercicio en una ventana.
+ * Miniatura del ejercicio que abre su animación en una ventana.
  * Recibe lo que se tenga del ejercicio: repdb_id, id del catálogo o nombre.
  * Si el ejercicio no tiene animación, no muestra nada.
  */
@@ -63,9 +63,10 @@ export default function BotonAnimacion({ id = null, repdbId = null, nombre = "",
 
   return (
     <>
+      {/* Miniatura del ejercicio: se ve como parte de la información, y al tocarla se anima */}
       <button
         type="button"
-        className={`ba-boton ${className}`}
+        className={`ba-mini ${className}`}
         onClick={(e) => {
           e.stopPropagation();
           setAbierta(true);
@@ -73,9 +74,12 @@ export default function BotonAnimacion({ id = null, repdbId = null, nombre = "",
         aria-label={`Ver cómo se hace ${nombre}`}
         title="Ver cómo se hace"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M8 5.5v13l11-6.5z" />
-        </svg>
+        <img src={animacion.poster} alt="" loading="lazy" decoding="async" />
+        <span className="ba-mini-play" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 5.5v13l11-6.5z" />
+          </svg>
+        </span>
       </button>
 
       {abierta &&

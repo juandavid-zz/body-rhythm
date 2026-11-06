@@ -3,37 +3,80 @@
    (chatbot, rutinas y entrenamiento) y su ventana
    ============================================================ */
 
-.ba-boton {
-  display: inline-grid;
+/* Miniatura: va antes del nombre, como la foto del ejercicio en una app de gimnasio */
+.ba-mini {
+  position: relative;
+  display: block;
   flex-shrink: 0;
-  place-items: center;
-  width: 26px;
-  height: 26px;
+  order: -1;
+  width: 40px;
+  height: 40px;
   margin: 0;
   padding: 0;
-  border: 1px solid rgba(192, 132, 252, 0.28);
-  border-radius: 50%;
-  background: rgba(168, 85, 247, 0.12);
-  color: #d8b4fe;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  background: #0d0a18;
   cursor: pointer;
-  vertical-align: middle;
-  transition: background 0.2s, color 0.2s, transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1), border-color 0.2s;
+  transition: border-color 0.2s, transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s;
 }
 
-.ba-boton svg {
-  width: 11px;
-  height: 11px;
+.ba-mini img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.15);
+}
+
+/* El ▶ solo aparece al pasar el mouse (o con el teclado): no ensucia la lista */
+.ba-mini-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 6, 13, 0.45);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ba-mini-play svg {
+  width: 14px;
+  height: 14px;
   margin-left: 2px;
   fill: currentColor;
 }
 
-.ba-boton:hover,
-.ba-boton:focus-visible {
+.ba-mini:hover,
+.ba-mini:focus-visible {
   border-color: rgba(192, 132, 252, 0.6);
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(219, 39, 119, 0.75));
-  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(168, 85, 247, 0.6);
   outline: none;
-  transform: scale(1.1);
+  transform: scale(1.06);
+}
+
+.ba-mini:hover .ba-mini-play,
+.ba-mini:focus-visible .ba-mini-play {
+  opacity: 1;
+}
+
+/* En pantallas táctiles no hay "pasar el mouse": un ▶ pequeño en la esquina */
+@media (hover: none) {
+  .ba-mini-play {
+    inset: auto 2px 2px auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(7, 6, 13, 0.7);
+    opacity: 1;
+  }
+
+  .ba-mini-play svg {
+    width: 7px;
+    height: 7px;
+    margin-left: 1px;
+  }
 }
 
 /* ---------- Ventana ---------- */
