@@ -146,7 +146,8 @@ export default function TarjetaEntrenamiento({ registro, mostrarAutor = false, e
         </div>
         <div>
           <dt>Volumen</dt>
-          <dd>{formatearNumero(registro.volumen_kg)} kg</dd>
+          {/* Sin pesas (peso corporal) no hay volumen: "—" en vez de "0 kg" */}
+          <dd>{registro.volumen_kg > 0 ? `${formatearNumero(registro.volumen_kg)} kg` : "—"}</dd>
         </div>
         <div>
           <dt>Series</dt>

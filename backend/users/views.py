@@ -352,9 +352,24 @@ class FotoPerfilView(APIView):
         except FotoInvalida as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        borrar_foto(usuario)  # la anterior no se queda ocupando espacio
-        usuario.foto.save(foto.name, foto, save=False)
+        anterior = usuario.foto.name if usuario.foto else None
+        try:
+            usuario.foto.save(foto.name, foto, save=False)
+        except Exception:
+            # Cloudinary caído o mal configurado (CLOUDINARY_URL): el motivo exacto queda en los logs
+            logger.exception('No se pudo guardar la foto de perfil de %s', usuario.username)
+            return Response(
+                {'error': 'No pudimos guardar tu foto en este momento. Intenta de nuevo en unos minutos.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         usuario.save(update_fields=['foto'])
+
+        # La anterior se borra solo cuando la nueva ya quedó guardada
+        if anterior and anterior != usuario.foto.name:
+            try:
+                usuario.foto.storage.delete(anterior)
+            except Exception:
+                logger.warning('No se pudo borrar la foto anterior %s', anterior)
         return Response({'foto': url_foto(usuario)})
 
     def delete(self, request):
