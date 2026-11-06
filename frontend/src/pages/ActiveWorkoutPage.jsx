@@ -75,6 +75,9 @@ function obtenerDuracionInicial(ejercicio = {}, detalle = {}) {
   );
 }
 
+// Segundos que espera antes de guardar solo cuando se completan todas las series
+const SEGUNDOS_AUTOGUARDADO = 3;
+
 function crearSerie(numero, reps = 10, porTiempo = false, duracion = 30, anterior = {}) {
   return {
     tipo: "normal",
@@ -873,6 +876,42 @@ export default function ActiveWorkoutPage() {
     setFinalizado(resumen);
   };
 
+  // Al marcar la última serie se guarda solo tras unos segundos (con opción de seguir)
+  const todoHecho = totalSets > 0 && setsHechos === totalSets;
+  const [cuentaGuardado, setCuentaGuardado] = useState(null);
+  const [autoGuardadoCancelado, setAutoGuardadoCancelado] = useState(false);
+  const finalizarRef = useRef(null);
+  useEffect(() => {
+    finalizarRef.current = ejecutarFinalizacion;
+  });
+
+  // Si se desmarca una serie, vuelve a quedar listo para guardar solo la próxima vez
+  if (!todoHecho && (cuentaGuardado !== null || autoGuardadoCancelado)) {
+    setCuentaGuardado(null);
+    setAutoGuardadoCancelado(false);
+  }
+  if (todoHecho && !finalizado && !autoGuardadoCancelado && cuentaGuardado === null) {
+    setCuentaGuardado(SEGUNDOS_AUTOGUARDADO);
+  }
+
+  useEffect(() => {
+    if (cuentaGuardado === null || finalizado) return undefined;
+    const t = setTimeout(() => {
+      if (cuentaGuardado <= 1) {
+        setCuentaGuardado(null);
+        finalizarRef.current?.();
+      } else {
+        setCuentaGuardado(cuentaGuardado - 1);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [cuentaGuardado, finalizado]);
+
+  const seguirEntrenando = () => {
+    setCuentaGuardado(null);
+    setAutoGuardadoCancelado(true);
+  };
+
   const finalizar = () => {
     if (totalSets === 0 || setsHechos < totalSets) {
       setMostrarFinalizar(true);
@@ -1013,11 +1052,6 @@ export default function ActiveWorkoutPage() {
                 <span className="aw-reloj">{formatearTiempo(segundosTranscurridos)}</span>
                 <span>{setsHechos} de {totalSets} series</span>
               </p>
-            </div>
-
-            <div className="aw-acciones">
-              <button type="button" onClick={descartar} className="aw-btn">Descartar</button>
-              <button type="button" onClick={finalizar} className="aw-btn primario">Finalizar</button>
             </div>
           </header>
 
@@ -1417,6 +1451,26 @@ export default function ActiveWorkoutPage() {
               Añadir ejercicio
             </button>
           )}
+
+          {/* AL FINAL: se termina cuando ya se hizo todo */}
+          <footer className="aw-pie">
+            {cuentaGuardado !== null && (
+              <div className="aw-autoguardado" role="status">
+                <span className="aw-autoguardado-icono"><IconoCheck size={18} /></span>
+                <div>
+                  <strong>¡Completaste las {totalSets} series!</strong>
+                  <span>Guardando tu entrenamiento en {cuentaGuardado}…</span>
+                </div>
+                <button type="button" onClick={seguirEntrenando} className="aw-btn">Seguir entrenando</button>
+              </div>
+            )}
+            <div className="aw-acciones">
+              <button type="button" onClick={descartar} className="aw-btn">Descartar</button>
+              <button type="button" onClick={finalizar} className="aw-btn primario">
+                {todoHecho ? "Guardar entrenamiento" : `Finalizar · ${setsHechos} de ${totalSets}`}
+              </button>
+            </div>
+          </footer>
         </div>
       </main>
 
