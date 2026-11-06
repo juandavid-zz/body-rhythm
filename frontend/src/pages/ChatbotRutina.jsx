@@ -101,6 +101,14 @@ const ICONOS = {
   ),
   inferior: <path d="M8 4h8l1 6H7l1-6ZM9 10l-1.5 10.5M15 10l1.5 10.5M12 10v4" />,
   atras: <path d="M15 5l-7 7 7 7" />,
+  reloj: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  frio: <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5" />,
+  consejo: <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3Z" />,
   chispa: (
     <path d="M12 3.5 13.6 9a2 2 0 0 0 1.4 1.4l5.5 1.6-5.5 1.6a2 2 0 0 0-1.4 1.4L12 20.5 10.4 15A2 2 0 0 0 9 13.6L3.5 12 9 10.4A2 2 0 0 0 10.4 9Z" />
   ),
@@ -747,72 +755,112 @@ export default function ChatbotRutina() {
                         </p>
                       )}
 
-                      <div className="rutina-chips">
-                        <span className="rutina-imc">
-                          IMC {m.rutina.imc} · {m.rutina.rango_imc}
+                      <header className="rutina-cabecera">
+                        <span className="cb-tarjeta-icono morado rutina-cabecera-icono">
+                          <Icono nombre="rutina" />
                         </span>
-                        {m.rutina.rutina.nivel && (
-                          <span className="rutina-nivel">{m.rutina.rutina.nivel}</span>
-                        )}
+                        <div>
+                          <div className="rutina-chips">
+                            <span className="rutina-imc">
+                              IMC {m.rutina.imc} · {m.rutina.rango_imc}
+                            </span>
+                            {m.rutina.rutina.nivel && (
+                              <span className="rutina-nivel">{m.rutina.rutina.nivel}</span>
+                            )}
+                          </div>
+                          <h3>{m.rutina.rutina.nombre}</h3>
+                          {m.rutina.rutina.objetivo && (
+                            <p className="rutina-objetivo">{m.rutina.rutina.objetivo}</p>
+                          )}
+                        </div>
+                      </header>
+
+                      <p className="rutina-desc">{m.rutina.rutina.descripcion}</p>
+
+                      <div className="rutina-meta">
+                        <span>
+                          <Icono nombre="series" />
+                          {m.rutina.rutina.dias_por_semana} días por semana
+                        </span>
+                        <span>
+                          <Icono nombre="reloj" />
+                          {m.rutina.rutina.duracion_minutos} min por sesión
+                        </span>
+                        <span>
+                          <Icono nombre="rutina" />
+                          {m.rutina.rutina.ejercicios?.length || 0} ejercicios
+                        </span>
                       </div>
 
-                      <h3>{m.rutina.rutina.nombre}</h3>
-                      {m.rutina.rutina.objetivo && (
-                        <p className="rutina-objetivo">{m.rutina.rutina.objetivo}</p>
-                      )}
-                      <p className="rutina-desc">{m.rutina.rutina.descripcion}</p>
-                      <p className="rutina-meta">
-                        {m.rutina.rutina.dias_por_semana} días/semana ·{' '}
-                        {m.rutina.rutina.duracion_minutos} min por sesión
-                      </p>
-
                       {m.rutina.rutina.calentamiento && (
-                        <div className="rutina-nota rutina-nota-calentamiento">
-                          <strong>Calentamiento</strong> {m.rutina.rutina.calentamiento}
+                        <div className="rutina-nota">
+                          <span className="cb-tarjeta-icono naranja"><Icono nombre="calentar" /></span>
+                          <div>
+                            <strong>Calentamiento</strong>
+                            <p>{m.rutina.rutina.calentamiento}</p>
+                          </div>
                         </div>
                       )}
 
                       {Object.entries(agruparPorDia(m.rutina.rutina.ejercicios)).map(
-                        ([dia, ejercicios]) => (
-                          <div key={dia} className="dia-rutina">
-                            <h4>{dia}</h4>
-                            <ul>
-                              {ejercicios.map((ej) => (
-                                <li key={ej.id || ej.nombre}>
-                                  <div className="ejercicio-fila">
-                                    <strong>{ej.nombre}</strong>
-                                    <span className="ejercicio-datos">
-                                      {ej.series && ej.repeticiones && `${ej.series} × ${ej.repeticiones}`}
-                                      {ej.duracion_segundos && `${ej.duracion_segundos} s`}
-                                      {ej.descanso_segundos && ` · ${ej.descanso_segundos} s`}
-                                    </span>
+                        ([dia, ejercicios], d) => (
+                          <section key={dia} className="dia-rutina" style={{ '--d': d }}>
+                            <h4>
+                              <span className="dia-rutina-nombre">{dia}</span>
+                              <small>{ejercicios.length} ejercicios</small>
+                            </h4>
+                            <ol>
+                              {ejercicios.map((ej, n) => (
+                                <li key={ej.id || ej.nombre} style={{ '--n': n }}>
+                                  <span className="ejercicio-num" aria-hidden="true">{n + 1}</span>
+                                  <div className="ejercicio-cuerpo">
+                                    <div className="ejercicio-fila">
+                                      <strong>{ej.nombre}</strong>
+                                      <span className="ejercicio-datos">
+                                        {ej.series && ej.repeticiones && <span>{ej.series} × {ej.repeticiones}</span>}
+                                        {ej.duracion_segundos && <span>{ej.duracion_segundos} s</span>}
+                                        {ej.descanso_segundos && (
+                                          <span className="ejercicio-descanso" title="Descanso">
+                                            <Icono nombre="reloj" />
+                                            {ej.descanso_segundos} s
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                    {ej.ejercicio_id === null && (
+                                      <span className="ejercicio-fuera">No está en la biblioteca: no se guardará</span>
+                                    )}
+                                    {ej.consejo && <p className="ejercicio-consejo">{ej.consejo}</p>}
                                   </div>
-                                  {ej.ejercicio_id === null && (
-                                    <span className="ejercicio-fuera">No está en la biblioteca: no se guardará</span>
-                                  )}
-                                  {ej.consejo && <p className="ejercicio-consejo">{ej.consejo}</p>}
                                 </li>
                               ))}
-                            </ul>
-                          </div>
+                            </ol>
+                          </section>
                         )
                       )}
 
                       {m.rutina.rutina.enfriamiento && (
-                        <div className="rutina-nota rutina-nota-enfriamiento">
-                          <strong>Enfriamiento</strong> {m.rutina.rutina.enfriamiento}
+                        <div className="rutina-nota">
+                          <span className="cb-tarjeta-icono azul"><Icono nombre="frio" /></span>
+                          <div>
+                            <strong>Enfriamiento</strong>
+                            <p>{m.rutina.rutina.enfriamiento}</p>
+                          </div>
                         </div>
                       )}
 
                       {Array.isArray(m.rutina.rutina.consejos_generales) &&
                         m.rutina.rutina.consejos_generales.length > 0 && (
-                          <div className="rutina-consejos">
-                            <h4>Consejos para esta rutina</h4>
-                            <ul>
-                              {m.rutina.rutina.consejos_generales.map((c, idx) => (
-                                <li key={idx}>{c}</li>
-                              ))}
-                            </ul>
+                          <div className="rutina-nota rutina-consejos">
+                            <span className="cb-tarjeta-icono verde"><Icono nombre="consejo" /></span>
+                            <div>
+                              <strong>Consejos para esta rutina</strong>
+                              <ul>
+                                {m.rutina.rutina.consejos_generales.map((c, idx) => (
+                                  <li key={idx}>{c}</li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
                         )}
 
