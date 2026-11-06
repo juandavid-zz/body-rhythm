@@ -353,3 +353,117 @@ class ConfiguracionTests(BaseSocialTest):
         self.assertEqual(self.client.delete('/api/usuarios/me/', {'password': 'mal'}, format='json').status_code, 400)
         self.assertEqual(self.client.delete('/api/usuarios/me/', {'password': 'Clave12345'}, format='json').status_code, 204)
         self.assertFalse(Usuario.objects.filter(username='ana').exists())
+
+
+class NotificacionesTests(BaseSocialTest):
+    def publicar_como(self, usuario, **extra):
+        self.entrar_como(usuario)
+        self.client.post('/api/entrenamientos/registros/', {**ENTRENAMIENTO, **extra}, format='json')
+        return RegistroEntrenamiento.objects.filter(usuario=usuario).latest('id')
+
+    def avisos(self, usuario):
+        self.entrar_como(usuario)
+        return self.client.get('/api/social/notificaciones/').data
+
+    def test_seguir_cuenta_publica_avisa_y_privada_avisa_solicitud(self):
+        self.entrar_como(self.caro)
+        self.client.post('/api/social/perfiles/ana/seguir/')
+        self.client.post('/api/social/perfiles/beto/seguir/')
+        self.assertEqual([n['tipo'] for n in self.avisos(self.ana)['resultados']], ['seguidor'])
+        self.assertEqual([n['tipo'] for n in self.avisos(self.beto)['resultados']], ['solicitud'])
+
+    def test_aceptar_solicitud_avisa_a_quien_la_pidio(self):
+        self.entrar_como(self.caro)
+        self.client.post('/api/social/perfiles/beto/seguir/')
+        solicitud = Seguimiento.objects.get(seguidor=self.caro, seguido=self.beto)
+        self.entrar_como(self.beto)
+        self.client.post(f'/api/social/solicitudes/{solicitud.id}/')
+        avisos = self.avisos(self.caro)['resultados']
+        self.assertEqual(avisos[0]['tipo'], 'solicitud_aceptada')
+        self.assertEqual(avisos[0]['actor']['username'], 'beto')
+
+    def test_fuerza_y_comentario_avisan_al_dueno_y_quitar_fuerza_borra_el_aviso(self):
+        registro = self.publicar_como(self.ana)
+        self.entrar_como(self.caro)
+        self.client.post(f'/api/social/registros/{registro.id}/fuerza/')
+        self.client.post(f'/api/social/registros/{registro.id}/comentarios/', {'texto': '¡Bien!'}, format='json')
+        datos = self.avisos(self.ana)
+        self.assertEqual(datos['no_leidas'], 2)
+        self.assertEqual({n['tipo'] for n in datos['resultados']}, {'fuerza', 'comentario'})
+
+        self.entrar_como(self.caro)
+        self.client.delete(f'/api/social/registros/{registro.id}/fuerza/')
+        self.assertEqual([n['tipo'] for n in self.avisos(self.ana)['resultados']], ['comentario'])
+
+    def test_lo_que_hago_en_lo_mio_no_me_avisa(self):
+        registro = self.publicar_como(self.ana)
+        self.client.post(f'/api/social/registros/{registro.id}/fuerza/')
+        self.client.post(f'/api/social/registros/{registro.id}/comentarios/', {'texto': 'yo'}, format='json')
+        self.assertEqual(self.avisos(self.ana)['resultados'], [])
+
+    def test_marcar_como_leidas_y_contador(self):
+        self.entrar_como(self.caro)
+        self.client.post('/api/social/perfiles/ana/seguir/')
+        self.entrar_como(self.ana)
+        self.assertEqual(self.client.get('/api/social/notificaciones/contador/').data['no_leidas'], 1)
+        self.client.post('/api/social/notificaciones/')
+        self.assertEqual(self.client.get('/api/social/notificaciones/contador/').data['no_leidas'], 0)
+
+    def test_mencion_avisa_solo_a_quien_puede_ver_el_entrenamiento(self):
+        registro = self.publicar_como(self.ana)  # Ana es pública
+        self.entrar_como(self.caro)
+        texto = 'Mira esto @beto y @ana, ojo @noexiste'
+        self.client.post(f'/api/social/registros/{registro.id}/comentarios/', {'texto': texto}, format='json')
+        # Beto puede ver a Ana (cuenta pública) → mención; Ana ya recibe "comentario", sin doble aviso
+        self.assertEqual([n['tipo'] for n in self.avisos(self.beto)['resultados']], ['mencion'])
+        self.assertEqual([n['tipo'] for n in self.avisos(self.ana)['resultados']], ['comentario'])
+
+        # En un entrenamiento de Beto (privado), mencionar a Ana no le avisa: no puede verlo
+        registro_beto = self.publicar_como(self.beto)
+        self.client.post(f'/api/social/registros/{registro_beto.id}/comentarios/', {'texto': 'hola @ana'}, format='json')
+        self.assertNotIn('mencion', [n['tipo'] for n in self.avisos(self.ana)['resultados']])
+
+
+class ClasificacionYCompararTests(BaseSocialTest):
+    def publicar_como(self, usuario, **extra):
+        self.entrar_como(usuario)
+        self.client.post('/api/entrenamientos/registros/', {**ENTRENAMIENTO, **extra}, format='json')
+
+    def test_clasificacion_incluye_a_mi_y_a_quien_sigo_ordenada(self):
+        self.publicar_como(self.ana)
+        self.publicar_como(self.ana)
+        self.publicar_como(self.caro)
+        self.publicar_como(self.caro, nombre='Oculto', compartido=False)  # no cuenta para los demás
+        self.entrar_como(self.caro)
+        self.client.post('/api/social/perfiles/ana/seguir/')
+
+        filas = self.client.get('/api/social/clasificacion/').data['resultados']
+        self.assertEqual([(f['usuario']['username'], f['entrenamientos']) for f in filas], [('ana', 2), ('caro', 2)])
+        self.assertTrue(filas[1]['soy_yo'])
+        self.assertEqual(filas[0]['posicion'], 1)
+
+        # Beto no sigue a nadie: solo se ve él
+        self.entrar_como(self.beto)
+        filas = self.client.get('/api/social/clasificacion/').data['resultados']
+        self.assertEqual([f['usuario']['username'] for f in filas], ['beto'])
+
+    def test_comparar_totales_y_ejercicios_en_comun(self):
+        self.publicar_como(self.ana)
+        self.publicar_como(self.caro)
+        self.entrar_como(self.caro)
+        datos = self.client.get('/api/social/perfiles/ana/comparar/').data
+        self.assertEqual(datos['yo']['entrenamientos'], 1)
+        self.assertEqual(datos['otro']['entrenamientos'], 1)
+        self.assertEqual(datos['ejercicios_en_comun'][0]['nombre'], 'Sentadilla')
+        self.assertEqual(datos['ejercicios_en_comun'][0]['otro'], 70)
+
+    def test_comparar_cuenta_privada_sin_seguir_no_se_puede(self):
+        self.entrar_como(self.caro)
+        self.assertEqual(self.client.get('/api/social/perfiles/beto/comparar/').status_code, 403)
+
+    def test_insignias_en_el_perfil(self):
+        self.publicar_como(self.ana)
+        self.entrar_como(self.caro)
+        insignias = self.client.get('/api/social/perfiles/ana/').data['insignias']
+        self.assertIn('primer', [i['id'] for i in insignias])
+        self.assertNotIn('peso', [i['id'] for i in insignias])

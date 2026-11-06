@@ -165,6 +165,67 @@
   }
 }
 
+/* Animación propia: el video trae su escenario morado */
+body .ej-detalle-image-wrapper--animada {
+  background: #0d0a18;
+}
+
+.ej-animacion {
+  position: relative;
+  width: 100%;
+}
+
+.ej-animacion-video {
+  display: block;
+  width: 100%;
+  height: 460px;
+  object-fit: contain;
+}
+
+.ej-animacion-controles {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(13, 11, 20, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.ej-animacion-controles button {
+  margin: 0;
+  padding: 6px 13px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ej-animacion-controles button:hover {
+  color: #fff;
+}
+
+.ej-animacion-controles button.activo {
+  background: #fff;
+  color: #0d0f1a;
+}
+
+@media (max-width: 640px) {
+  .ej-animacion-video {
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}
+
 .ej-detalle-image-placeholder {
   display: flex;
   min-height: 360px;

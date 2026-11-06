@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
+import { obtenerEjercicios } from "../utils/ejercicios";
 import { tiempoRelativo } from "../utils/formato";
 import "../css/rutinas.css";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -326,46 +327,6 @@ function FilaConfig({ datos, onCambio }) {
 }
 
 
-// Buscador de ejercicios de la biblioteca
-function Buscador({ catalogo, excluir = [], onElegir }) {
-  const [texto, setTexto] = useState("");
-  const q = texto.trim().toLowerCase();
-  const resultados = useMemo(
-    () =>
-      catalogo
-        .filter((e) => !excluir.includes(e.id))
-        .filter((e) => !q || `${e.nombre} ${grupo(e.grupo)}`.toLowerCase().includes(q))
-        .slice(0, 40),
-    [catalogo, excluir, q]
-  );
-
-  return (
-    <div className="rt-buscador">
-      <input
-        type="search"
-        placeholder="Buscar ejercicio (ej. sentadilla, pecho…)"
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        aria-label="Buscar ejercicio"
-      />
-      <ul>
-        {resultados.map((e) => (
-          <li key={e.id}>
-            <button type="button" onClick={() => onElegir(e)}>
-              <span>
-                <strong>{e.nombre}</strong>
-                <small>{grupo(e.grupo)}</small>
-              </span>
-              <span className="rt-mas" aria-hidden="true">+</span>
-            </button>
-          </li>
-        ))}
-        {resultados.length === 0 && <li className="rt-vacio">No hay ejercicios con “{texto}”.</li>}
-      </ul>
-    </div>
-  );
-}
-
 function Panel({ titulo, onCerrar, children, pie }) {
   useEffect(() => {
     const cerrar = (e) => e.key === "Escape" && onCerrar();
@@ -388,8 +349,7 @@ function Panel({ titulo, onCerrar, children, pie }) {
 }
 
 // ── Detalle de una rutina: ver, editar y empezar ──
-function DetalleRutina({ rutina, usuarioId, catalogo, navigate, onActualizar, onEliminar, onCerrar, onEmpezar }) {
-  const [agregando, setAgregando] = useState(false);
+function DetalleRutina({ rutina, usuarioId, navigate, onActualizar, onEliminar, onCerrar, onEmpezar }) {
   const base = `/usuarios/${usuarioId}/rutinas/${rutina.id}`;
   const detalles = rutina.ejercicios_detalle || [];
 
@@ -404,29 +364,6 @@ function DetalleRutina({ rutina, usuarioId, catalogo, navigate, onActualizar, on
     onActualizar({ ...rutina, ejercicios_detalle: detalles.filter((d) => d.id !== detalle.id) });
   };
 
-const agregar = async (ejercicio) => {
-  try {
-    const res = await api.post(`${base}/ejercicios/`, {
-      ejercicio_id: ejercicio.id,
-      ...POR_DEFECTO,
-      configuracion_series: crearConfiguracionSeries(3, 10),
-      orden: detalles.length,
-    });
-
-    onActualizar({
-      ...rutina,
-      ejercicios_detalle: [
-        ...detalles,
-        { ...res.data, ejercicio },
-      ],
-    });
-
-    setAgregando(false);
-  } catch (error) {
-    console.error("Error al agregar ejercicio:", error);
-    // No cerrar el selector si falla la petición.
-  }
-};
   const alternarFavorita = async () => {
     const res = await api.patch(`${base}/favorita/`, {});
     onActualizar({ ...rutina, es_favorita: res.data.es_favorita });
@@ -472,7 +409,7 @@ const agregar = async (ejercicio) => {
         ))}
       </ol>
 
-      {detalles.length === 0 && !agregando && <p className="rt-vacio">Esta rutina no tiene ejercicios todavía.</p>}
+      {detalles.length === 0 && <p className="rt-vacio">Esta rutina no tiene ejercicios todavía.</p>}
 
 
 <button
@@ -502,7 +439,6 @@ const agregar = async (ejercicio) => {
 // ── Crear una rutina nueva ──
 function CrearRutina({
   usuarioId,
-  catalogo,
   navigate,
   onCreada,
   onCerrar,
@@ -526,40 +462,39 @@ function CrearRutina({
   });
 
   const [elegidos, setElegidos] = useState(() => {
+    let lista;
     try {
       const borrador = sessionStorage.getItem(claveBorrador);
-      return borrador ? JSON.parse(borrador).elegidos || [] : [];
+      lista = borrador ? JSON.parse(borrador).elegidos || [] : [];
     } catch {
-      return [];
+      lista = [];
     }
-  });
 
-
-useEffect(() => {
-  if (!ejercicioPendiente) return;
-
-  setElegidos((actuales) => {
-    const yaExiste = actuales.some(
-      (item) =>
-        String(item.ejercicio?.id) === String(ejercicioPendiente.id)
+    // Al volver de la página de Ejercicios, este panel se abre de nuevo con el
+    // ejercicio que se eligió allá: se agrega aquí mismo (si no estaba ya)
+    const yaExiste = ejercicioPendiente && lista.some(
+      (item) => String(item.ejercicio?.id) === String(ejercicioPendiente.id)
     );
-
-    if (yaExiste) return actuales;
-
-    return [
-      ...actuales,
-      {
-        ejercicio: ejercicioPendiente,
-        series: 3,
-        repeticiones: 10,
-        descanso_segundos: 180,
-        configuracion_series: crearConfiguracionSeries(3, 10),
-      },
-    ];
+    if (ejercicioPendiente && !yaExiste) {
+      lista = [
+        ...lista,
+        {
+          ejercicio: ejercicioPendiente,
+          series: 3,
+          repeticiones: 10,
+          descanso_segundos: 180,
+          configuracion_series: crearConfiguracionSeries(3, 10),
+        },
+      ];
+    }
+    return lista;
   });
 
-  setEjercicioPendiente(null);
-}, [ejercicioPendiente, setEjercicioPendiente]);
+
+  // Ya quedó en la lista: se limpia para que no se vuelva a agregar al abrir otra vez
+  useEffect(() => {
+    if (ejercicioPendiente) setEjercicioPendiente(null);
+  }, [ejercicioPendiente, setEjercicioPendiente]);
 
   const valido = nombre.trim() && elegidos.length > 0;
 
@@ -865,17 +800,21 @@ export default function RutinasPage() {
     let activo = true;
     (async () => {
       try {
-        const { data: yo } = await api.get("/usuarios/me/");
-        // Crea las rutinas base la primera vez (no duplica si ya existen)
-        await api.post("/rutinas/generar-catalogo/").catch(() => {});
-        const [rutinasRes, ejerciciosRes] = await Promise.all([
+        // El catálogo de ejercicios se pide de una vez, en paralelo con lo demás
+        const ejerciciosPromesa = obtenerEjercicios();
+        // Tu usuario y el catálogo base de rutinas (crea las base la primera vez, no duplica)
+        const [{ data: yo }] = await Promise.all([
+          api.get("/usuarios/me/"),
+          api.post("/rutinas/generar-catalogo/").catch(() => {}),
+        ]);
+        const [rutinasRes, ejerciciosData] = await Promise.all([
           api.get(`/usuarios/${yo.id}/rutinas/`),
-          api.get("/ejercicios/"),
+          ejerciciosPromesa,
         ]);
         if (!activo) return;
         setUsuarioId(yo.id);
         setRutinas(ordenar(rutinasRes.data));
-        setCatalogo(ejerciciosRes.data);
+        setCatalogo(ejerciciosData);
         setEstado({ cargando: false, error: "" });
       } catch {
         if (activo) setEstado({ cargando: false, error: "No se pudieron cargar tus rutinas." });

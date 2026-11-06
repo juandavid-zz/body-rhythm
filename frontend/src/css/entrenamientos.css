@@ -346,3 +346,463 @@
     animation: none;
   }
 }
+
+/* =====================================================================
+   Programa de varias semanas
+   ===================================================================== */
+.lg-programa {
+  margin-bottom: 1.2rem;
+  text-align: left;
+}
+
+.lg-programa h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.2rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.lg-programa-vacio {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.lg-programa-vacio p:not(.lg-etiqueta) {
+  max-width: 520px;
+  margin: 0.4rem 0 0;
+  color: var(--lg-texto-2);
+  line-height: 1.5;
+}
+
+.lg-programa-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lg-programa-acciones {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.lg-programa-acciones .lg-link {
+  margin-top: 0;
+}
+
+.lg-insignia {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(100, 210, 255, 0.15);
+  color: #9be3ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.lg-progreso-programa {
+  height: 4px;
+  margin: 1rem 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lg-progreso-programa span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+
+.lg-sesiones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lg-sesiones li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--lg-texto-2);
+  font-size: 0.85rem;
+}
+
+.lg-sesion-marca {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.lg-sesiones li.hecha {
+  color: var(--lg-texto-3);
+  text-decoration: line-through;
+}
+
+.lg-sesiones li.hecha .lg-sesion-marca {
+  background: #30d158;
+  color: #fff;
+}
+
+.lg-sesiones li.actual {
+  border-color: rgba(192, 132, 252, 0.6);
+  background: rgba(168, 85, 247, 0.14);
+  color: #fff;
+}
+
+.lg-nota-descarga {
+  margin: 0.9rem 0 0;
+  color: #9be3ff;
+  font-size: 0.85rem;
+}
+
+.lg-hoy-toca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--lg-separador);
+}
+
+.lg-hoy-toca small {
+  display: block;
+  color: var(--lg-texto-3);
+  font-size: 0.8rem;
+}
+
+.lg-hoy-toca strong {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.lg-hoy-toca p,
+.lg-semana-lista {
+  margin: 1rem 0 0;
+  color: var(--lg-texto-2);
+}
+
+.lg-hoy-toca p {
+  margin: 0;
+}
+
+/* Botones de la tarjeta y del formulario */
+.lg-boton {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.65rem 1.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lg-texto, #f5f3ff);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lg-boton.primario {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.lg-boton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------- Formulario para crear el programa ---------- */
+.lg-modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(5, 4, 10, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.lg-modal-fondo .lg-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(100%, 520px);
+  max-height: min(88vh, 760px);
+  margin: 0;
+  overflow-y: auto;
+  padding: 1.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  background: linear-gradient(155deg, rgba(40, 30, 62, 0.97), rgba(18, 14, 28, 0.97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 25px 70px rgba(0, 0, 0, 0.55);
+  color: #f5f3ff;
+  text-align: left;
+}
+
+.lg-modal-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lg-modal-cabecera h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.lg-modal-cerrar {
+  border: none;
+  background: none;
+  color: rgba(240, 235, 255, 0.6);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.lg-modal-texto {
+  margin: 0;
+  color: rgba(240, 235, 255, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.lg-campos-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.lg-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lg-campo span,
+.lg-campo-titulo {
+  margin: 0;
+  color: rgba(240, 235, 255, 0.6);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.lg-campo-titulo small {
+  font-weight: 400;
+}
+
+.lg-modal input,
+.lg-modal select {
+  width: 100%;
+  height: 42px;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+}
+
+.lg-modal select option {
+  background: #1c1528;
+}
+
+.lg-elegir-rutinas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lg-elegir-rutinas button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lg-elegir-rutinas button.elegida {
+  border-color: rgba(192, 132, 252, 0.6);
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.lg-orden {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.elegida .lg-orden {
+  border-color: transparent;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+}
+
+.lg-elegir-texto strong {
+  display: block;
+  font-weight: 600;
+}
+
+.lg-elegir-texto small {
+  color: rgba(240, 235, 255, 0.5);
+}
+
+.lg-error {
+  margin: 0;
+  color: #f87171;
+  font-size: 0.85rem;
+}
+
+.lg-modal-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 640px) {
+  .lg-programa-vacio,
+  .lg-hoy-toca {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lg-campos-fila {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Fase 3: programa con IA y resumen semanal ---------- */
+.lg-segmentado {
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lg-segmentado button {
+  flex: 1;
+  margin: 0;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: rgba(240, 235, 255, 0.55);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lg-segmentado button.activo {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.lg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lg-chips button {
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 235, 255, 0.75);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.lg-chips button.activo {
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  color: #fff;
+}
+
+.lg-resumen {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lg-resumen-datos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+.lg-resumen-datos dt {
+  color: var(--lg-texto-3);
+  font-size: 0.75rem;
+}
+
+.lg-resumen-datos dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-resumen-datos small {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lg-resumen-datos small.sube { color: #30d158; }
+.lg-resumen-datos small.baja { color: #ff9f0a; }
+
+.lg-resumen-texto {
+  margin: 0.7rem 0 0;
+  color: var(--lg-texto-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

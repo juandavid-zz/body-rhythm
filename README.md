@@ -48,6 +48,10 @@ flowchart TD
 5. En las funcionalidades que lo requieren, el backend puede solicitar asistencia al servicio de Google Gemini.
 6. La API devuelve una respuesta que el frontend presenta al usuario.
 
+## Despliegue
+
+Para publicarla (Vercel + Render + Aiven, con Cloudinary, Brevo y Wompi) sigue [DESPLIEGUE.md](DESPLIEGUE.md).
+
 ## Cómo instalar y ejecutar
 
 ### Requisitos
@@ -63,6 +67,7 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 cp .env.example .env           # completa tus propias credenciales
 python manage.py migrate
+python manage.py collectstatic --noinput   # genera backend/staticfiles (no está en git)
 python manage.py runserver
 ```
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 import Navbar from '../components/Navbar'
+import ProgramaTarjeta from '../components/ProgramaTarjeta'
 import { formatearDuracion, formatearNumero, tiempoRelativo } from '../utils/formato'
 import '../css/entrenamientos.css'
 
@@ -97,6 +98,9 @@ export default function Dashboard() {
               o entrena con una de mis rutinas
             </button>
           </section>
+
+          {/* ── Programa de varias semanas: qué toca hoy ── */}
+          <ProgramaTarjeta />
 
           <div className="lg-fila">
             {/* ── Semana ── */}

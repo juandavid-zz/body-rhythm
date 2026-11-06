@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/api";
+import api, { API_URL } from "../api/api";
 import Navbar from "../components/Navbar";
 import "../css/configuracion.css";
 
 // El panel de administración real es el de Django (usuarios, ejercicios, rutinas,
 // pagos, comunidad...). Antes esta página era una maqueta que no cargaba nada.
-const URL_ADMIN_DJANGO = "http://127.0.0.1:8000/admin/";
+const URL_ADMIN_DJANGO = `${API_URL}/admin/`;
 
 export default function AdminPage() {
   const navigate = useNavigate();

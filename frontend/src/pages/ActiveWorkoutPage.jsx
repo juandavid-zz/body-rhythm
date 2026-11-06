@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
+import { obtenerEjercicios } from "../utils/ejercicios";
 import { guardarEntrenamiento } from "../utils/rutinasStorage";
+import { avisarFinDescanso, prepararAlertas } from "../utils/alertaDescanso";
 import "../css/entrenamiento-activo.css";
 
 const KG_A_LB = 2.20462;
@@ -135,6 +137,57 @@ function cargarAnterior(nombres, alCargar) {
     .catch(() => {}); // sin conexión se queda con lo guardado en este navegador
 }
 
+// ── Próxima carga: cuánto levantar hoy según tus últimas sesiones ──
+const FLECHAS = { sube: "↑", igual: "=", baja: "↓", descarga: "↓" };
+
+// Reps objetivo del ejercicio: las de sus series de trabajo (no las de calentamiento)
+function repsObjetivo(ejercicio) {
+  const reps = ejercicio.sets.filter((s) => s.tipo !== "calentamiento").map((s) => Number(s.reps) || 0);
+  return reps.length ? Math.max(...reps) : null;
+}
+
+function pedirProximaCarga(ejercicios, alCargar) {
+  const lista = ejercicios
+    .filter((ej) => ej.nombre)
+    .map((ej) => ({ nombre: ej.nombre, reps_objetivo: ej.porTiempo ? null : repsObjetivo(ej) }));
+  if (!lista.length) return;
+  api
+    .post("/entrenamientos/proxima-carga/", { ejercicios: lista })
+    .then((res) => alCargar(res.data))
+    .catch(() => {}); // sin conexión simplemente no se sugiere nada
+}
+
+// Pone la carga sugerida en las series de trabajo del ejercicio.
+// soloVacias: al abrir el entrenamiento no se pisa lo que ya estaba escrito.
+function conSugerencia(ejercicio, sugerencia, soloVacias = false) {
+  if (!sugerencia) return ejercicio;
+  const sets = ejercicio.sets.map((serie) => {
+    if (serie.tipo === "calentamiento" || serie.hecho) return serie;
+    if (sugerencia.tipo === "tiempo") {
+      return soloVacias ? serie : { ...serie, duracion: sugerencia.duracion_segundos };
+    }
+    if (sugerencia.tipo === "reps") {
+      return soloVacias ? serie : { ...serie, reps: sugerencia.reps };
+    }
+    if (soloVacias && serie.peso !== "" && serie.peso !== null && serie.peso !== undefined) return serie;
+    return {
+      ...serie,
+      peso: convertirPesoParaMostrar(sugerencia.peso_kg, ejercicio.unidadPeso || "kg"),
+      pesoKg: sugerencia.peso_kg,
+      reps: soloVacias ? serie.reps : sugerencia.reps,
+    };
+  });
+  return { ...ejercicio, sets };
+}
+
+function textoSugerencia(sugerencia, unidad = "kg") {
+  if (sugerencia.tipo === "tiempo") return formatearTiempo(sugerencia.duracion_segundos);
+  if (sugerencia.tipo === "reps") return `${sugerencia.reps} reps`;
+  // 42.5 → "42,5": la coma decimal, igual que en los campos de peso
+  const peso = String(convertirPesoParaMostrar(sugerencia.peso_kg, unidad)).replace(".", ",");
+  return `${peso} ${unidad} × ${sugerencia.reps}`;
+}
+
 const RUTINA_PROGRESO_KEY = "bodyRhythm_rutina_progreso_v2";
 
 function leerProgresoRutina(rutinaId) {
@@ -180,6 +233,7 @@ export default function ActiveWorkoutPage() {
   const [descansos, setDescansos] = useState({});
   const [cronometros, setCronometros] = useState({});
   const [finalizado, setFinalizado] = useState(null);
+  const [sugerencias, setSugerencias] = useState({});
   const [mostrarDescartar, setMostrarDescartar] = useState(false);
   const [mostrarFinalizar, setMostrarFinalizar] = useState(false);
   const [ejercicioAEliminar, setEjercicioAEliminar] = useState(null);
@@ -309,9 +363,6 @@ export default function ActiveWorkoutPage() {
   });
   const entrenamientoTimerRef = useRef(null);
 
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
   const ejerciciosFiltrados = catalogo.filter((ejercicio) => {
     const texto = busquedaEjercicio.trim().toLowerCase();
     if (!texto) return true;
@@ -330,14 +381,19 @@ export default function ActiveWorkoutPage() {
       setSegundosTranscurridos((segundos) => segundos + 1);
     }, 1000);
 
-    api.get("/ejercicios/", { headers })
-      .then((res) => setCatalogo(res.data))
+    obtenerEjercicios()
+      .then(setCatalogo)
       .catch(() => {});
 
     cargarAnterior(
       ejercicios.map((ej) => ej.nombre),
       (anteriores) => setEjercicios((prev) => aplicarAnterior(prev, anteriores))
     );
+
+    pedirProximaCarga(ejercicios, (datos) => {
+      setSugerencias(datos);
+      setEjercicios((prev) => prev.map((ej) => conSugerencia(ej, datos[ej.nombre], true)));
+    });
 
     return () => {
       clearInterval(entrenamientoTimerRef.current);
@@ -360,32 +416,52 @@ export default function ActiveWorkoutPage() {
   // ------------------------------------------------------
   // DESCANSOS INDIVIDUALES POR SERIE
   // Cada serie puede tener su propio descanso visible en su misma fila.
+  // Se cuenta con la hora real de fin (no restando 1 por segundo): con el
+  // celular bloqueado el navegador frena los intervalos y el tiempo se atrasaría.
+  // Al terminar: vibración, pitido y notificación si la app está en segundo plano.
   // ------------------------------------------------------
+  const descansosRef = useRef(descansos);
+  const ejerciciosRef = useRef(ejercicios);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDescansos((actuales) => {
-        let cambio = false;
-        const siguiente = { ...actuales };
+    descansosRef.current = descansos;
+    ejerciciosRef.current = ejercicios;
+  });
 
-        Object.entries(actuales).forEach(([key, descansoActual]) => {
-          if (Number(descansoActual?.restante) <= 1) {
-            delete siguiente[key];
-            cambio = true;
-          } else {
-            siguiente[key] = {
-              ...descansoActual,
-              restante: Number(descansoActual.restante) - 1,
-            };
-            cambio = true;
-          }
+  useEffect(() => {
+    const revisar = () => {
+      const ahora = Date.now();
+      const actuales = descansosRef.current;
+      const terminados = Object.entries(actuales).filter(([, d]) => d.fin <= ahora);
+      if (!Object.keys(actuales).length) return;
+
+      terminados.forEach(([, d]) => avisarFinDescanso(ejerciciosRef.current[d.ejIdx]?.nombre));
+
+      setDescansos((previos) => {
+        const siguiente = {};
+        Object.entries(previos).forEach(([key, d]) => {
+          if (d.fin > ahora) siguiente[key] = { ...d, restante: Math.ceil((d.fin - ahora) / 1000) };
         });
-
-        return cambio ? siguiente : actuales;
+        return siguiente;
       });
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(revisar, 1000);
+    // Al volver a la app se actualiza de una vez, sin esperar al siguiente segundo
+    document.addEventListener("visibilitychange", revisar);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", revisar);
+    };
   }, []);
+
+  // Suma (o resta) segundos a un descanso en curso
+  const moverDescanso = (key, segundos) =>
+    setDescansos((actuales) => {
+      const d = actuales[key];
+      if (!d) return actuales;
+      const fin = Math.max(Date.now(), d.fin + segundos * 1000);
+      return { ...actuales, [key]: { ...d, fin, restante: Math.ceil((fin - Date.now()) / 1000) } };
+    });
 
   // ------------------------------------------------------
   // CRONÓMETROS INDIVIDUALES POR SERIE
@@ -469,6 +545,12 @@ export default function ActiveWorkoutPage() {
     });
   };
 
+  const aplicarSugerencia = (ejIdx) => {
+    setEjercicios((prev) =>
+      prev.map((ej, i) => (i === ejIdx ? conSugerencia(ej, sugerencias[ej.nombre]) : ej))
+    );
+  };
+
   const toggleSet = (ejIdx, setIdx) => {
     const ejercicio = ejercicios[ejIdx];
     const serie = ejercicio?.sets[setIdx];
@@ -503,11 +585,13 @@ export default function ActiveWorkoutPage() {
     const descansoKey = claveDescanso(ejIdx, setIdx);
 
     if (nuevoHecho && Number(ejercicio.descanso) > 0) {
+      prepararAlertas();
       setDescansos((actuales) => ({
         ...actuales,
         [descansoKey]: {
           ejIdx,
           setIdx,
+          fin: Date.now() + Number(ejercicio.descanso) * 1000,
           restante: Number(ejercicio.descanso),
         },
       }));
@@ -667,6 +751,9 @@ export default function ActiveWorkoutPage() {
     ]);
 
     cargarAnterior([info.nombre], (anteriores) => setEjercicios((prev) => aplicarAnterior(prev, anteriores)));
+    pedirProximaCarga([{ nombre: info.nombre, porTiempo: false, sets: [] }], (datos) =>
+      setSugerencias((prev) => ({ ...prev, ...datos }))
+    );
 
     setEjercicioSeleccionado("");
     setSelectorAbierto(false);
@@ -754,7 +841,13 @@ export default function ActiveWorkoutPage() {
         // Solo las rutinas guardadas tienen id numérico (las vacías no)
         rutina_id: Number.isInteger(rutina?.id) ? rutina.id : null,
       })
-      .then((res) => setFinalizado((actual) => (actual ? { ...actual, records: res.data.records || [] } : actual)))
+      .then((res) => {
+        setFinalizado((actual) => (actual ? { ...actual, records: res.data.records || [] } : actual));
+        const hechos = ejercicios.filter((ej) => ej.sets.some((serie) => serie.hecho));
+        pedirProximaCarga(hechos, (datos) =>
+          setFinalizado((actual) => (actual ? { ...actual, proxima: datos } : actual))
+        );
+      })
       .catch((error) => console.error("No se pudo publicar el entrenamiento:", error));
     if (rutina?.id) {
       guardarProgresoRutina(rutina.id, {
@@ -874,6 +967,20 @@ export default function ActiveWorkoutPage() {
               </div>
             )}
 
+            {finalizado.proxima && Object.keys(finalizado.proxima).length > 0 && (
+              <div className="aw-proxima">
+                <p className="aw-proxima-titulo">Próxima vez</p>
+                {Object.entries(finalizado.proxima).map(([nombreEj, sug]) => (
+                  <div key={nombreEj} className={`aw-proxima-fila tendencia-${sug.tendencia}`}>
+                    <span>{nombreEj}</span>
+                    <strong>
+                      {textoSugerencia(sug)} <span aria-hidden="true">{FLECHAS[sug.tendencia]}</span>
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <p className="aw-nota">Tus pesos, descansos y tiempos quedaron guardados para la próxima sesión.</p>
 
             <button type="button" onClick={() => navigate("/rutinas")} className="aw-btn primario aw-btn-ancho">
@@ -968,6 +1075,21 @@ export default function ActiveWorkoutPage() {
                   </div>
                 </div>
               </div>
+
+              {sugerencias[ej.nombre] && (
+                <div className={`aw-sugerencia tendencia-${sugerencias[ej.nombre].tendencia}`}>
+                  <div className="aw-sugerencia-texto">
+                    <span className="aw-sugerencia-titulo">
+                      Hoy <strong>{textoSugerencia(sugerencias[ej.nombre], ej.unidadPeso || "kg")}</strong>
+                      <span className="aw-sugerencia-flecha" aria-hidden="true">{FLECHAS[sugerencias[ej.nombre].tendencia]}</span>
+                    </span>
+                    <small>{sugerencias[ej.nombre].motivo}</small>
+                  </div>
+                  <button type="button" className="aw-sugerencia-aplicar" onClick={() => aplicarSugerencia(ejIdx)}>
+                    Aplicar
+                  </button>
+                </div>
+              )}
 
               {/* DESCANSO: abre el selector tipo rueda */}
               <button
@@ -1194,25 +1316,13 @@ export default function ActiveWorkoutPage() {
                         <div className="aw-descanso-acciones">
                           <button
                             type="button"
-                            onClick={() => setDescansos((actuales) => ({
-                              ...actuales,
-                              [serieKey]: {
-                                ...actuales[serieKey],
-                                restante: Math.max(0, Number(actuales[serieKey]?.restante || 0) - 15),
-                              },
-                            }))}
+                            onClick={() => moverDescanso(serieKey, -15)}
                           >
                             −15
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDescansos((actuales) => ({
-                              ...actuales,
-                              [serieKey]: {
-                                ...actuales[serieKey],
-                                restante: Number(actuales[serieKey]?.restante || 0) + 15,
-                              },
-                            }))}
+                            onClick={() => moverDescanso(serieKey, 15)}
                           >
                             +15
                           </button>

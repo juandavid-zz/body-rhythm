@@ -23,3 +23,27 @@ class ConversacionIa(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.tipo} - {self.created_at}"
+
+
+class ChatIa(models.Model):
+    """
+    Una conversación del asistente tal como la muestra el frontend (mensajes,
+    paso del flujo, rutina generada...), para verla desde cualquier dispositivo.
+    """
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='chats_ia')
+    # Id que le pone el frontend al crearla (ej. "chat_1730000000000")
+    cliente_id = models.CharField(max_length=40)
+    titulo = models.CharField(max_length=120, default='Nueva conversación')
+    datos = models.JSONField(default=dict)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'chats_ia'
+        ordering = ['-actualizado']
+        constraints = [
+            models.UniqueConstraint(fields=['usuario', 'cliente_id'], name='chat_ia_unico_por_usuario'),
+        ]
+
+    def __str__(self):
+        return f"{self.usuario} - {self.titulo}"

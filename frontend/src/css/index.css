@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800&family=Plus+Jakarta+Sans:wght@500;800&family=Saira+Condensed:wght@800;900&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -13,188 +13,20 @@ body {
   overflow-x: hidden;
 }
 
-/* ── NAV ── */
-nav {
-  display: flex;
-  align-items: center;
-  padding: 0 2rem;
-  height: 62px;
-  background: rgba(13, 15, 26, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
+/* La barra de navegación vive en navbar.css (la importa Navbar.jsx) */
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #fff;
-  margin-right: 2.5rem;
-  text-decoration: none;
-}
-
-.logo span {
-  color: #a855f7;
-}
-
-.nav-links {
-  display: flex;
-  list-style: none;
-}
-
-.nav-links li a {
-  color: #cbd5e1;
-  font-size: 0.88rem;
-  font-weight: 500;
-  text-decoration: none;
-  padding: 0 1.1rem;
-  height: 62px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.nav-links li a {
+/* ── Campana de notificaciones (a la izquierda del engranaje) ── */
+.nav-notificaciones {
   position: relative;
-}
-
-.nav-links li a::after {
-  content: '';
-  position: absolute;
-  left: 1.1rem;
-  right: 1.1rem;
-  bottom: 14px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #a855f7, #ec4899);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.nav-links li a:hover {
-  color: #fff;
-}
-
-.nav-links li a:hover::after {
-  transform: scaleX(1);
-}
-
-/* La barra no debe ensanchar la página: textos en una línea y menos aire en pantallas medianas */
-.nav-links li a,
-.btn-iniciar,
-.btn-registro {
-  white-space: nowrap;
-}
-
-.btn-iniciar,
-.btn-registro {
   flex-shrink: 0;
 }
 
-@media (max-width: 1150px) {
-  nav {
-    padding: 0 1.25rem;
-  }
-
-  .logo {
-    margin-right: 1.25rem;
-  }
-
-  .nav-links li a {
-    padding: 0 0.7rem;
-  }
-}
-
-/* En pantallas pequeñas los enlaces se desplazan dentro de la barra */
-@media (max-width: 860px) {
-  .logo {
-    flex-shrink: 0;
-  }
-
-  .nav-links {
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav-links::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* En móvil los enlaces pasan a una segunda fila (desplazable) bajo el logo */
-@media (max-width: 700px) {
-  nav {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 0.6rem 1rem 0;
-  }
-
-  .logo {
-    margin-right: auto;
-  }
-
-  nav .nav-links {
-    display: flex;
-    order: 3;
-    margin: 0.35rem -1rem 0;
-    padding: 0 0.3rem;
-    width: calc(100% + 2rem);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .nav-links li a {
-    height: 44px;
-    padding: 0 0.7rem;
-  }
-
-  .btn-iniciar,
-  .btn-registro {
-    padding: 0.4rem 0.9rem;
-    font-size: 0.82rem;
-  }
-}
-
-.btn-iniciar,
-.btn-registro {
-  background: linear-gradient(135deg, #a855f7, #ec4899);
-  color: #fff;
-  font-size: 0.88rem;
-  font-weight: 600;
-  padding: 0.45rem 1.2rem;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  transition: opacity 0.15s;
-}
-
-.btn-iniciar:hover,
-.btn-registro:hover {
-  opacity: 0.85;
-}
-
-.btn-iniciar {
-  margin-left: auto;
-  margin-right: 0.5rem;
-}
-
-/* Engranaje de configuración, junto a "Cerrar sesión" */
-.btn-configuracion {
+.btn-campana {
+  position: relative;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
   width: 36px;
   height: 36px;
-  margin-left: auto;
-  margin-right: 0.6rem;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
@@ -204,13 +36,156 @@ nav {
   transition: color 0.15s, background 0.15s;
 }
 
-.btn-configuracion:hover {
+.btn-campana:hover,
+.btn-campana[aria-expanded="true"] {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
 }
 
-.btn-configuracion + .btn-iniciar {
-  margin-left: 0;
+.campana-contador {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ec4899;
+  box-shadow: 0 0 0 2px #0b0a12;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -60px;
+  z-index: 6000;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  padding: 0.8rem 0.5rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(24, 19, 36, 0.96);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 24px 60px rgba(0, 0, 0, 0.55);
+  color: #f5f3ff;
+  text-align: left;
+}
+
+.notif-titulo {
+  margin: 0 0.6rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.notif-vacio {
+  margin: 0.4rem 0.6rem 0.8rem;
+  color: rgba(240, 235, 255, 0.55);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.notif-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notif-panel li button {
+  display: flex;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notif-panel li button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.notif-panel li button.nueva {
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.notif-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(219, 39, 119, 0.8));
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* El Avatar de adentro se ve igual en cualquier página (sin depender de social.css) */
+.notif-avatar .social-avatar {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: none;
+  box-shadow: none;
+}
+
+.notif-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notif-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.notif-texto > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: rgba(240, 235, 255, 0.82);
+}
+
+.notif-texto strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.notif-texto small {
+  color: rgba(240, 235, 255, 0.45);
+  font-size: 0.75rem;
+}
+
+/* En el teléfono el panel ocupa el ancho de la pantalla bajo la barra */
+@media (max-width: 700px) {
+  .notif-panel {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
 }
 
 /* ── HERO ── */

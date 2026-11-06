@@ -1,14 +1,13 @@
 import Navbar from '../components/Navbar'
-import Hero from '../components/Hero'
-import HomeSections from '../components/HomeSections'
+import Landing from '../components/Landing'
+// Estilos base de toda la app (también los de la campana de la barra)
 import '../css/index.css'
 
 export default function Home() {
   return (
-    <div className="home-fondo">
+    <>
       <Navbar />
-      <Hero />
-      <HomeSections />
-    </div>
+      <Landing />
+    </>
   )
 }

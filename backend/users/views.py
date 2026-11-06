@@ -1,4 +1,7 @@
+import logging
+
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
@@ -13,6 +16,7 @@ from django.conf import settings
 from progreso.views import registrar_peso
 from social.models import Seguimiento
 
+from .fotos import FotoInvalida, borrar_foto, procesar_foto, url_foto
 from .models import AuthUsuario, Usuario, Pago, Ejercicio
 from rest_framework.exceptions import ValidationError
 
@@ -27,18 +31,39 @@ from .serializers import (
 )
 import secrets
 
+logger = logging.getLogger(__name__)
+
+from rest_framework.throttling import AnonRateThrottle
+
 from .emails import (
     MAX_INTENTOS_CODIGO,
     datos_envio,
+    enviar_correo_recuperacion,
     enviar_correo_verificacion,
+    recuperacion_vigente,
     segundos_para_reenviar,
+    segundos_para_reenviar_recuperacion,
     token_vigente,
 )
 
 
 # CREATE - Registro
+class AccesoThrottle(AnonRateThrottle):
+    """Límite por IP del login: además del bloqueo por cuenta, frena a quien prueba muchas cuentas."""
+    scope = 'acceso'
+    rate = '30/minute'
+
+
+class CuentaNuevaThrottle(AnonRateThrottle):
+    """Registro, códigos y reenvíos por IP: evita crear cuentas o mandar correos en masa."""
+    # Alto a propósito: en un colegio o una oficina muchos comparten la misma IP
+    scope = 'cuenta_nueva'
+    rate = '60/hour'
+
+
 class RegistroView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         serializer = RegistroSerializer(data=request.data)
@@ -99,6 +124,7 @@ MINUTOS_BLOQUEO_LOGIN = 15
 # LOGIN
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AccesoThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -310,6 +336,34 @@ class CambiarPasswordView(APIView):
         return Response({'mensaje': 'Contraseña actualizada.'})
 
 
+# FOTO DE PERFIL: subir (POST, campo "foto") o quitar (DELETE)
+class FotoPerfilView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        archivo = request.FILES.get('foto')
+        if archivo is None:
+            return Response({'error': 'Elige una foto.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            foto = procesar_foto(archivo)
+        except FotoInvalida as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        borrar_foto(usuario)  # la anterior no se queda ocupando espacio
+        usuario.foto.save(foto.name, foto, save=False)
+        usuario.save(update_fields=['foto'])
+        return Response({'foto': url_foto(usuario)})
+
+    def delete(self, request):
+        usuario = get_object_or_404(Usuario, auth=request.user)
+        borrar_foto(usuario)
+        usuario.save(update_fields=['foto'])
+        return Response({'foto': None})
+
+
 # Comprobar si un @username está libre (se usa en el registro)
 class UsernameDisponibleView(APIView):
     permission_classes = [AllowAny]
@@ -482,8 +536,7 @@ class WompiWebhookView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        print("=== WEBHOOK WOMPI RECIBIDO ===")
-        print(data)
+        logger.info("Webhook de Wompi recibido: %s", data.get("event"))
 
         if data.get('event') != 'transaction.updated':
             return Response(
@@ -542,7 +595,7 @@ class WompiWebhookView(APIView):
             checksum_calculado.lower(),
             checksum.lower()
         ):
-            print("ERROR: checksum de Wompi inválido")
+            logger.warning("Webhook de Wompi con checksum inválido")
 
             return Response(
                 {'error': 'Checksum inválido'},
@@ -554,10 +607,7 @@ class WompiWebhookView(APIView):
         monto = transaction.get('amount_in_cents')
         moneda = transaction.get('currency')
 
-        print("Referencia:", referencia)
-        print("Estado Wompi:", estado_wompi)
-        print("Monto:", monto)
-        print("Moneda:", moneda)
+        logger.info("Wompi: referencia=%s estado=%s monto=%s %s", referencia, estado_wompi, monto, moneda)
 
         if not referencia:
             return Response(
@@ -570,7 +620,7 @@ class WompiWebhookView(APIView):
                 referencia=referencia
             )
         except Pago.DoesNotExist:
-            print("Pago no encontrado:", referencia)
+            logger.warning("Wompi: pago no encontrado (referencia %s)", referencia)
 
             return Response(
                 {'error': 'Pago no encontrado'},
@@ -580,7 +630,7 @@ class WompiWebhookView(APIView):
         monto_esperado = int(pago.precio * 100)
 
         if monto != monto_esperado or moneda != 'COP':
-            print("ERROR: monto o moneda no coinciden")
+            logger.warning("Wompi: el monto o la moneda no coinciden (referencia %s)", referencia)
 
             return Response(
                 {'error': 'Monto o moneda inválidos'},
@@ -590,7 +640,7 @@ class WompiWebhookView(APIView):
         if estado_wompi == 'APPROVED':
 
             if pago.estado == 'aprobado':
-                print("Pago ya procesado:", pago.id)
+                logger.info("Wompi: el pago %s ya estaba procesado", pago.id)
 
                 return Response(
                     {'mensaje': 'Pago ya procesado'},
@@ -604,7 +654,7 @@ class WompiWebhookView(APIView):
                 # Antes el pago quedaba aprobado pero el plan del usuario nunca cambiaba
                 pago.usuario.activar_plan(pago.plan)
 
-            print("Pago aprobado:", pago.id)
+            logger.info("Wompi: pago %s aprobado", pago.id)
 
         elif estado_wompi in [
             'DECLINED',
@@ -614,7 +664,7 @@ class WompiWebhookView(APIView):
             pago.estado = 'rechazado'
             pago.save(update_fields=['estado'])
 
-            print("Pago rechazado:", pago.id)
+            logger.info("Wompi: pago %s rechazado", pago.id)
 
         return Response(
             {'mensaje': 'Evento procesado correctamente'},
@@ -661,6 +711,7 @@ class VerificarEmailView(APIView):
 class VerificarCodigoView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = (request.data.get('email') or '').strip()
@@ -731,9 +782,100 @@ def activar_cuenta(auth):
     }
 
 
+# ---------------------------------------------------------------------
+# RECUPERAR CONTRASEÑA: se pide un código al correo y con él se crea otra
+# ---------------------------------------------------------------------
+class RecuperacionThrottle(AnonRateThrottle):
+    """Pocas solicitudes por IP: evita usar el formulario para mandar correos en masa."""
+    scope = 'recuperacion'
+    rate = '10/hour'
+
+
+# Respuesta igual exista o no el correo, para no revelar quién tiene cuenta
+MENSAJE_RECUPERACION = 'Si el correo está registrado, te enviamos un código para cambiar tu contraseña.'
+ERROR_CODIGO_RECUPERACION = 'El código no es válido o ya venció. Pide uno nuevo.'
+
+
+class SolicitarRecuperacionView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [RecuperacionThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        if not email or '@' not in email:
+            return Response({'error': 'Escribe el correo de tu cuenta.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        # Si ya se pidió hace menos de un minuto, no se manda otro (sin decirlo, por privacidad)
+        if auth is not None and auth.is_active and not segundos_para_reenviar_recuperacion(auth):
+            usuario = Usuario.objects.filter(auth=auth).first()
+            enviar_correo_recuperacion(auth, nombre=usuario.nombre if usuario else '')
+
+        return Response({'mensaje': MENSAJE_RECUPERACION})
+
+
+class RestablecerPasswordView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [RecuperacionThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        codigo = ''.join(c for c in str(request.data.get('codigo') or '') if c.isdigit())
+        password = request.data.get('password') or ''
+
+        if not email or len(codigo) != 6:
+            return Response(
+                {'error': 'Escribe el código de 6 dígitos que te llegó al correo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(password) < 8:
+            return Response(
+                {'error': 'La nueva contraseña debe tener al menos 8 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth = AuthUsuario.objects.filter(email__iexact=email).first()
+        if auth is None or not auth.codigo_recuperacion or not recuperacion_vigente(auth):
+            return Response({'error': ERROR_CODIGO_RECUPERACION, 'expirado': True}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not secrets.compare_digest(codigo, auth.codigo_recuperacion):
+            auth.intentos_recuperacion += 1
+            restantes = MAX_INTENTOS_CODIGO - auth.intentos_recuperacion
+            if restantes <= 0:
+                # Demasiados intentos: el código deja de servir y hay que pedir otro
+                auth.codigo_recuperacion = None
+                auth.save(update_fields=['intentos_recuperacion', 'codigo_recuperacion'])
+                return Response(
+                    {'error': 'Demasiados intentos. Pide un código nuevo.', 'expirado': True},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            auth.save(update_fields=['intentos_recuperacion'])
+            return Response(
+                {'error': f'Código incorrecto. Te quedan {restantes} intentos.', 'intentos_restantes': restantes},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        auth.set_password(password)
+        auth.codigo_recuperacion = None
+        auth.recuperacion_expira = None
+        auth.intentos_recuperacion = 0
+        # Quien recibió el código es dueño del correo: se desbloquea el login y queda verificada
+        auth.intentos_fallidos = 0
+        auth.bloqueado_hasta = None
+        auth.verificado = True
+        auth.save(update_fields=[
+            'password', 'codigo_recuperacion', 'recuperacion_expira', 'intentos_recuperacion',
+            'intentos_fallidos', 'bloqueado_hasta', 'verificado',
+        ])
+        return Response({'mensaje': 'Listo, tu contraseña cambió. Ya puedes iniciar sesión.'})
+
+
 # REENVIAR CORREO DE VERIFICACIÓN
 class ReenviarVerificacionView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = request.data.get('email')

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comentario, Fuerza, Seguimiento
+from .models import Comentario, Fuerza, Notificacion, Seguimiento
 
 
 @admin.register(Seguimiento)
@@ -19,3 +19,10 @@ class FuerzaAdmin(admin.ModelAdmin):
 class ComentarioAdmin(admin.ModelAdmin):
     list_display = ['usuario', 'registro', 'texto', 'created_at']
     search_fields = ['usuario__username', 'texto']
+
+
+@admin.register(Notificacion)
+class NotificacionAdmin(admin.ModelAdmin):
+    list_display = ['destinatario', 'actor', 'tipo', 'leida', 'created_at']
+    list_filter = ['tipo', 'leida']
+    search_fields = ['destinatario__username', 'actor__username']

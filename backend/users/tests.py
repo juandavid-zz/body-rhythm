@@ -1,7 +1,16 @@
 from unittest import mock
 
 from django.test import override_settings
-from rest_framework.test import APITestCase
+from django.core.cache import cache
+from rest_framework.test import APITestCase as _APITestCase
+
+
+class APITestCase(_APITestCase):
+    """Cada prueba empieza con la caché limpia: los límites por IP no se arrastran entre pruebas."""
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
 
 from .models import AuthUsuario
 
@@ -158,6 +167,93 @@ class LoginSeguridadTests(APITestCase):
         self.assertEqual(self.login('Clave12345').status_code, 403)
 
 
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class RecuperarPasswordTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # el límite por IP se guarda en la caché
+        self.auth = AuthUsuario.objects.create_user(email='ana@test.com', password='Clave12345')
+        self.auth.verificado = True
+        self.auth.save()
+        from .models import Usuario
+        Usuario.objects.create(auth=self.auth, nombre='Ana', username='ana')
+
+    def pedir(self, email='ana@test.com'):
+        return self.client.post('/api/recuperar-password/', {'email': email}, format='json')
+
+    def restablecer(self, codigo, password='NuevaClave123'):
+        return self.client.post('/api/restablecer-password/', {
+            'email': 'ana@test.com', 'codigo': codigo, 'password': password,
+        }, format='json')
+
+    def codigo(self):
+        self.auth.refresh_from_db()
+        return self.auth.codigo_recuperacion
+
+    def test_envia_el_codigo_por_correo(self):
+        from django.core import mail
+        respuesta = self.pedir()
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.codigo(), mail.outbox[0].body)
+
+    def test_no_revela_si_el_correo_existe(self):
+        from django.core import mail
+        existe, no_existe = self.pedir(), self.pedir('nadie@test.com')
+        self.assertEqual(existe.data, no_existe.data)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_con_el_codigo_cambia_la_contrasena_y_desbloquea(self):
+        from django.utils import timezone
+        self.pedir()
+        self.auth.refresh_from_db()
+        self.auth.intentos_fallidos = 5
+        self.auth.bloqueado_hasta = timezone.now() + timezone.timedelta(minutes=10)
+        self.auth.save()
+
+        self.assertEqual(self.restablecer(self.codigo()).status_code, 200)
+        self.auth.refresh_from_db()
+        self.assertTrue(self.auth.check_password('NuevaClave123'))
+        self.assertIsNone(self.auth.bloqueado_hasta)
+        self.assertIsNone(self.auth.codigo_recuperacion)
+        # El código solo sirve una vez
+        self.assertEqual(self.restablecer('000000').status_code, 400)
+        login = self.client.post('/api/login/', {'email': 'ana', 'password': 'NuevaClave123'}, format='json')
+        self.assertEqual(login.status_code, 200)
+
+    def test_codigo_incorrecto_cuenta_intentos_y_se_invalida(self):
+        self.pedir()
+        correcto = self.codigo()
+        malo = '000000' if correcto != '000000' else '111111'
+        for _ in range(4):
+            self.assertIn('intentos_restantes', self.restablecer(malo).data)
+        self.assertTrue(self.restablecer(malo).data['expirado'])
+        # Ya ni el correcto sirve: hay que pedir otro
+        self.assertEqual(self.restablecer(correcto).status_code, 400)
+        self.auth.refresh_from_db()
+        self.assertTrue(self.auth.check_password('Clave12345'))
+
+    def test_codigo_vencido_no_sirve(self):
+        from django.utils import timezone
+        self.pedir()
+        codigo = self.codigo()
+        self.auth.recuperacion_expira = timezone.now() - timezone.timedelta(minutes=1)
+        self.auth.save()
+        self.assertTrue(self.restablecer(codigo).data['expirado'])
+
+    def test_contrasena_corta_se_rechaza(self):
+        self.pedir()
+        self.assertEqual(self.restablecer(self.codigo(), password='corta').status_code, 400)
+
+    def test_no_reenvia_antes_de_un_minuto(self):
+        from django.core import mail
+        self.pedir()
+        primero = self.codigo()
+        self.pedir()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(self.codigo(), primero)
+
+
 @override_settings(WOMPI_EVENTS_SECRET='secreto_de_prueba')
 class PlanPagadoTests(APITestCase):
     def setUp(self):
@@ -221,3 +317,160 @@ class PlanPagadoTests(APITestCase):
         with self.assertLogs('django.request', level='ERROR'):
             respuesta = self.client.post('/api/pagos/webhook/', self.evento(), format='json')
         self.assertEqual(respuesta.status_code, 503)
+
+
+class FotoPerfilTests(APITestCase):
+    def setUp(self):
+        import tempfile
+        from django.test import override_settings
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from .models import Usuario
+
+        self.carpeta = tempfile.mkdtemp()
+        self.ajuste = override_settings(MEDIA_ROOT=self.carpeta)
+        self.ajuste.enable()
+        self.auth = AuthUsuario.objects.create_user(email='foto@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=self.auth, nombre='Foto', username='foto')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(self.auth).access_token}')
+
+    def tearDown(self):
+        import shutil
+        self.ajuste.disable()
+        shutil.rmtree(self.carpeta, ignore_errors=True)
+
+    def imagen(self, ancho=800, alto=600, formato='PNG', nombre='foto.png'):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        datos = io.BytesIO()
+        Image.new('RGB', (ancho, alto), (120, 40, 200)).save(datos, formato)
+        return SimpleUploadedFile(nombre, datos.getvalue(), content_type=f'image/{formato.lower()}')
+
+    def subir(self, archivo):
+        return self.client.post('/api/usuarios/me/foto/', {'foto': archivo}, format='multipart')
+
+    def test_sube_la_foto_cuadrada_en_webp(self):
+        from PIL import Image
+        respuesta = self.subir(self.imagen())
+        self.assertEqual(respuesta.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.foto.name.endswith('.webp'))
+        with Image.open(self.usuario.foto.path) as guardada:
+            self.assertEqual(guardada.size, (400, 400))
+        self.assertEqual(self.client.get('/api/usuarios/me/').data['foto'], respuesta.data['foto'])
+
+    def test_cambiar_la_foto_borra_la_anterior(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        anterior = self.usuario.foto.path
+        self.subir(self.imagen(formato='JPEG', nombre='otra.jpg'))
+        self.assertFalse(os.path.exists(anterior))
+
+    def test_quitar_la_foto(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        ruta = self.usuario.foto.path
+        self.assertIsNone(self.client.delete('/api/usuarios/me/foto/').data['foto'])
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.foto)
+        self.assertFalse(os.path.exists(ruta))
+
+    def test_rechaza_archivos_que_no_son_imagen(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        respuesta = self.subir(SimpleUploadedFile('virus.png', b'esto no es una imagen', content_type='image/png'))
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn('imagen', respuesta.data['error'])
+
+    def test_rechaza_fotos_de_mas_de_5_mb(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        grande = SimpleUploadedFile('grande.png', b'0' * (5 * 1024 * 1024 + 1), content_type='image/png')
+        self.assertIn('5 MB', self.subir(grande).data['error'])
+
+    def test_la_foto_aparece_en_la_comunidad(self):
+        respuesta = self.subir(self.imagen())
+        perfil = self.client.get('/api/social/perfiles/foto/').data
+        self.assertEqual(perfil['foto'], respuesta.data['foto'])
+
+    def test_eliminar_la_cuenta_borra_la_foto(self):
+        import os
+        self.subir(self.imagen())
+        self.usuario.refresh_from_db()
+        ruta = self.usuario.foto.path
+        self.auth.delete()
+        self.assertFalse(os.path.exists(ruta))
+
+
+class RenovarSesionTests(APITestCase):
+    def test_si_la_cuenta_se_borro_responde_401_y_no_500(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        auth = AuthUsuario.objects.create_user(email='borrada@test.com', password='Clave12345')
+        refresh = str(RefreshToken.for_user(auth))
+        ok = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(ok.status_code, 200)
+
+        auth.delete()
+        respuesta = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(respuesta.status_code, 401)
+
+
+class LimitesPorIpTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_el_login_tiene_limite_por_ip(self):
+        from .views import AccesoThrottle
+        with mock.patch.object(AccesoThrottle, 'rate', '3/minute'), \
+                mock.patch.object(AccesoThrottle, 'num_requests', 3, create=True), \
+                mock.patch.object(AccesoThrottle, 'duration', 60, create=True):
+            codigos = [
+                self.client.post('/api/login/', {'email': f'nadie{i}@test.com', 'password': 'x'}, format='json').status_code
+                for i in range(4)
+            ]
+        self.assertEqual(codigos[:3], [401, 401, 401])
+        self.assertEqual(codigos[3], 429)
+
+
+class CorreoBrevoTests(APITestCase):
+    """En Render gratis no hay SMTP: los correos salen por la API de Brevo."""
+
+    @override_settings(EMAIL_BACKEND='users.correo_brevo.CorreoBrevo', BREVO_API_KEY='clave-de-prueba',
+                       DEFAULT_FROM_EMAIL='Body Rhythm <hola@ejemplo.com>')
+    def test_envia_por_la_api_con_html_y_remitente(self):
+        from django.core.mail import EmailMultiAlternatives
+
+        respuesta = mock.Mock(status_code=201)
+        respuesta.raise_for_status.return_value = None
+        with mock.patch('users.correo_brevo.requests.post', return_value=respuesta) as post:
+            mensaje = EmailMultiAlternatives('Asunto', 'texto', to=['ana@test.com'])
+            mensaje.attach_alternative('<b>hola</b>', 'text/html')
+            self.assertEqual(mensaje.send(), 1)
+
+        datos = post.call_args.kwargs['json']
+        self.assertEqual(post.call_args.kwargs['headers']['api-key'], 'clave-de-prueba')
+        self.assertEqual(datos['sender'], {'email': 'hola@ejemplo.com', 'name': 'Body Rhythm'})
+        self.assertEqual(datos['to'], [{'email': 'ana@test.com'}])
+        self.assertEqual(datos['htmlContent'], '<b>hola</b>')
+
+        from .emails import correo_configurado
+        self.assertTrue(correo_configurado())
+
+
+class CargarBibliotecaTests(APITestCase):
+    def test_carga_los_ejercicios_solo_si_no_hay(self):
+        from django.core.management import call_command
+        from .models import Ejercicio
+
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.count(), 376)
+
+        Ejercicio.objects.filter(pk=1).update(nombre='Cambiado en el admin')
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.get(pk=1).nombre, 'Cambiado en el admin')

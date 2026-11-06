@@ -507,13 +507,13 @@ const restaurarPlanes = async () => {
     )
   }, [planes, modalidadConsultada])
 
-  const planPersonalizado = useMemo(() => {
-    return planes.find(
+  // Sin useMemo: el compilador de React ya lo memoriza solo
+  const planPersonalizado =
+    planes.find(
       (plan) =>
         plan.generada_por_ia ||
         normalizarNombre(plan.nombre).includes('personalizado')
-    ) || null
-  }, [planes])
+    ) ?? null
 
   const planesParaMostrar = useMemo(() => {
     const resultado = [...planesPrincipales]

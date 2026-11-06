@@ -29,7 +29,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "card-alike-albuquerque-viewpicture.trycloudflare.com"]
+# En producción no se arranca con una clave débil o vacía
+if not DEBUG and (not SECRET_KEY or len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure')):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'Con DEBUG=False la SECRET_KEY debe ser larga y aleatoria. Genera una con: '
+        'python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"'
+    )
+
+def _lista_env(nombre, por_defecto):
+    """Lee una lista separada por comas del .env (ej. "a.com,b.com")."""
+    valor = os.getenv(nombre, '')
+    return [item.strip() for item in valor.split(',') if item.strip()] or por_defecto
+
+
+# Para un túnel o un servidor, agrega su dominio en ALLOWED_HOSTS del .env
+ALLOWED_HOSTS = _lista_env('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+# Render pone aquí el dominio del servicio (ej. body-rhythm-api.onrender.com)
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME'))
 
 
 # Application definition
@@ -54,6 +72,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    # Comprime las respuestas (el catálogo de ejercicios pasa de ~205 KB a una fracción)
+    'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -96,6 +116,11 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
+        # Bases en la nube (Aiven, PlanetScale...) piden conexión cifrada: DB_SSL_CA es la
+        # ruta al certificado que da el proveedor. Vacío = sin SSL (XAMPP local).
+        'OPTIONS': {'ssl': {'ca': os.getenv('DB_SSL_CA')}} if os.getenv('DB_SSL_CA') else {},
+        # Reutiliza la conexión unos segundos en vez de abrir una por petición
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
     }
 }
 
@@ -135,24 +160,40 @@ STATIC_URL = 'static/'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Archivos que suben los usuarios (fotos de perfil)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 STATICFILES_DIRS = []
 
 STORAGES = {
+    # Archivos que suben los usuarios (fotos de perfil), en MEDIA_ROOT
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Fotos de perfil en Cloudinary cuando hay CLOUDINARY_URL (cloudinary://clave:secreto@nube).
+# En Render y otros servidores gratis el disco se borra al reiniciar: las fotos se perderían.
+# Sin la variable (desarrollo) se guardan en MEDIA_ROOT como siempre.
+CLOUDINARY_URL = os.getenv('CLOUDINARY_URL', '').strip()
+if CLOUDINARY_URL:
+    STORAGES['default'] = {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'}
+    CLOUDINARY_STORAGE = {'PREFIX': 'body-rhythm'}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = _lista_env('CORS_ALLOWED_ORIGINS', [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
-]
+])
 
-# REST FRAMEWORK
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -161,6 +202,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Límite por usuario para las vistas que llaman a Gemini (cada llamada cuesta)
+    'DEFAULT_THROTTLE_RATES': {
+        'ia_rutina': os.getenv('LIMITE_IA_RUTINAS', '20/hour'),
+        'ia_chat': os.getenv('LIMITE_IA_CHAT', '60/hour'),
+    },
 }
 AUTH_USER_MODEL = 'users.AuthUsuario'
 
@@ -178,7 +224,11 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or (
     EMAIL_HOST_USER or 'no-reply@bodyrhythm.app'
 )
 
-if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+# Brevo (API por HTTPS) tiene prioridad: Render gratis bloquea los puertos de SMTP
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+if BREVO_API_KEY:
+    EMAIL_BACKEND = 'users.correo_brevo.CorreoBrevo'
+elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -194,3 +244,48 @@ MOSTRAR_ENLACE_VERIFICACION = (
     and DEBUG
     and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'
 )
+
+
+# ── Producción (DEBUG=False): solo HTTPS y cookies seguras ──
+if not DEBUG:
+    # Detrás de un proxy (Nginx, Render, Railway...) que atiende el HTTPS
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    # El chequeo de salud de Render puede llegar por HTTP interno: no se redirige
+    SECURE_REDIRECT_EXEMPT = [r'^api/salud/$']
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS = _lista_env('CSRF_TRUSTED_ORIGINS', [])
+    # HSTS: el navegador recuerda usar solo HTTPS. Empieza en 0 y súbelo (ej. 31536000)
+    # cuando confirmes que todo el sitio funciona con HTTPS.
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Fotos subidas: en desarrollo las sirve Django. En producción lo ideal es el servidor
+# web (Nginx); si no hay uno, SERVIR_MEDIA=True hace que las sirva Django.
+SERVIR_MEDIA = DEBUG or os.getenv('SERVIR_MEDIA', 'False') == 'True'
+
+# ── Registros (logs) ──
+# Todo va a la consola (la recogen Render, Railway, systemd, Docker...).
+# NIVEL_LOGS cambia el nivel de los módulos del proyecto.
+NIVEL_LOGS = os.getenv('NIVEL_LOGS', 'INFO')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '{asctime} {levelname} [{name}] {message}', 'style': '{'},
+    },
+    'handlers': {
+        'consola': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+    },
+    'root': {'handlers': ['consola'], 'level': 'WARNING'},
+    'loggers': {
+        'django': {'handlers': ['consola'], 'level': 'INFO', 'propagate': False},
+        **{
+            app: {'handlers': ['consola'], 'level': NIVEL_LOGS, 'propagate': False}
+            for app in ('users', 'rutinas', 'entrenamientos', 'nutricion', 'progreso', 'chatbot_ia', 'social')
+        },
+    },
+}
