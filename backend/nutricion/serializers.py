@@ -1,3 +1,4 @@
+
 from rest_framework import serializers
 
 from .models import (
@@ -76,6 +77,7 @@ class ComidaSerializer(serializers.ModelSerializer):
             'nombre',
             'descripcion',
             'calorias',
+            'cantidad_base_g',
             'proteinas_g',
             'carbohidratos_g',
             'grasas_g',
@@ -91,6 +93,9 @@ class ComidaSerializer(serializers.ModelSerializer):
         alimento = validated_data.get('alimento')
 
         if not alimento:
+            if 'cantidad_base_g' not in validated_data:
+                validated_data['cantidad_base_g'] = 100
+
             return validated_data
 
         if not validated_data.get('nombre'):
@@ -98,6 +103,9 @@ class ComidaSerializer(serializers.ModelSerializer):
 
         if not validated_data.get('descripcion'):
             validated_data['descripcion'] = alimento.descripcion
+
+        if 'cantidad_base_g' not in validated_data:
+            validated_data['cantidad_base_g'] = 100
 
         if 'calorias' not in validated_data:
             validated_data['calorias'] = alimento.calorias_100g
@@ -155,23 +163,9 @@ class PlanNutricionalSerializer(serializers.ModelSerializer):
         ]
 
 
-class RegistroComidaSerializer(serializers.ModelSerializer):
-    comida_nombre = serializers.CharField(
-        source='comida.nombre',
-        read_only=True,
-    )
-    tipo = serializers.CharField(
-        source='comida.tipo',
-        read_only=True,
-    )
-    calorias = serializers.FloatField(
-        source='comida.calorias',
-        read_only=True,
-    )
 
-    fecha = serializers.DateField(
-        read_only=True,
-    )
+class RegistroComidaSerializer(serializers.ModelSerializer):
+    fecha = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = RegistroComida
@@ -180,10 +174,19 @@ class RegistroComidaSerializer(serializers.ModelSerializer):
             'comida',
             'comida_nombre',
             'tipo',
+            'cantidad_g',
             'calorias',
+            'proteinas_g',
+            'carbohidratos_g',
+            'grasas_g',
             'fecha',
         ]
         read_only_fields = [
             'id',
+            'comida_nombre',
+            'tipo',
+            'calorias',
+            'proteinas_g',
+            'carbohidratos_g',
             'fecha',
         ]
