@@ -7,7 +7,7 @@ Todo con planes gratis:
 | Frontend (React) | **Vercel** | La página que ve la gente |
 | Backend (Django) | **Render** | La API |
 | Base de datos | **Aiven** (MySQL) | Los datos |
-| Fotos de perfil | **Cloudinary** | El disco de Render se borra al reiniciar |
+| Fotos de perfil | **La base de datos** | El disco de Render se borra al reiniciar (Cloudinary es opcional) |
 | Correos | **Brevo** | Render gratis bloquea el SMTP de Gmail |
 | IA | **Google AI Studio** (Gemini) | Chatbot y rutinas |
 | Pagos | **Wompi** (modo de pruebas) | Planes Pro y Premium |

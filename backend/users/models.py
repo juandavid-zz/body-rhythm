@@ -354,3 +354,22 @@ def borrar_foto_del_usuario(sender, instance, **kwargs):
     """Al eliminar una cuenta (desde la app, el admin o en cascada) se borra también su foto del disco."""
     if instance.foto:
         instance.foto.delete(save=False)
+
+
+class ArchivoGuardado(models.Model):
+    """
+    Archivos subidos (fotos de perfil) guardados en la base de datos.
+
+    En Render gratis el disco se borra al reiniciar, así que en producción las
+    fotos viven aquí (ver users/almacen.py). Cada foto pesa ~20 KB (400x400 WebP).
+    """
+    nombre = models.CharField(max_length=255, unique=True)
+    contenido = models.BinaryField()
+    tipo = models.CharField(max_length=60, default='application/octet-stream')
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'archivos_guardados'
+
+    def __str__(self):
+        return self.nombre
