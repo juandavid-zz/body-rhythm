@@ -165,7 +165,8 @@ class PlanNutricionalSerializer(serializers.ModelSerializer):
 
 
 class RegistroComidaSerializer(serializers.ModelSerializer):
-    fecha = serializers.DateTimeField(read_only=True)
+    # El modelo guarda solo el día (DateField): como DateTimeField la respuesta fallaba con 500
+    fecha = serializers.DateField(read_only=True)
 
     class Meta:
         model = RegistroComida

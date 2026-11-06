@@ -47,6 +47,10 @@ const formatearNumero = (valor, sufijo = '') => {
   return `${Number.isInteger(numero) ? numero : numero.toFixed(1)}${sufijo}`
 }
 
+// Primero tu plan personalizado, luego el recomendado para tu meta y después los demás
+const pesoPlan = (plan) => (plan.generada_por_ia ? 2 : plan.recomendado ? 1 : 0)
+const ordenPlanes = (a, b) => pesoPlan(b) - pesoPlan(a)
+
 const obtenerFechaLocal = (fecha = new Date()) => {
   const anio = fecha.getFullYear()
   const mes = String(fecha.getMonth() + 1).padStart(2, '0')
@@ -92,11 +96,7 @@ export default function NutricionPage() {
       ? response.data
       : []
 
-    datos.sort(
-      (a, b) =>
-        (b.generada_por_ia ? 1 : 0) -
-        (a.generada_por_ia ? 1 : 0)
-    )
+    datos.sort(ordenPlanes)
 
     setPlanes(datos)
 
@@ -447,11 +447,7 @@ const restaurarPlanes = async () => {
           ? respuestaPlanes.data
           : []
 
-        datosPlanes.sort(
-          (a, b) =>
-            (b.generada_por_ia ? 1 : 0) -
-            (a.generada_por_ia ? 1 : 0)
-        )
+        datosPlanes.sort(ordenPlanes)
 
         setPlanes(datosPlanes)
 
@@ -533,8 +529,9 @@ const restaurarPlanes = async () => {
         (plan) => plan.id === planPersonalizado.id
       )
 
+      // Tu plan personalizado va de primero
       if (!yaExiste) {
-        resultado.push(planPersonalizado)
+        resultado.unshift(planPersonalizado)
       }
     }
 
