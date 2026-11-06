@@ -30,6 +30,9 @@ def _cliente():
     return genai.Client(
         api_key=settings.GEMINI_API_KEY,
         http_options=types.HttpOptions(
+            # Los nombres "-latest" (gemini-flash-lite-latest) solo existen en v1beta;
+            # google-genai 3.x usa v1 por defecto y responde 404
+            api_version="v1beta",
             timeout=90_000,  # ms
             # Gemini a veces responde 429/503 por picos de demanda: reintenta antes de rendirse
             retry_options=types.HttpRetryOptions(attempts=3, initial_delay=1.0, max_delay=8.0),
