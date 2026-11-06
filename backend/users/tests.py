@@ -493,3 +493,58 @@ class PagosSinConfigurarTests(APITestCase):
         self.assertEqual(respuesta.status_code, 503)
         self.assertIn('todavía no están disponibles', respuesta.data['error'])
         self.assertFalse(Pago.objects.exists())
+
+
+class FotoPerfilTests(APITestCase):
+    def setUp(self):
+        import tempfile
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from .models import Usuario
+
+        self.carpeta = tempfile.mkdtemp()
+        self.ajuste = override_settings(MEDIA_ROOT=self.carpeta)
+        self.ajuste.enable()
+        auth = AuthUsuario.objects.create_user(email='foto@test.com', password='Clave12345')
+        self.usuario = Usuario.objects.create(auth=auth, nombre='Foto', username='foto')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    def tearDown(self):
+        import shutil
+        self.ajuste.disable()
+        shutil.rmtree(self.carpeta, ignore_errors=True)
+
+    def imagen(self, nombre='yo.jpg'):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        b = io.BytesIO()
+        Image.new('RGB', (600, 400), (120, 60, 200)).save(b, 'JPEG')
+        return SimpleUploadedFile(nombre, b.getvalue(), content_type='image/jpeg')
+
+    def test_sube_la_foto_y_cambiarla_borra_la_anterior(self):
+        primera = self.client.post('/api/usuarios/me/foto/', {'foto': self.imagen()}, format='multipart')
+        self.assertEqual(primera.status_code, 200)
+        self.usuario.refresh_from_db()
+        nombre_anterior = self.usuario.foto.name
+        self.assertTrue(self.usuario.foto.storage.exists(nombre_anterior))
+
+        segunda = self.client.post('/api/usuarios/me/foto/', {'foto': self.imagen('otra.jpg')}, format='multipart')
+        self.assertEqual(segunda.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertNotEqual(self.usuario.foto.name, nombre_anterior)
+        self.assertFalse(self.usuario.foto.storage.exists(nombre_anterior))
+
+    def test_si_el_almacenamiento_falla_avisa_y_conserva_la_foto_anterior(self):
+        self.client.post('/api/usuarios/me/foto/', {'foto': self.imagen()}, format='multipart')
+        self.usuario.refresh_from_db()
+        anterior = self.usuario.foto.name
+
+        with mock.patch('django.db.models.fields.files.FieldFile.save', side_effect=RuntimeError('Cloudinary caído')):
+            respuesta = self.client.post('/api/usuarios/me/foto/', {'foto': self.imagen('otra.jpg')}, format='multipart')
+
+        self.assertEqual(respuesta.status_code, 503)
+        self.assertIn('No pudimos guardar tu foto', respuesta.data['error'])
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.foto.name, anterior)
+        self.assertTrue(self.usuario.foto.storage.exists(anterior))

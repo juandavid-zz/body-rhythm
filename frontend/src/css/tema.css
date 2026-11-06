@@ -347,3 +347,9 @@ body .home-kicker {
     padding-left: 0;
   }
 }
+
+/* Texto seleccionado: morado de la marca en vez del azul del navegador */
+::selection {
+  background: rgba(168, 85, 247, 0.38);
+  color: #fff;
+}
