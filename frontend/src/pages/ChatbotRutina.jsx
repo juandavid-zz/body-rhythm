@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import api from '../api/api'
 import Navbar from '../components/Navbar'
 import '../css/chatbot.css'
+import BotonAnimacion from '../components/BotonAnimacion'
 
 // ── Efecto de escritura progresiva (estilo ChatGPT) ──
 function useTypewriter(text, { enabled = true, speed = 16, chunk = 2, onTick } = {}) {
@@ -902,7 +903,10 @@ export default function ChatbotRutina() {
                                   <div className="ejercicio-cuerpo">
                                     <div className="ejercicio-fila">
                                       <div>
-                                        <strong>{ej.nombre}</strong>
+                                        <span className="ejercicio-titulo">
+                                          <strong>{ej.nombre}</strong>
+                                          {!m.escribiendo && <BotonAnimacion id={ej.ejercicio_id} nombre={ej.nombre} />}
+                                        </span>
                                         {ej.musculos && <span className="ejercicio-musculos">{ej.musculos}</span>}
                                       </div>
                                       <span className="ejercicio-datos">

@@ -185,7 +185,8 @@ PLANES_BASE = [
 
 
 def _marcar_recomendados(datos_planes, usuario):
-    nombre_recomendado = META_A_PLAN_BASE.get(usuario.meta)
+    # Sin meta en el perfil se recomienda como "mantenerse", igual que el objetivo de calorías
+    nombre_recomendado = META_A_PLAN_BASE.get(usuario.meta or "mantenerse")
 
     for plan in datos_planes:
         plan["recomendado"] = (
@@ -308,6 +309,11 @@ class PlanNutricionalListView(APIView):
     def get(self, request):
         usuario = usuario_actual(request)
 
+        # La primera vez que entra se le arman los planes principales. Si después
+        # borra alguno a propósito, no vuelve solo (está el botón para recuperarlos).
+        if _es_usuario_nuevo_en_nutricion(usuario):
+            _asegurar_catalogo(usuario)
+
         planes = (
             PlanNutricional.objects
             .filter(usuario=usuario)
@@ -344,47 +350,59 @@ class PlanNutricionalListView(APIView):
         )
 
 
+def _asegurar_catalogo(usuario):
+    """
+    Crea los planes principales que le falten al usuario (o que quedaron sin
+    comidas). Normalmente ya existen: se revisa con una sola consulta.
+    """
+    completos = set(
+        PlanNutricional.objects
+        .filter(
+            usuario=usuario,
+            nombre__in=[p["nombre"] for p in PLANES_BASE],
+            comidas__isnull=False,
+        )
+        .values_list("nombre", flat=True)
+    )
+    pendientes = [p for p in PLANES_BASE if p["nombre"] not in completos]
+    alimentos = _alimentos_por_categoria() if pendientes else None
+
+    for plantilla in pendientes:
+        plan, creado = PlanNutricional.objects.get_or_create(
+            usuario=usuario,
+            nombre=plantilla["nombre"],
+            defaults={
+                "descripcion": plantilla["descripcion"],
+                "calorias_diarias": plantilla["calorias_diarias"],
+                "proteinas_g": plantilla["proteinas_g"],
+                "carbohidratos_g": plantilla["carbohidratos_g"],
+                "grasas_g": plantilla["grasas_g"],
+                "generada_por_ia": False,
+            },
+        )
+
+        if creado or not plan.comidas.exists():
+            _agregar_comidas_base(
+                plan,
+                plantilla["bloques"],
+                alimentos_por_categoria=alimentos,
+            )
+
+
+def _es_usuario_nuevo_en_nutricion(usuario):
+    """Nunca ha tenido planes ni ha registrado comidas: todavía no conoce la sección."""
+    return (
+        not PlanNutricional.objects.filter(usuario=usuario).exists()
+        and not RegistroComida.objects.filter(usuario=usuario).exists()
+    )
+
+
 class GenerarCatalogoPlanesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         usuario = usuario_actual(request)
-
-        # Normalmente el catálogo ya existe: se revisa con una sola consulta
-        # y solo se crean los planes que falten (o que quedaron sin comidas)
-        completos = set(
-            PlanNutricional.objects
-            .filter(
-                usuario=usuario,
-                nombre__in=[p["nombre"] for p in PLANES_BASE],
-                comidas__isnull=False,
-            )
-            .values_list("nombre", flat=True)
-        )
-        pendientes = [p for p in PLANES_BASE if p["nombre"] not in completos]
-        alimentos = _alimentos_por_categoria() if pendientes else None
-
-        for plantilla in pendientes:
-            plan, creado = PlanNutricional.objects.get_or_create(
-                usuario=usuario,
-                nombre=plantilla["nombre"],
-                defaults={
-                    "descripcion": plantilla["descripcion"],
-                    "calorias_diarias": plantilla["calorias_diarias"],
-                    "proteinas_g": plantilla["proteinas_g"],
-                    "carbohidratos_g": plantilla["carbohidratos_g"],
-                    "grasas_g": plantilla["grasas_g"],
-                    "generada_por_ia": False,
-                },
-            )
-
-            if creado or not plan.comidas.exists():
-                _agregar_comidas_base(
-                    plan,
-                    plantilla["bloques"],
-                    alimentos_por_categoria=alimentos,
-                )
-
+        _asegurar_catalogo(usuario)
         planes = (
             PlanNutricional.objects
             .filter(usuario=usuario)

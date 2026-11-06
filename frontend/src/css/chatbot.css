@@ -1877,3 +1877,10 @@
     animation: none;
   }
 }
+
+/* Nombre del ejercicio con el botón para ver la animación */
+.chatbot-page .ejercicio-titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

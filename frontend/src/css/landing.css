@@ -602,8 +602,9 @@
 .la-revelado-media video {
   position: absolute;
   top: 0;
-  right: 4%;
-  width: 62%;
+  right: 2%;
+  /* Más angosto que la mitad derecha: así la máquina no tapa el texto */
+  width: 54%;
   height: 100%;
   object-fit: contain;
   object-position: right center;

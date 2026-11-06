@@ -7,7 +7,9 @@ const DIAS = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
 const RADIO = 54
 const LARGO = 2 * Math.PI * RADIO
 
-const aISO = (fecha) => fecha.toISOString().slice(0, 10)
+// Día local (no UTC): con toISOString, en Colombia después de las 7 p. m. "hoy" pasaba a ser mañana
+const aISO = (fecha) =>
+  `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
 
 export default function NutricionVisual({ caloriasHoy = 0, objetivo = null, registros = [] }) {
   const meta = Number(objetivo?.calorias) || 0

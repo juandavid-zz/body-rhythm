@@ -56,7 +56,7 @@ const PASOS = [
 const DESTACADOS = [
   { video: "close-grip-bench-press", fuerte: "Press, remo, dominadas.", resto: "Los ejercicios que importan, explicados en movimiento." },
   { video: "hip-thrust", fuerte: "Glúteos, espalda, core.", resto: "Filtra por grupo muscular y encuentra lo que necesitas." },
-  { video: "lying-leg-raise", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
+  { video: "crunches", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
   { video: "pull-up", fuerte: "Comunidad.", resto: "Comparte tus entrenos y dale fuerza a los de los demás." },
 ];
 
@@ -332,18 +332,18 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className={`la-vista la-v-ejercicio${pasoActivo === 1 ? " la-activa" : ""}`}>
-                  <video src={video("bench-press")} data-auto muted loop playsInline />
+                  <video src={video("horizontal-leg-press")} data-auto muted loop playsInline />
                   <div className="la-datos">
-                    <small>Pecho · Día 1</small>
-                    <h5>Press de banca</h5>
+                    <small>Piernas · Día 3</small>
+                    <h5>Prensa horizontal</h5>
                     <div className="la-series">
-                      <i className="ok">40 kg</i>
-                      <i className="ok">45 kg</i>
-                      <i>50 kg</i>
+                      <i className="ok">80 kg</i>
+                      <i className="ok">90 kg</i>
+                      <i>100 kg</i>
                     </div>
                     <div className="la-descanso">
                       <span>Siguiente</span>
-                      <b>Aperturas</b>
+                      <b>Curl femoral</b>
                     </div>
                   </div>
                 </div>
@@ -408,7 +408,7 @@ export default function Landing() {
       <section className="la-revelado" ref={revelado}>
         <div className="la-revelado-fijo">
           <div className="la-revelado-media">
-            <video src={video("seated-barbell-overhead-press")} data-auto muted loop playsInline />
+            <video src={video("leg-press")} data-auto muted loop playsInline />
             <div className="la-revelado-texto">
               <p className="la-deg">Ejercicios animados</p>
               <h2>
@@ -484,7 +484,7 @@ export default function Landing() {
               <p>ejercicios con animación</p>
             </article>
             <article className="la-caja la-caja-video" onMouseMove={seguirMouse}>
-              <video src={video("barbell-curl")} data-auto muted loop playsInline />
+              <video src={video("close-grip-barbell-curl")} data-auto muted loop playsInline />
               <h3>Normal, lento o en pausa</h3>
             </article>
             <article className="la-caja" onMouseMove={seguirMouse}>
