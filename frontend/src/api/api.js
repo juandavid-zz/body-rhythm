@@ -6,7 +6,9 @@ export const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
 const api = axios.create({
   baseURL: `${API_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 45000, // 45s — evita que el chat se quede "escribiendo..." para siempre
+  // 90 s: evita que el chat se quede "escribiendo..." para siempre, y alcanza para la
+  // primera visita del día en Render gratis, que tarda cerca de un minuto en despertar
+  timeout: 90000,
 })
 
 const RUTAS_PUBLICAS = ['/registro/', '/login/', '/token/refresh/', '/verificar/', '/reenviar-verificacion/', '/usuarios/username-disponible/', '/verificar-codigo/', '/recuperar-password/', '/restablecer-password/']
@@ -25,6 +27,9 @@ api.interceptors.request.use((config) => {
 
   return config
 })
+
+// Páginas que se pueden ver sin sesión
+const PAGINAS_PUBLICAS = ['/', '/auth', '/planes', '/verificar', '/verificacion-pendiente']
 
 // ── Renovación automática del access token cuando expira (401) ──
 let renovando = false
@@ -81,7 +86,15 @@ api.interceptors.response.use(
       resolverCola(null)
       localStorage.removeItem('token')
       localStorage.removeItem('refresh')
-      window.location.href = '/auth?modo=login'
+      localStorage.removeItem('nombre')
+      localStorage.removeItem('username')
+      // En una página pública (la portada, los planes...) solo se cierra la sesión y se
+      // sigue ahí; en una privada hay que volver a entrar
+      if (PAGINAS_PUBLICAS.some((p) => (p === '/' ? window.location.pathname === '/' : window.location.pathname.startsWith(p)))) {
+        window.location.reload()
+      } else {
+        window.location.href = '/auth?modo=login'
+      }
       return Promise.reject(errorRefresh)
     } finally {
       renovando = false

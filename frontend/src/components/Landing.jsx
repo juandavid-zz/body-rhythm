@@ -54,9 +54,9 @@ const PASOS = [
 ];
 
 const DESTACADOS = [
-  { video: "deadlift", fuerte: "Peso muerto, sentadilla, dominadas.", resto: "Los ejercicios que importan, explicados en movimiento." },
+  { video: "close-grip-bench-press", fuerte: "Press, remo, dominadas.", resto: "Los ejercicios que importan, explicados en movimiento." },
   { video: "hip-thrust", fuerte: "Glúteos, espalda, core.", resto: "Filtra por grupo muscular y encuentra lo que necesitas." },
-  { video: "push-up", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
+  { video: "lying-leg-raise", fuerte: "En casa o en el gimnasio.", resto: "La rutina se adapta al equipo que tengas a mano." },
   { video: "pull-up", fuerte: "Comunidad.", resto: "Comparte tus entrenos y dale fuerza a los de los demás." },
 ];
 
@@ -276,15 +276,15 @@ export default function Landing() {
             <div className="la-pantalla">
               <Estado />
               <div className="la-vista la-v-ejercicio la-activa">
-                <video src={video("squat")} data-auto muted loop playsInline />
+                <video src={video("barbell-row")} data-auto muted loop playsInline />
                 <div className="la-datos">
-                  <small>Piernas · Día 2</small>
-                  <h5>Sentadilla con barra</h5>
+                  <small>Espalda · Día 2</small>
+                  <h5>Remo con barra</h5>
                   <div className="la-series">
-                    <i className="ok">60 kg</i>
-                    <i className="ok">65 kg</i>
-                    <i>70 kg</i>
-                    <i>70 kg</i>
+                    <i className="ok">50 kg</i>
+                    <i className="ok">55 kg</i>
+                    <i>60 kg</i>
+                    <i>60 kg</i>
                   </div>
                   <div className="la-descanso">
                     <span>Descanso</span>
@@ -408,7 +408,7 @@ export default function Landing() {
       <section className="la-revelado" ref={revelado}>
         <div className="la-revelado-fijo">
           <div className="la-revelado-media">
-            <video src={video("kettlebell-swing")} data-auto muted loop playsInline />
+            <video src={video("seated-barbell-overhead-press")} data-auto muted loop playsInline />
             <div className="la-revelado-texto">
               <p className="la-deg">Ejercicios animados</p>
               <h2>

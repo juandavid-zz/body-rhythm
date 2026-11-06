@@ -491,6 +491,8 @@ export default function ChatbotRutina() {
         },
         {
           responseType: 'text',
+          // La rutina llega por partes y puede tardar: más margen que el resto de la app
+          timeout: 180000,
           onDownloadProgress: (e) => {
             const crudo = e.event?.target?.responseText
             if (!crudo) return
