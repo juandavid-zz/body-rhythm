@@ -1,7 +1,16 @@
 from unittest import mock
 
 from django.test import override_settings
-from rest_framework.test import APITestCase
+from django.core.cache import cache
+from rest_framework.test import APITestCase as _APITestCase
+
+
+class APITestCase(_APITestCase):
+    """Cada prueba empieza con la caché limpia: los límites por IP no se arrastran entre pruebas."""
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
 
 from .models import AuthUsuario
 
@@ -391,3 +400,39 @@ class FotoPerfilTests(APITestCase):
         ruta = self.usuario.foto.path
         self.auth.delete()
         self.assertFalse(os.path.exists(ruta))
+
+
+class RenovarSesionTests(APITestCase):
+    def test_si_la_cuenta_se_borro_responde_401_y_no_500(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        auth = AuthUsuario.objects.create_user(email='borrada@test.com', password='Clave12345')
+        refresh = str(RefreshToken.for_user(auth))
+        ok = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(ok.status_code, 200)
+
+        auth.delete()
+        respuesta = self.client.post('/api/token/refresh/', {'refresh': refresh}, format='json')
+        self.assertEqual(respuesta.status_code, 401)
+
+
+class LimitesPorIpTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_el_login_tiene_limite_por_ip(self):
+        from .views import AccesoThrottle
+        with mock.patch.object(AccesoThrottle, 'rate', '3/minute'), \
+                mock.patch.object(AccesoThrottle, 'num_requests', 3, create=True), \
+                mock.patch.object(AccesoThrottle, 'duration', 60, create=True):
+            codigos = [
+                self.client.post('/api/login/', {'email': f'nadie{i}@test.com', 'password': 'x'}, format='json').status_code
+                for i in range(4)
+            ]
+        self.assertEqual(codigos[:3], [401, 401, 401])
+        self.assertEqual(codigos[3], 429)

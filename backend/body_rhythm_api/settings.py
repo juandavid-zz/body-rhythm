@@ -113,6 +113,11 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
+        # Bases en la nube (Aiven, PlanetScale...) piden conexión cifrada: DB_SSL_CA es la
+        # ruta al certificado que da el proveedor. Vacío = sin SSL (XAMPP local).
+        'OPTIONS': {'ssl': {'ca': os.getenv('DB_SSL_CA')}} if os.getenv('DB_SSL_CA') else {},
+        # Reutiliza la conexión unos segundos en vez de abrir una por petición
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
     }
 }
 

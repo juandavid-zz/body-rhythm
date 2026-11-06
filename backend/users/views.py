@@ -48,8 +48,22 @@ from .emails import (
 
 
 # CREATE - Registro
+class AccesoThrottle(AnonRateThrottle):
+    """Límite por IP del login: además del bloqueo por cuenta, frena a quien prueba muchas cuentas."""
+    scope = 'acceso'
+    rate = '30/minute'
+
+
+class CuentaNuevaThrottle(AnonRateThrottle):
+    """Registro, códigos y reenvíos por IP: evita crear cuentas o mandar correos en masa."""
+    # Alto a propósito: en un colegio o una oficina muchos comparten la misma IP
+    scope = 'cuenta_nueva'
+    rate = '60/hour'
+
+
 class RegistroView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         serializer = RegistroSerializer(data=request.data)
@@ -110,6 +124,7 @@ MINUTOS_BLOQUEO_LOGIN = 15
 # LOGIN
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AccesoThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -696,6 +711,7 @@ class VerificarEmailView(APIView):
 class VerificarCodigoView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = (request.data.get('email') or '').strip()
@@ -859,6 +875,7 @@ class RestablecerPasswordView(APIView):
 # REENVIAR CORREO DE VERIFICACIÓN
 class ReenviarVerificacionView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CuentaNuevaThrottle]
 
     def post(self, request):
         email = request.data.get('email')

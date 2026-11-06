@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../css/FormularioPago.css";
-import { API_URL } from "../api/api";
+import api from "../api/api";
 
 function FormularioPago() {
   const location = useLocation();
@@ -43,30 +43,16 @@ function FormularioPago() {
     setCargando(true);
 
     try {
-      const respuesta = await fetch(
-        `${API_URL}/api/pagos/wompi/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            plan: planSeleccionado,
-          }),
-        }
-      );
-
-      const data = await respuesta.json();
-
-      console.log("STATUS WOMPI:", respuesta.status);
-      console.log("RESPUESTA WOMPI:", data);
-
-      if (!respuesta.ok) {
+      // Con api (y no fetch) el token vencido se renueva solo, como en el resto de la app
+      let data;
+      try {
+        const respuesta = await api.post("/pagos/wompi/", { plan: planSeleccionado });
+        data = respuesta.data;
+      } catch (err) {
+        const d = err.response?.data;
         throw new Error(
-          data.error ||
-            data.detail ||
-            `Error del servidor (${respuesta.status})`
+          d?.error || d?.detail || (err.response ? `Error del servidor (${err.response.status})` : "No se pudo conectar con el servidor."),
+          { cause: err }
         );
       }
 
@@ -75,14 +61,6 @@ function FormularioPago() {
           "El Widget de Wompi todavía no está disponible. Intenta nuevamente."
         );
       }
-
-      console.log("DATOS ENVIADOS AL WIDGET:", {
-        currency: data.currency,
-        amountInCents: data.amount_in_cents,
-        reference: data.reference,
-        publicKey: data.public_key,
-        signature: data.signature,
-      });
 
       const checkout = new window.WidgetCheckout({
         currency: data.currency,
@@ -95,12 +73,9 @@ function FormularioPago() {
       });
 
       checkout.open(function (result) {
-        console.log("RESPUESTA DEL WIDGET WOMPI:", result);
-
-        const transaction = result.transaction;
-
-        console.log("ID DE TRANSACCIÓN:", transaction.id);
-        console.log("ESTADO:", transaction.status);
+        // Si se cierra el widget sin pagar no llega transacción
+        const transaction = result?.transaction;
+        if (!transaction) return;
 
         if (transaction.status === "APPROVED") {
           alert(

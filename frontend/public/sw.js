@@ -2,7 +2,11 @@
 // - Páginas: primero la red; sin conexión, la última versión guardada.
 // - Archivos de /assets (JS y CSS con hash), íconos e imágenes de ejercicios: desde
 //   la caché, porque no cambian. La API nunca se guarda: siempre va a la red.
-const VERSION = 'br-v1'
+// - Los videos (mp4) no se guardan aquí: el navegador los pide por partes (Range) y
+//   Safari no los reproduce si se le responde con el archivo entero desde la caché.
+// Sube VERSION cuando cambien archivos que conservan su nombre (las animaciones):
+// así se borra la caché vieja y nadie se queda con la versión anterior.
+const VERSION = 'br-v2'
 const CACHE_APP = `${VERSION}-app`
 const CACHE_ARCHIVOS = `${VERSION}-archivos`
 
@@ -39,6 +43,8 @@ self.addEventListener('fetch', (evento) => {
     )
     return
   }
+
+  if (url.pathname.endsWith('.mp4') || request.headers.has('range')) return
 
   if (ES_ARCHIVO_FIJO.test(url.pathname)) {
     evento.respondWith(

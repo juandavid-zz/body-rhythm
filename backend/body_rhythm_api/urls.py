@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.static import serve
-from rest_framework_simplejwt.views import TokenRefreshView
+from users.sesion import RenovarSesionView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,7 +29,7 @@ urlpatterns = [
     path('api/entrenamientos/', include('entrenamientos.urls')),
     path('api/social/', include('social.urls')),
     path('api/progreso/', include('progreso.urls')),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', RenovarSesionView.as_view(), name='token_refresh'),
 ]
 
 # Fotos subidas: en desarrollo siempre; en producción solo con SERVIR_MEDIA=True
