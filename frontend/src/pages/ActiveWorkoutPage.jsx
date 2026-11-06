@@ -7,6 +7,7 @@ import { obtenerEjercicios } from "../utils/ejercicios";
 import { guardarEntrenamiento } from "../utils/rutinasStorage";
 import { avisarFinDescanso, prepararAlertas } from "../utils/alertaDescanso";
 import "../css/entrenamiento-activo.css";
+import BotonAnimacion from "../components/BotonAnimacion";
 
 const KG_A_LB = 2.20462;
 
@@ -1068,7 +1069,10 @@ export default function ActiveWorkoutPage() {
             <section key={ej.id} className="aw-glass aw-ejercicio">
               <div className="aw-ejercicio-cabecera">
                 <div className="aw-ejercicio-nombre">
-                  <h3>{ej.nombre}</h3>
+                  <h3 className="aw-ejercicio-titulo">
+                    {ej.nombre}
+                    <BotonAnimacion repdbId={ej.repdb_id} nombre={ej.nombre} />
+                  </h3>
                   {ej.grupo && <span>{ej.grupo}</span>}
                 </div>
 

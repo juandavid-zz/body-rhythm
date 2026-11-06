@@ -6,6 +6,7 @@ import { obtenerEjercicios } from "../utils/ejercicios";
 import { tiempoRelativo } from "../utils/formato";
 import "../css/rutinas.css";
 import { useLocation, useNavigate } from "react-router-dom";
+import BotonAnimacion from "../components/BotonAnimacion";
 
 const GRUPOS = {
   chest: "Pecho",
@@ -397,7 +398,10 @@ function DetalleRutina({ rutina, usuarioId, navigate, onActualizar, onEliminar, 
             <div className="rt-ejercicio-cabecera">
               <span className="rt-orden">{i + 1}</span>
               <span>
-                <strong>{detalle.ejercicio?.nombre}</strong>
+                <span className="rt-ejercicio-titulo">
+                  <strong>{detalle.ejercicio?.nombre}</strong>
+                  <BotonAnimacion id={detalle.ejercicio?.id} repdbId={detalle.ejercicio?.repdb_id} nombre={detalle.ejercicio?.nombre} />
+                </span>
                 <small>{grupo(detalle.ejercicio?.grupo)}</small>
               </span>
               <button type="button" className="rt-quitar" onClick={() => quitar(detalle)} aria-label={`Quitar ${detalle.ejercicio?.nombre}`}>
@@ -599,7 +603,10 @@ function CrearRutina({
                 <div className="rt-ejercicio-cabecera">
                   <span className="rt-orden">{i + 1}</span>
                   <span>
-                    <strong>{item.ejercicio.nombre}</strong>
+                    <span className="rt-ejercicio-titulo">
+                      <strong>{item.ejercicio.nombre}</strong>
+                      <BotonAnimacion id={item.ejercicio.id} repdbId={item.ejercicio.repdb_id} nombre={item.ejercicio.nombre} />
+                    </span>
                     <small>{grupo(item.ejercicio.grupo)}</small>
                   </span>
                   <span className="rt-mover">

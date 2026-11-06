@@ -1129,3 +1129,10 @@
 .aw-proxima-fila.tendencia-descarga strong span {
   color: #64d2ff;
 }
+
+/* Nombre del ejercicio con el botón para ver la animación */
+.aw-ejercicio-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}

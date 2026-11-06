@@ -1190,3 +1190,9 @@
 body > .swal2-container {
   z-index: 20000 !important;
 }
+/* Nombre del ejercicio con el botón para ver la animación */
+.rt-ejercicio-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

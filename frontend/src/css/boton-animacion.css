@@ -1,0 +1,175 @@
+/* ============================================================
+   Botón discreto para ver la animación de un ejercicio
+   (chatbot, rutinas y entrenamiento) y su ventana
+   ============================================================ */
+
+.ba-boton {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.12);
+  color: #d8b4fe;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background 0.2s, color 0.2s, transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1), border-color 0.2s;
+}
+
+.ba-boton svg {
+  width: 11px;
+  height: 11px;
+  margin-left: 2px;
+  fill: currentColor;
+}
+
+.ba-boton:hover,
+.ba-boton:focus-visible {
+  border-color: rgba(192, 132, 252, 0.6);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(219, 39, 119, 0.75));
+  color: #fff;
+  outline: none;
+  transform: scale(1.1);
+}
+
+/* ---------- Ventana ---------- */
+.ba-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 3, 9, 0.72);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: ba-aparecer 0.2s ease both;
+}
+
+.ba-ventana {
+  width: min(480px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 70% at 50% 100%, rgba(168, 85, 247, 0.18), transparent 60%),
+    #0d0a18;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  animation: ba-subir 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ba-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 4px 20px;
+}
+
+.ba-cabecera strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ba-cerrar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ba-cerrar:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* El reproductor (mismos controles que en el detalle del ejercicio) */
+.ba-ventana .ej-animacion {
+  position: relative;
+  width: 100%;
+}
+
+/* Cuadrado, pero sin pasarse del alto de la pantalla (celular acostado, ventanas bajas) */
+.ba-ventana .ej-animacion-video {
+  display: block;
+  width: 100%;
+  height: min(480px, calc(100vw - 40px), calc(100dvh - 120px));
+  object-fit: contain;
+}
+
+.ba-ventana .ej-animacion-controles {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(13, 11, 20, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateX(-50%);
+}
+
+.ba-ventana .ej-animacion-controles button {
+  margin: 0;
+  padding: 6px 13px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ba-ventana .ej-animacion-controles button:hover {
+  color: #fff;
+}
+
+.ba-ventana .ej-animacion-controles button.activo {
+  background: #fff;
+  color: #0d0f1a;
+}
+
+@keyframes ba-aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ba-subir {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ba-fondo,
+  .ba-ventana {
+    animation: none;
+  }
+}
