@@ -43,7 +43,8 @@ def token_vigente(auth):
 
 def correo_configurado():
     """False si no hay credenciales SMTP en el .env y los correos solo se imprimen en consola."""
-    return settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend'
+    # SMTP (Gmail) o Brevo: cualquiera que no sea solo imprimir en la consola
+    return settings.EMAIL_BACKEND != 'django.core.mail.backends.console.EmailBackend'
 
 
 def enlace_verificacion(auth):

@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 import re
 import time
@@ -15,10 +16,12 @@ from .rutina_ia import catalogo_para_prompt, vincular_ejercicios
 logger = logging.getLogger(__name__)
 
 # ── Configuración de Gemini ──────────────────────────────
-MODELO = "gemini-flash-latest"  # alias que siempre apunta al Flash estable vigente
-# Para generar rutinas: con el catálogo en el prompt, Flash tarda más de un minuto y
-# Flash-Lite unos segundos, eligiendo igual ejercicios de la biblioteca.
+# Flash-Lite para todo: en el plan gratis Flash da unas 20 respuestas al día y Flash-Lite
+# muchas más. Con facturación activa, GEMINI_MODELO_CHAT=gemini-flash-latest pone Flash en el
+# chat (responde algo mejor); si Flash se satura o se queda sin cupo, contesta Flash-Lite.
+# Para las rutinas siempre Flash-Lite: con el catálogo en el prompt, Flash tarda más de un minuto.
 MODELO_RUTINA = "gemini-flash-lite-latest"
+MODELO = os.getenv("GEMINI_MODELO_CHAT", "").strip() or MODELO_RUTINA
 
 
 @lru_cache(maxsize=1)
@@ -341,7 +344,7 @@ Contexto del usuario:
         texto = _generar(MODELO, contenido, "responder_pregunta_ia", sistema=instrucciones_sistema)
     except (genai_errors.ServerError, genai_errors.ClientError) as e:
         # Flash saturado (503) o sin cupo (429): responde con Flash-Lite, que tiene su propio cupo
-        if isinstance(e, genai_errors.ClientError) and e.code != 429:
+        if (isinstance(e, genai_errors.ClientError) and e.code != 429) or MODELO == MODELO_RUTINA:
             raise
         logger.warning("Gemini Flash no respondió (%s), se usa Flash-Lite", e.code)
         texto = _generar(MODELO_RUTINA, contenido, "responder_pregunta_ia", sistema=instrucciones_sistema)

@@ -45,6 +45,9 @@ def _lista_env(nombre, por_defecto):
 
 # Para un túnel o un servidor, agrega su dominio en ALLOWED_HOSTS del .env
 ALLOWED_HOSTS = _lista_env('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+# Render pone aquí el dominio del servicio (ej. body-rhythm-api.onrender.com)
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME'))
 
 
 # Application definition
@@ -172,6 +175,15 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Fotos de perfil en Cloudinary cuando hay CLOUDINARY_URL (cloudinary://clave:secreto@nube).
+# En Render y otros servidores gratis el disco se borra al reiniciar: las fotos se perderían.
+# Sin la variable (desarrollo) se guardan en MEDIA_ROOT como siempre.
+CLOUDINARY_URL = os.getenv('CLOUDINARY_URL', '').strip()
+if CLOUDINARY_URL:
+    STORAGES['default'] = {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'}
+    CLOUDINARY_STORAGE = {'PREFIX': 'body-rhythm'}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS
@@ -212,7 +224,11 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or (
     EMAIL_HOST_USER or 'no-reply@bodyrhythm.app'
 )
 
-if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+# Brevo (API por HTTPS) tiene prioridad: Render gratis bloquea los puertos de SMTP
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+if BREVO_API_KEY:
+    EMAIL_BACKEND = 'users.correo_brevo.CorreoBrevo'
+elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -235,6 +251,8 @@ if not DEBUG:
     # Detrás de un proxy (Nginx, Render, Railway...) que atiende el HTTPS
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    # El chequeo de salud de Render puede llegar por HTTP interno: no se redirige
+    SECURE_REDIRECT_EXEMPT = [r'^api/salud/$']
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     CSRF_TRUSTED_ORIGINS = _lista_env('CSRF_TRUSTED_ORIGINS', [])

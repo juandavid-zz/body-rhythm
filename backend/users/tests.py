@@ -436,3 +436,41 @@ class LimitesPorIpTests(APITestCase):
             ]
         self.assertEqual(codigos[:3], [401, 401, 401])
         self.assertEqual(codigos[3], 429)
+
+
+class CorreoBrevoTests(APITestCase):
+    """En Render gratis no hay SMTP: los correos salen por la API de Brevo."""
+
+    @override_settings(EMAIL_BACKEND='users.correo_brevo.CorreoBrevo', BREVO_API_KEY='clave-de-prueba',
+                       DEFAULT_FROM_EMAIL='Body Rhythm <hola@ejemplo.com>')
+    def test_envia_por_la_api_con_html_y_remitente(self):
+        from django.core.mail import EmailMultiAlternatives
+
+        respuesta = mock.Mock(status_code=201)
+        respuesta.raise_for_status.return_value = None
+        with mock.patch('users.correo_brevo.requests.post', return_value=respuesta) as post:
+            mensaje = EmailMultiAlternatives('Asunto', 'texto', to=['ana@test.com'])
+            mensaje.attach_alternative('<b>hola</b>', 'text/html')
+            self.assertEqual(mensaje.send(), 1)
+
+        datos = post.call_args.kwargs['json']
+        self.assertEqual(post.call_args.kwargs['headers']['api-key'], 'clave-de-prueba')
+        self.assertEqual(datos['sender'], {'email': 'hola@ejemplo.com', 'name': 'Body Rhythm'})
+        self.assertEqual(datos['to'], [{'email': 'ana@test.com'}])
+        self.assertEqual(datos['htmlContent'], '<b>hola</b>')
+
+        from .emails import correo_configurado
+        self.assertTrue(correo_configurado())
+
+
+class CargarBibliotecaTests(APITestCase):
+    def test_carga_los_ejercicios_solo_si_no_hay(self):
+        from django.core.management import call_command
+        from .models import Ejercicio
+
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.count(), 376)
+
+        Ejercicio.objects.filter(pk=1).update(nombre='Cambiado en el admin')
+        call_command('cargar_biblioteca', stdout=mock.Mock())
+        self.assertEqual(Ejercicio.objects.get(pk=1).nombre, 'Cambiado en el admin')

@@ -48,6 +48,10 @@ flowchart TD
 5. En las funcionalidades que lo requieren, el backend puede solicitar asistencia al servicio de Google Gemini.
 6. La API devuelve una respuesta que el frontend presenta al usuario.
 
+## Despliegue
+
+Para publicarla (Vercel + Render + Aiven, con Cloudinary, Brevo y Wompi) sigue [DESPLIEGUE.md](DESPLIEGUE.md).
+
 ## Cómo instalar y ejecutar
 
 ### Requisitos

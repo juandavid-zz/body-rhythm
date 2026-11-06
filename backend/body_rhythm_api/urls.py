@@ -17,11 +17,18 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include, re_path
 from django.views.static import serve
 from users.sesion import RenovarSesionView
 
+def salud(request):
+    """Render la visita para saber si el servidor está arriba (sin tocar la base)."""
+    return JsonResponse({'ok': True})
+
+
 urlpatterns = [
+    path('api/salud/', salud),
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
     path('api/', include('rutinas.urls')),
