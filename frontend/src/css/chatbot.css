@@ -1777,3 +1777,103 @@
     animation: none;
   }
 }
+
+/* ---------- Conversación con el mismo estilo de la bienvenida ---------- */
+/* Sin recuadro, con el brillo de fondo y la misma letra */
+.chatbot-page .chatbot-card {
+  --cb-sf: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  font-family: var(--cb-sf);
+}
+
+.chatbot-page .cb-orbe-chat {
+  top: 4%;
+  width: 420px;
+  height: 420px;
+  opacity: 0.12;
+}
+
+.chatbot-page .chat-messages {
+  padding-top: 1.6rem;
+}
+
+.chatbot-page .msg {
+  animation: cb-aparecer 0.45s ease both;
+}
+
+/* Mensajes del asistente: el vidrio de las tarjetas */
+.chatbot-page .msg.bot .msg-bubble {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: none;
+  color: var(--cb-texto);
+}
+
+/* Tus mensajes: el morado suave de "Armar una rutina" */
+.chatbot-page .msg.user .msg-bubble {
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 18px;
+  border-bottom-right-radius: 6px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(236, 72, 153, 0.14));
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: none;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Aviso de error: ícono naranja + texto, como una tarjeta */
+.chatbot-page .msg.bot .msg-bubble.msg-aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-color: rgba(251, 191, 36, 0.22);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.chatbot-page .msg-aviso .cb-tarjeta-icono {
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* "Intentar de nuevo": como la tarjeta principal, sin halo alrededor */
+.chatbot-page .chat-actions {
+  background: none;
+  box-shadow: none;
+}
+
+.chatbot-page .chat-actions .btn-primary {
+  padding: 0.75rem 1.4rem;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.32), rgba(236, 72, 153, 0.16));
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: none;
+  font-family: var(--cb-sf);
+  font-weight: 600;
+  /* Sin el pulso del botón global de la página de inicio */
+  animation: none;
+  transition: background 0.2s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.chatbot-page .chat-actions .btn-primary:hover {
+  box-shadow: none;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.42), rgba(236, 72, 153, 0.22));
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-page .msg {
+    animation: none;
+  }
+}

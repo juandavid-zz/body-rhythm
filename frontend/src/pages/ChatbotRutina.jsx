@@ -746,7 +746,8 @@ export default function ChatbotRutina() {
             </div>
           </div>
         ) : (
-        <div className={`chatbot-card ${PASOS_RUTINA[chatActual.paso] || chatActual.paso === PASOS.CARGANDO ? 'sin-marco' : ''}`}>
+        <div className="chatbot-card sin-marco">
+          <div className="cb-orbe cb-orbe-chat" aria-hidden="true" />
 
           {chatActual.paso === PASOS.CARGANDO ? (
             <div className="cb-paso cb-paso-cargando" role="status">
@@ -1064,6 +1065,11 @@ export default function ChatbotRutina() {
                       enabled={m.from === 'bot' && i >= umbralAnimacion}
                       onTick={nudgeScroll}
                     />
+                  </div>
+                ) : m.from === 'bot' && String(m.text || '').startsWith('⚠️') ? (
+                  <div className="msg-bubble msg-aviso" role="alert">
+                    <span className="cb-tarjeta-icono naranja" aria-hidden="true">!</span>
+                    <span>{String(m.text).replace(/^⚠️\s*/, '')}</span>
                   </div>
                 ) : (
                   <div className="msg-bubble">
