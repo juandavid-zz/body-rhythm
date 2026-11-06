@@ -45,6 +45,31 @@ Cada ejercicio se revisó poniendo lado a lado sus fotos de RepDB (que son las
 que coinciden con el nombre, la descripción y los músculos de la app) y las
 dos posturas de la animación.
 
+## Versión en alta calidad (la que usa la app)
+
+`mejorar.py` vuelve a hacer los 376 videos con más calidad:
+
+1. Cada postura se agranda con **Real-ESRGAN** (modelo `realesr-animevideov3`,
+   hecho para dibujos): las de ExerciseDB x4 (180 → 720 px) y las de RepDB x2.
+2. Se estiliza a 720 px (los filtros de `estilizar_gifs.procesar` se escalan
+   con el tamaño).
+3. **RIFE** (`rife-v4.6`, con `-x -z` para menos sombras) dibuja 33 cuadros
+   entre las dos posturas: el cuerpo se mueve en vez de fundirse.
+4. Video a 30 cuadros por segundo con entrada y salida suaves, y póster de 480 px.
+
+Los dos programas son gratis y corren en la tarjeta de video con Vulkan:
+[realesrgan-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0)
+y [rife-ncnn-vulkan](https://github.com/nihui/rife-ncnn-vulkan/releases/tag/20221029).
+Se descomprimen en una carpeta (`<carpeta_ia>`), no van en el repositorio.
+
+```bash
+python mejorar.py emparejados.json desde_repdb.txt gifs ../../frontend/public/ejercicios \
+  ../../frontend/public/ejercicios/animadas <carpeta_ia> <carpeta_trabajo> \
+  $(python -c "import json;print(' '.join(json.load(open('../../frontend/src/data/animaciones.json'))))")
+```
+
+Con una RTX 3050 tarda unos 10 segundos por ejercicio.
+
 Después de generar, la lista de `frontend/src/data/animaciones.json` debe tener
 el nombre de cada video que exista en la carpeta.
 

@@ -37,11 +37,20 @@ def posturas(ruta):
     return salida
 
 
-def silueta(luz):
-    """Máscara del cuerpo entero (sin huecos) y su contorno."""
+def impar(n):
+    """Tamaño de filtro impar más cercano (los filtros de PIL lo piden impar)."""
+    n = max(3, int(round(n)))
+    return n if n % 2 else n + 1
+
+
+def silueta(luz, f=1.0):
+    """Máscara del cuerpo entero (sin huecos) y su contorno.
+
+    f: tamaño de la imagen comparado con 540 px (los filtros se escalan con él).
+    """
     cuerpo = Image.fromarray(((luz < 246) * 255).astype(np.uint8), 'L')
     # Cierra los cortes finos entre líneas del dibujo
-    cuerpo = cuerpo.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.MinFilter(7))
+    cuerpo = cuerpo.filter(ImageFilter.MaxFilter(impar(7 * f))).filter(ImageFilter.MinFilter(impar(7 * f)))
     # Rellena los huecos: todo lo que no se alcanza desde el borde es cuerpo
     fuera = cuerpo.copy()
     # Desde las cuatro esquinas: una colchoneta de lado a lado no debe cerrar el fondo de abajo
@@ -56,24 +65,25 @@ def silueta(luz):
     tamanos[0] = 0
     grande = tamanos[etiquetas] > hueco.size * 0.006
     lleno = np.where((np.asarray(fuera) == 128) | grande, 0, 255).astype(np.uint8)
-    lleno_img = Image.fromarray(lleno, 'L').filter(ImageFilter.GaussianBlur(1.0))
-    gordo = lleno_img.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.4))
+    lleno_img = Image.fromarray(lleno, 'L').filter(ImageFilter.GaussianBlur(1.0 * f))
+    gordo = lleno_img.filter(ImageFilter.MaxFilter(impar(7 * f))).filter(ImageFilter.GaussianBlur(1.4 * f))
     dentro = np.asarray(lleno_img, dtype=np.float32) / 255
     contorno = np.clip(np.asarray(gordo, dtype=np.float32) / 255 - dentro, 0, 1)
     return dentro, contorno
 
 
-def equipo(luz, sat):
+def equipo(luz, sat, f=1.0):
     """Máscara de las pesas: manchas oscuras, grises y grandes (las líneas finas del cuerpo no pasan)."""
     oscuro = (luz < 150) & (sat < 25 / 255)
-    manchas = ndimage.binary_opening(oscuro, structure=np.ones((11, 11)))
+    lado = impar(11 * f)
+    manchas = ndimage.binary_opening(oscuro, structure=np.ones((lado, lado)))
     etiquetas, _ = ndimage.label(manchas)
     tamanos = np.bincount(etiquetas.ravel())
     tamanos[0] = 0
-    grandes = tamanos[etiquetas] >= 1500
+    grandes = tamanos[etiquetas] >= 1500 * f * f
     # Un poco más ancha para cubrir el canto de cada disco
-    grandes = ndimage.binary_dilation(grandes, iterations=4) & (luz < 215)
-    m = Image.fromarray((grandes * 255).astype(np.uint8), 'L').filter(ImageFilter.GaussianBlur(1.0))
+    grandes = ndimage.binary_dilation(grandes, iterations=max(1, round(4 * f))) & (luz < 215)
+    m = Image.fromarray((grandes * 255).astype(np.uint8), 'L').filter(ImageFilter.GaussianBlur(1.0 * f))
     return np.asarray(m, dtype=np.float32) / 255
 
 
@@ -84,10 +94,16 @@ def encima(color_a, alfa_a, color_b, alfa_b):
     return color, alfa
 
 
-def procesar(rgb):
-    # Agrandar primero (y enfocar un poco) para que líneas y borde salgan finos
-    rgb = rgb.resize((rgb.width * ESCALA, rgb.height * ESCALA), Image.LANCZOS)
-    rgb = rgb.filter(ImageFilter.UnsharpMask(radius=2, percent=50, threshold=2))
+def procesar(rgb, lado=None):
+    """lado: tamaño final. Sin él se agranda ESCALA veces con LANCZOS (como antes);
+    con él la imagen ya viene agrandada (por ejemplo con Real-ESRGAN) y solo se ajusta."""
+    if lado is None:
+        # Agrandar primero (y enfocar un poco) para que líneas y borde salgan finos
+        rgb = rgb.resize((rgb.width * ESCALA, rgb.height * ESCALA), Image.LANCZOS)
+        rgb = rgb.filter(ImageFilter.UnsharpMask(radius=2, percent=50, threshold=2))
+    elif rgb.width != lado:
+        rgb = rgb.resize((lado, lado), Image.LANCZOS)
+    f = rgb.width / 540
     a = np.asarray(rgb, dtype=np.float32)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     luz = 0.299 * r + 0.587 * g + 0.114 * b
@@ -107,12 +123,12 @@ def procesar(rgb):
     alfa_linea = np.maximum(alfa_linea, rojo)
 
     # Cuerpo opaco debajo del dibujo y borde claro alrededor
-    dentro, contorno = silueta(luz)
+    dentro, contorno = silueta(luz, f)
     color, alfa = encima(linea, alfa_linea, np.broadcast_to(CUERPO, a.shape), dentro)
     color, alfa = encima(np.broadcast_to(BORDE, a.shape), np.clip(contorno * 1.3, 0, 1), color, alfa)
 
     # Pesas y máquinas: zonas grandes y oscuras sin color, pintadas de morado
-    eq = equipo(luz, sat)
+    eq = equipo(luz, sat, f)
     sombra = np.clip(luz / 130, 0, 1)[..., None]
     morado = EQUIPO_OSCURO * (1 - sombra) + EQUIPO_CLARO * sombra
     color = color * (1 - eq[..., None]) + morado * eq[..., None]

@@ -23,10 +23,10 @@ FPS = 25
 LADO = 540
 
 
-def escenario():
-    y, x = np.mgrid[0:LADO, 0:LADO].astype(np.float32) / LADO
+def escenario(lado=LADO):
+    y, x = np.mgrid[0:lado, 0:lado].astype(np.float32) / lado
     base = np.array([13, 10, 24], dtype=np.float32)
-    img = np.broadcast_to(base, (LADO, LADO, 3)).copy()
+    img = np.broadcast_to(base, (lado, lado, 3)).copy()
 
     def mancha(cx, cy, radio, color, fuerza):
         d = np.sqrt((x - cx) ** 2 + (y - cy) ** 2) / radio
@@ -73,11 +73,12 @@ def cuadros_video(gif):
     return frames
 
 
-def guardar_mp4(frames, ruta):
+def guardar_mp4(frames, ruta, fps=FPS, crf=24):
+    lado = frames[0].width
     cmd = [
         imageio_ffmpeg.get_ffmpeg_exe(), '-y', '-loglevel', 'error',
-        '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{LADO}x{LADO}', '-r', str(FPS), '-i', '-',
-        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-preset', 'slow',
+        '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{lado}x{lado}', '-r', str(fps), '-i', '-',
+        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', str(crf), '-preset', 'slow',
         '-movflags', '+faststart', str(ruta),
     ]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

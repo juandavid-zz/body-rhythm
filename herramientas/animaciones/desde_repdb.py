@@ -16,7 +16,7 @@ import estilizar_gifs as e  # noqa: E402
 import hacer_videos as hv  # noqa: E402
 
 
-def a_dibujo(ruta):
+def a_dibujo(ruta, lado=180):
     """Foto de RepDB -> dibujo gris sobre blanco, de 180 px como los GIF."""
     img = Image.open(ruta).convert('RGB')
     a = np.asarray(img, dtype=np.int16)
@@ -45,7 +45,7 @@ def a_dibujo(ruta):
     gris[es_fondo] = 255
     out = Image.fromarray(np.clip(gris, 0, 255).astype(np.uint8), 'L').convert('RGB')
     out = out.filter(ImageFilter.SMOOTH)
-    return out.resize((180, 180), Image.LANCZOS)
+    return out.resize((lado, lado), Image.LANCZOS)
 
 
 def main():
