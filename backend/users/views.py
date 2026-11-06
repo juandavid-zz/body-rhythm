@@ -396,10 +396,24 @@ class EjercicioListView(APIView):
 
 
 # CREAR PAGO CON WOMPI
+def pagos_activos():
+    """Hay llaves de Wompi de verdad (no vacías ni "pendiente" mientras se configuran)."""
+    return all(
+        valor and valor.strip().lower() != 'pendiente'
+        for valor in (settings.WOMPI_PUBLIC_KEY, settings.WOMPI_PRIVATE_KEY, settings.WOMPI_INTEGRITY_SECRET)
+    ) and settings.WOMPI_PUBLIC_KEY.startswith('pub_')
+
+
 class WompiPagoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not pagos_activos():
+            return Response(
+                {'error': 'Los pagos todavía no están disponibles. Pronto podrás mejorar tu plan.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
         usuario = Usuario.objects.get(auth=request.user)
 
         plan = request.data.get('plan')

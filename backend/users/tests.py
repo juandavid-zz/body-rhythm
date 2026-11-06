@@ -474,3 +474,22 @@ class CargarBibliotecaTests(APITestCase):
         Ejercicio.objects.filter(pk=1).update(nombre='Cambiado en el admin')
         call_command('cargar_biblioteca', stdout=mock.Mock())
         self.assertEqual(Ejercicio.objects.get(pk=1).nombre, 'Cambiado en el admin')
+
+
+class PagosSinConfigurarTests(APITestCase):
+    def setUp(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from .models import Usuario
+
+        auth = AuthUsuario.objects.create_user(email='paga@test.com', password='Clave12345')
+        Usuario.objects.create(auth=auth, nombre='Paga', username='paga')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(auth).access_token}')
+
+    @override_settings(WOMPI_PUBLIC_KEY='pendiente', WOMPI_PRIVATE_KEY='pendiente', WOMPI_INTEGRITY_SECRET='pendiente')
+    def test_sin_llaves_de_wompi_avisa_y_no_crea_el_pago(self):
+        from .models import Pago
+
+        respuesta = self.client.post('/api/pagos/wompi/', {'plan': 'pro'}, format='json')
+        self.assertEqual(respuesta.status_code, 503)
+        self.assertIn('todavía no están disponibles', respuesta.data['error'])
+        self.assertFalse(Pago.objects.exists())
